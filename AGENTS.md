@@ -96,3 +96,10 @@ Seeded per team on first use: 3 domains (verified without open tracking + receiv
 - `pnpm mail:check` runs the whole mail flow against in-memory MongoDB, fake Resend and fake storage (sync, sender, inbound with attachment, reply, delivered/opened webhooks, receipts). It needs no dev database.
 - Fake Resend additions: `sendEmail` records what it accepts (`fakeSentEmails(key)`), refuses a `from` domain the fake team has not verified with `resend_domain_rejected`, honours idempotency keys, supports cancel/reschedule of scheduled emails; `createFakeReceivedEmail(key, {...})` creates a received email (raw MIME with attachments, `In-Reply-To`/`References`) and returns the `email.received` event data to post through ingest; `expireFakeReceivedEmail` makes Resend forget it (404s).
 - Tests: `tests/integration/mail-*.test.ts` share `mail-helpers.ts` (`seedOrg`, `ctxFor`, `storeEvent`).
+
+## System email, auth, alerts and notifications (Phase 5)
+
+- System email goes through `lib/services/system-email.ts` (React Email templates in `emails/`, literal hex tokens in `emails/tokens.ts`). `RESEND_MODE=fake`: messages land in an in-memory outbox (`getOutbox`, `findOutbox`, `clearOutbox` in tests) and, in development, in `.data/outbox/*.html` and the `/dev/outbox` page, with a log line carrying the link.
+- Email verification is required: sign-up creates no session; tests create users with `signUpVerified(auth, ...)` from `tests/integration/helpers.ts`. Invite links are `/invite/<random token>` (only its SHA-256 is stored); never build them from the invitation id.
+- Alerts: `lib/services/alerts.ts` (CRUD, limits) and `alert-evaluation.ts` (engine, reads hourly rollups). Notifications: `notifications.ts` (fan-out by permission, project scope, preferences; email outbox), `mail-notifications.ts` (wording and audience per event). Call these from inside the caller's transaction with `{ session }`; emails are sent after commit by `sendPendingNotificationEmails`.
+- Realtime topics for the bell and incidents: `topics.notifications(orgId, userId)` and `topics.incidents(orgId)`.
