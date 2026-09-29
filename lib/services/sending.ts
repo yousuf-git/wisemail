@@ -14,11 +14,13 @@ import { DraftModel } from "@/lib/db/models/drafts";
 import { EmailContentModel } from "@/lib/db/models/email-contents";
 import { EmailModel, type EmailDoc } from "@/lib/db/models/emails";
 import { SenderModel } from "@/lib/db/models/senders";
+import { TemplateModel } from "@/lib/db/models/templates";
 import { withTransaction } from "@/lib/db/transaction";
 import { env } from "@/lib/env";
 import { enqueueSendEmail } from "@/lib/jobs/send";
 import { formatAddress, uniqueAddresses } from "@/lib/mail/address";
 import { htmlToText, makeSnippet, sanitizeEmailHtml } from "@/lib/mail/sanitize";
+import { missingVariables, renderTemplate, variableTypeError } from "@/lib/mail/template-vars";
 import { PENDING_STATUSES } from "@/lib/mail/status";
 import { publish } from "@/lib/realtime/publish";
 import type { ResendAdapter } from "@/lib/resend/adapter";
@@ -130,6 +132,63 @@ export function assertSendable(ctx: {
 
 const REFERENCES_LIMIT = 20;
 
+/**
+ * Loads the template for a send and checks it can be sent: on the sender's connection, published
+ * (Resend refuses drafts), every variable filled or covered by a fallback.
+ */
+async function resolveTemplate(
+  orgId: Types.ObjectId,
+  connectionId: Types.ObjectId,
+  templateId: string,
+  given: Record<string, string | number>,
+) {
+  const doc = await TemplateModel.findOne({ _id: templateId, orgId, connectionId });
+  if (!doc) {
+    throw new ServiceError(
+      "not_found",
+      "That template isn't available on this sender's Resend account.",
+    );
+  }
+  if (doc.status !== "published") {
+    throw new ServiceError(
+      "template_unpublished",
+      `"${doc.name}" is a draft. Publish it before sending with it.`,
+    );
+  }
+  const defs = (doc.variables ?? []).map((v) => ({
+    key: v.key,
+    type: v.type,
+    fallback: (v.fallback ?? null) as string | number | null,
+  }));
+  const fieldErrors: Record<string, string[]> = {};
+  for (const def of defs) {
+    const error = variableTypeError(def, given[def.key]);
+    if (error) fieldErrors[`templateVariables.${def.key}`] = [error];
+  }
+  for (const key of missingVariables(defs, given)) {
+    fieldErrors[`templateVariables.${key}`] = [`Fill in ${key}: it has no fallback value.`];
+  }
+  if (Object.keys(fieldErrors).length) {
+    throw new ServiceError("validation", "Some template variables need another look.", fieldErrors);
+  }
+  // Only declared variables reach Resend; numeric ones go as numbers.
+  const values: Record<string, string | number> = {};
+  for (const def of defs) {
+    const typed = given[def.key];
+    if (typed === undefined || typed === "") continue;
+    values[def.key] = def.type === "number" ? Number(typed) : String(typed);
+  }
+  const html = renderTemplate(doc.html ?? "", given, defs, { escape: true });
+  return {
+    doc,
+    values,
+    html,
+    text: doc.text ? renderTemplate(doc.text, given, defs) : htmlToText(html),
+    /** The composer's subject wins (it starts as the template's); placeholders are filled. */
+    subject: (subject: string) => renderTemplate(subject, given, defs),
+  };
+}
+
 export async function sendEmail(
   ctx: OrgContext,
   raw: SendEmailInput,
@@ -205,9 +264,27 @@ export async function sendEmail(
     }
   }
 
+  // Template mode: Resend renders the published template; we render the same variables to keep
+  // a readable copy of what was sent.
+  let template: Awaited<ReturnType<typeof resolveTemplate>> | null = null;
+  if (input.templateId) {
+    template = await resolveTemplate(
+      orgId,
+      connection._id,
+      input.templateId,
+      input.templateVariables ?? {},
+    );
+  }
   const settings = await getMailSettings(orgId);
-  const html = input.html?.trim() ? input.html : undefined;
-  const text = input.text?.trim() ? input.text : html ? htmlToText(html) : undefined;
+  const html = template ? template.html : input.html?.trim() ? input.html : undefined;
+  const text = template
+    ? template.text
+    : input.text?.trim()
+      ? input.text
+      : html
+        ? htmlToText(html)
+        : undefined;
+  const subject = template ? template.subject(input.subject) : input.subject;
   const scheduledAt = input.scheduledAt ?? null;
   const emailId = new Types.ObjectId();
   const now = new Date();
@@ -243,8 +320,9 @@ export async function sendEmail(
           bcc: bccAddr,
           replyTo: replyToList.map((address) => ({ address })),
           recipientAddresses: uniqueAddresses([toAddr, ccAddr, bccAddr]),
-          subject: input.subject,
+          subject,
           snippet: makeSnippet(text),
+          ...(template ? { templateId: template.doc._id, templateVariables: template.values } : {}),
           tags: [
             { name: "mw_org", value: orgId.toHexString() },
             ...(domain.projectId
@@ -290,7 +368,7 @@ export async function sendEmail(
           projectId: domain.projectId ?? null,
           direction: "outbound",
           mailboxAddress: sender.address,
-          subject: input.subject,
+          subject,
           participants: externalAddresses([...input.to, ...input.cc, ...input.bcc], own),
           at: scheduledAt ?? now,
           snippet: makeSnippet(text),
@@ -400,7 +478,9 @@ export async function deliverEmail(
   await connectDb();
   const id = parseId("emails", emailId);
   if (!id) return { status: "skipped", reason: "not_found" };
-  const email = await EmailModel.findOne({ _id: id, direction: "outbound", origin: "app" });
+  const email = await EmailModel.findOne({ _id: id, direction: "outbound", origin: "app" }).select(
+    "+templateVariables",
+  );
   if (!email) return { status: "skipped", reason: "not_found" };
   if (email.resendId) return { status: "skipped", reason: "already_sent" };
   if (!PENDING_STATUSES.includes(email.status)) return { status: "skipped", reason: "not_pending" };
@@ -458,6 +538,17 @@ export async function deliverEmail(
   if (email.inReplyTo) headers["In-Reply-To"] = email.inReplyTo;
   if (email.references.length) headers.References = email.references.join(" ");
 
+  const template = email.templateId
+    ? await TemplateModel.findOne(
+        { _id: email.templateId, orgId },
+        { resendId: 1, status: 1 },
+      ).lean()
+    : null;
+  if (email.templateId && (!template || template.status !== "published")) {
+    await markFailed(email, "template_missing", "The template was deleted or unpublished.");
+    throw new ServiceError("template_unpublished", "The template was deleted or unpublished.");
+  }
+
   const payload: ResendSendInput = {
     from: formatAddress(email.from),
     to: email.to.map((a) => a.address),
@@ -465,8 +556,19 @@ export async function deliverEmail(
     ...(email.bcc.length ? { bcc: email.bcc.map((a) => a.address) } : {}),
     ...(email.replyTo.length ? { replyTo: email.replyTo.map((a) => a.address) } : {}),
     subject: email.subject,
-    ...(contents?.sourceHtml ? { html: contents.sourceHtml } : {}),
-    ...(contents?.sourceText || !contents?.sourceHtml ? { text: contents?.sourceText ?? "" } : {}),
+    ...(template
+      ? {
+          template: {
+            id: template.resendId,
+            variables: (email.templateVariables ?? {}) as Record<string, string | number>,
+          },
+        }
+      : {
+          ...(contents?.sourceHtml ? { html: contents.sourceHtml } : {}),
+          ...(contents?.sourceText || !contents?.sourceHtml
+            ? { text: contents?.sourceText ?? "" }
+            : {}),
+        }),
     ...(Object.keys(headers).length ? { headers } : {}),
     tags: email.tags.map((t) => ({ name: t.name!, value: t.value! })),
     ...(outboundAttachments.length ? { attachments: outboundAttachments } : {}),

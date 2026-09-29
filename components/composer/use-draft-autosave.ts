@@ -17,6 +17,9 @@ export type DraftFields = {
   mode: "rich" | "html" | "template";
   bodyHtml: string;
   scheduledAt: string | null;
+  /** Template mode: the chosen template and the values typed for its variables. */
+  templateId: string | null;
+  templateVariables: Record<string, string>;
 };
 
 export type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
@@ -37,6 +40,13 @@ export function draftToFields(draft: DraftDTO): DraftFields {
     mode: draft.mode,
     bodyHtml: draft.bodyHtml,
     scheduledAt: draft.scheduledAt,
+    templateId: draft.templateId ?? null,
+    templateVariables: Object.fromEntries(
+      Object.entries(draft.templateVariables ?? {}).map(([key, value]) => [
+        key,
+        String(value ?? ""),
+      ]),
+    ),
   };
 }
 

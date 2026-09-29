@@ -29,6 +29,9 @@ export const sendEmailInput = z
     draftId: objectId.optional(),
     attachmentIds: z.array(objectId).max(20).default([]),
     scheduledAt: z.coerce.date().optional(),
+    /** Template mode: a published template and its variable values (Phase 6). */
+    templateId: objectId.optional(),
+    templateVariables: z.record(z.string(), z.union([z.string().max(5000), z.number()])).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.to.length === 0) {
@@ -41,7 +44,7 @@ export const sendEmailInput = z
         message: `Resend allows at most ${MAX_RECIPIENTS} recipients per email`,
       });
     }
-    if (!value.html?.trim() && !value.text?.trim()) {
+    if (!value.templateId && !value.html?.trim() && !value.text?.trim()) {
       ctx.addIssue({ code: "custom", path: ["html"], message: "Write a message" });
     }
     if (value.scheduledAt && value.scheduledAt.getTime() <= Date.now()) {

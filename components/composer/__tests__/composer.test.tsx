@@ -64,6 +64,7 @@ vi.mock("../html-editor", async () => {
 });
 
 import { Composer } from "../composer";
+import type { TemplateOptionDTO } from "@/lib/dto/audience";
 import type { DraftDTO, SenderDTO } from "@/lib/dto/mail";
 
 const sender = (over: Partial<SenderDTO> = {}): SenderDTO => ({
@@ -335,8 +336,145 @@ describe("Composer preview", () => {
     expect(frame.getAttribute("srcdoc")).toContain("<h1>Hello</h1>");
   });
 
-  it("keeps Template mode disabled as coming soon", () => {
+  it("keeps Template mode disabled when there are no published templates", () => {
     render(<Composer orgSlug="acme" senders={[sender()]} canSend />);
     expect(screen.getByRole("tab", { name: "Template" })).toBeDisabled();
+  });
+});
+
+describe("Composer template mode", () => {
+  const template = (over: Partial<TemplateOptionDTO> = {}): TemplateOptionDTO => ({
+    id: "t".repeat(24),
+    connectionId: "c".repeat(24),
+    name: "Welcome",
+    subject: "Welcome, {{{NAME}}}",
+    html: "<h1>Hello {{{NAME}}}</h1><p>From {{{TEAM}}}</p>",
+    variables: [
+      { key: "NAME", type: "string", fallback: null },
+      { key: "TEAM", type: "string", fallback: "Acme" },
+    ],
+    ...over,
+  });
+  const connections = { ["a".repeat(24)]: "c".repeat(24) };
+  const inTemplateMode = (over: Partial<DraftDTO> = {}) =>
+    draftDto({
+      mode: "template",
+      templateId: "t".repeat(24),
+      templateVariables: {},
+      bodyHtml: "",
+      ...over,
+    });
+
+  it("enables the tab when the sender's account has published templates", () => {
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        templates={[template()]}
+        senderConnections={connections}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Template" })).toBeEnabled();
+  });
+
+  it("offers only templates from the sender's own connection", () => {
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        templates={[template({ connectionId: "z".repeat(24) })]}
+        senderConnections={connections}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Template" })).toBeDisabled();
+  });
+
+  it("renders the template with the typed variables in the sandboxed preview", async () => {
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        draft={inTemplateMode()}
+        templates={[template()]}
+        senderConnections={connections}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/NAME/), { target: { value: "Ada <b>" } });
+    const frame = screen.getByTestId("composer-preview");
+    expect(frame.getAttribute("sandbox")).toBe("allow-popups allow-popups-to-escape-sandbox");
+    const html = frame.getAttribute("srcdoc") ?? "";
+    expect(html).toContain("Hello Ada &lt;b&gt;");
+    expect(html).toContain("From Acme"); // TEAM falls back to its default
+  });
+
+  it("asks for a variable that has no default before sending", async () => {
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        draft={inTemplateMode()}
+        templates={[template()]}
+        senderConnections={connections}
+      />,
+    );
+    await userEvent.click(sendButton());
+    expect(await screen.findByText("Fill this in: it has no default value.")).toBeInTheDocument();
+    expect(mocks.sendEmailAction).not.toHaveBeenCalled();
+  });
+
+  it("sends the template id and variables, not HTML", async () => {
+    mocks.sendEmailAction.mockResolvedValue(
+      ok({ emailId: "m".repeat(24), status: "sent", mode: "inline", threadId: null }),
+    );
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        draft={inTemplateMode()}
+        templates={[template()]}
+        senderConnections={connections}
+        onSent={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/NAME/), { target: { value: "Ada" } });
+    await userEvent.click(sendButton());
+    await waitFor(() => expect(mocks.sendEmailAction).toHaveBeenCalledTimes(1));
+    const input = mocks.sendEmailAction.mock.calls[0]![1];
+    expect(input).toMatchObject({
+      senderId: "a".repeat(24),
+      subject: "Draft subject",
+      templateId: "t".repeat(24),
+      templateVariables: { NAME: "Ada" },
+    });
+    expect(input).not.toHaveProperty("html");
+  });
+
+  it("saves the template choice with the draft", async () => {
+    render(
+      <Composer
+        orgSlug="acme"
+        senders={[sender()]}
+        canSend
+        draft={inTemplateMode()}
+        templates={[template()]}
+        senderConnections={connections}
+      />,
+    );
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/NAME/), { target: { value: "Ada" } });
+    await act(async () => vi.advanceTimersByTimeAsync(1300));
+    expect(mocks.saveDraftAction).toHaveBeenLastCalledWith(
+      "acme",
+      expect.objectContaining({
+        mode: "template",
+        templateId: "t".repeat(24),
+        templateVariables: { NAME: "Ada" },
+      }),
+    );
   });
 });
