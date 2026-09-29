@@ -1,4 +1,6 @@
 import type { ConnectionStatus } from "@/lib/db/models/connections";
+import type { ChecklistItemDTO } from "./checklist";
+import type { SyncStatusDTO } from "./sync";
 
 /** What the browser may know about a connection. Never any ciphertext; only `last4`. */
 export type ConnectionDTO = {
@@ -10,6 +12,10 @@ export type ConnectionDTO = {
   webhookRegistered: boolean;
   lastEventAt: string | null;
   lastSyncAt: string | null;
+  /** Setup checklist as of the last sync or fix; null until the first sync has finished. */
+  checklist: ChecklistItemDTO[] | null;
+  /** The latest sync run, if any. */
+  sync: SyncStatusDTO | null;
   createdAt: string;
 };
 

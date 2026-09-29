@@ -32,6 +32,28 @@ export type ResendDomain = {
   createdAt: string;
   openTracking?: boolean;
   clickTracking?: boolean;
+  /** Whether the domain can send / receive (`capabilities` in Resend). */
+  capabilities?: { sending: boolean; receiving: boolean };
+};
+
+export type ResendDnsRecord = {
+  /** `SPF`, `DKIM`, `Receiving`, `Tracking`, `TrackingCAA`. */
+  record: string;
+  type: string;
+  name: string;
+  value: string;
+  ttl?: string;
+  priority?: number;
+  status: string;
+};
+
+/** `domains.get`: the list item plus its DNS records. */
+export type ResendDomainDetail = ResendDomain & { records: ResendDnsRecord[] };
+
+export type UpdateDomainInput = {
+  id: string;
+  openTracking?: boolean;
+  clickTracking?: boolean;
 };
 
 export type ResendApiKey = {
@@ -39,6 +61,102 @@ export type ResendApiKey = {
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
+};
+// Resend's list endpoint does not return an API key's permission or restricted domain.
+
+export type ResendSegment = { id: string; name: string; createdAt: string };
+
+export type ResendTopic = {
+  id: string;
+  name: string;
+  description: string | null;
+  defaultSubscription: "opt_in" | "opt_out";
+  createdAt: string;
+};
+
+export type ResendContactProperty = {
+  id: string;
+  key: string;
+  type: "string" | "number";
+  fallbackValue: string | number | null;
+  createdAt: string;
+};
+
+export type ResendTemplateVariable = {
+  key: string;
+  type: "string" | "number";
+  fallbackValue: string | number | null;
+};
+
+export type ResendTemplateSummary = {
+  id: string;
+  name: string;
+  alias: string | null;
+  status: "draft" | "published";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ResendTemplate = ResendTemplateSummary & {
+  subject: string | null;
+  from: string | null;
+  replyTo: string[] | null;
+  html: string;
+  text: string | null;
+  variables: ResendTemplateVariable[];
+};
+
+export type ResendContact = {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  unsubscribed: boolean;
+  createdAt: string;
+};
+
+/** `contacts.get`: the list item plus property values keyed by property key. */
+export type ResendContactDetail = ResendContact & { properties: Record<string, string | number> };
+
+export type ResendContactTopic = { id: string; subscription: "opt_in" | "opt_out" };
+
+export type ResendBroadcastSummary = {
+  id: string;
+  name: string;
+  segmentId: string | null;
+  status: string;
+  createdAt: string;
+  scheduledAt: string | null;
+  sentAt: string | null;
+};
+
+export type ResendBroadcast = ResendBroadcastSummary & {
+  from: string | null;
+  subject: string | null;
+  previewText: string | null;
+  replyTo: string[] | null;
+  topicId: string | null;
+  html: string | null;
+  text: string | null;
+};
+
+export type ResendAutomationSummary = {
+  id: string;
+  name: string;
+  status: "enabled" | "disabled";
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type ResendAutomation = ResendAutomationSummary & {
+  steps: { key: string; type: string; config: Record<string, unknown> }[];
+  connections: { from: string; to: string; type?: string }[];
+};
+
+export type ResendWebhookInfo = {
+  id: string;
+  endpoint: string;
+  status: "enabled" | "disabled";
 };
 
 export type ResendWebhook = {

@@ -65,3 +65,23 @@ Key format `re_<team>[_<flag>...]`. Same `<team>` = same Resend account (duplica
 | a 6th webhook on one team | Also "no slot" (fake limit is 5, like Resend Pro); deleting one and pressing Retry succeeds |
 
 The fake store lives in memory (per server process): restarting the dev server forgets fake webhooks, but stored connections and their signing secrets stay valid.
+
+## Sync, mirrors and checklist (Phase 3)
+
+- Mirror models (`domains`, `api_keys`, `templates`, `automations`, `contacts`, `segments`, `topics`, `contact_properties`, `broadcasts`) share `mirrorFields` from `lib/db/models/mirror.ts`; every sync upsert is keyed `(orgId, connectionId, resendId)` and stamps `syncedAt` with the run's `startedAt`. Sync never writes fields owned elsewhere (`domains.projectId`, `dnsCheck`, `contacts.engagement`, `broadcasts.stats`). Resend's list endpoints do not return API key permission/domain or topic visibility, so those stay unset.
+- `lib/services/sync.ts`: stages in `STAGES` (order = TRD §2.2.4; add Phase 4 email stages to `EMAIL_STAGES` and their keys to `lib/dto/sync.ts`). `syncNextPage(runId)` does exactly one page and checkpoints in `sync_runs.resources` (`name` = stage, `cursor`, `count`, `removed`); removal of mirrors missing in Resend happens only when a stage finished its pass. `startOrResumeRun` continues a `running` run, or a `failed` one younger than 1 h (so Retry resumes at the failed stage).
+- `inngest/functions/sync-connection.ts`: `runSyncLoop` = one `step.run` per page, `step.sleep` on `rate_limited`, hands over via `step.sendEvent` after 400 pages; throttle/concurrency keyed by `connectionId`.
+- Requesting a sync: `requestSync` / `syncNow` (connection:update) create the run first, then enqueue. Dev fallback: if the job was not delivered (no Inngest dev server), `INNGEST_DEV` is on and `NODE_ENV !== "production"`, the sync runs inline in the server process (`shouldRunInline`). With a reachable Inngest server nothing runs inline.
+- Checklist: pure `computeChecklist` in `lib/services/checklist.ts`, stored on `connections.checklist` after every sync and fix. Fixes in `lib/services/checklist-fixes.ts` (`enableTracking` needs domain:update, `reregisterWebhook` needs connection:update). Interactive Resend calls use `withRateLimitRetry`.
+- Pagination: `lib/resend/pagination.ts` (`toPage`, `iteratePages`, `collectAll`).
+
+### Extra fake-Resend behaviour
+
+Seeded per team on first use: 3 domains (verified without open tracking + receiving; verified without receiving; pending DNS), 3 API keys, 3 segments, 2 topics, 2 contact properties, 3 templates, 12 contacts, 2 broadcasts, 2 automations. Additional key flags (set when the team is first used):
+
+| Flag | Behaviour |
+|---|---|
+| `allgood` | All domains verified, tracking on, receiving on: fully green checklist |
+| `manycontacts` | 230 contacts instead of 12 (pagination, checkpoint/resume) |
+| `ratelimitsync` | First `templates` list call answers 429 once (sync backoff) |
+

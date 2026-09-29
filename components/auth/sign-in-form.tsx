@@ -85,7 +85,10 @@ export function SignInForm({ next, expired }: { next?: string; expired?: boolean
         </Button>
         <p className="text-center text-sm text-ink-muted">
           New here?{" "}
-          <Link href="/sign-up" className="font-medium text-accent hover:underline">
+          <Link
+            href={next ? `/sign-up?next=${encodeURIComponent(safeNext(next))}` : "/sign-up"}
+            className="font-medium text-accent hover:underline"
+          >
             Create an account
           </Link>
         </p>
