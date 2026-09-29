@@ -28,6 +28,8 @@ export type KpiCardProps = {
   label: string;
   value: number;
   unit?: "count" | "percent";
+  /** Max decimals for percentages (default 1; complaint rates need 2). */
+  fractionDigits?: number;
   delta?: KpiDelta | null;
   /** Recent values, oldest first. Empty renders a flat placeholder line. */
   series?: number[];
@@ -86,6 +88,7 @@ export function KpiCard({
   label,
   value,
   unit = "count",
+  fractionDigits = 1,
   delta,
   series = [],
   tone = "accent",
@@ -122,7 +125,7 @@ export function KpiCard({
           suffix={unit === "percent" ? "%" : undefined}
           format={
             unit === "percent"
-              ? { maximumFractionDigits: 1, minimumFractionDigits: 0 }
+              ? { maximumFractionDigits: fractionDigits, minimumFractionDigits: 0 }
               : { maximumFractionDigits: 0 }
           }
         />

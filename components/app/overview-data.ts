@@ -1,42 +1,22 @@
-/**
- * Overview numbers for the org dashboard.
- *
- * Placeholder: returns zeros and empty series until the rollup collections land.
- * Keep the shape stable so the page does not change when real data replaces it.
- */
-export type OverviewKpiKey = "sent" | "delivered" | "opened" | "bounced";
+import "server-only";
 
-export type OverviewKpi = {
-  key: OverviewKpiKey;
-  label: string;
-  value: number;
-  unit: "count" | "percent";
-  /** Change versus the previous period, or null when there is nothing to compare. */
-  delta: { value: number; goodWhen: "up" | "down"; suffix?: string } | null;
-  /** Daily values, oldest first. */
-  series: number[];
-};
+import type { OrgContext } from "@/lib/dal";
+import type { InsightsDTO } from "@/lib/dto/insights";
+import { getInsightFilterOptions, getInsights } from "@/lib/services/insights";
+import { buildOverview, type Overview } from "./overview-model";
 
-export type Overview = {
-  /** True once at least one Resend connection is active. */
-  hasConnection: boolean;
-  /** True once any email event has been recorded. */
-  hasData: boolean;
-  periodLabel: string;
-  kpis: OverviewKpi[];
-};
+export type { Overview, OverviewKpi, OverviewKpiKey } from "./overview-model";
 
-export async function getOverview(orgSlug: string): Promise<Overview> {
-  void orgSlug;
+/** Server-side first paint of the overview: 7 day insights over `metric_rollups`. */
+export async function getOverview(
+  ctx: OrgContext,
+): Promise<{ overview: Overview; insights: InsightsDTO | null; canSeeInsights: boolean }> {
+  const canSeeInsights = ctx.can("insights:read");
+  const { hasConnection } = await getInsightFilterOptions(ctx);
+  const insights = canSeeInsights && hasConnection ? await getInsights(ctx, { days: 7 }) : null;
   return {
-    hasConnection: false,
-    hasData: false,
-    periodLabel: "Last 7 days",
-    kpis: [
-      { key: "sent", label: "Sent", value: 0, unit: "count", delta: null, series: [] },
-      { key: "delivered", label: "Delivered", value: 0, unit: "percent", delta: null, series: [] },
-      { key: "opened", label: "Opened (est.)", value: 0, unit: "percent", delta: null, series: [] },
-      { key: "bounced", label: "Bounced", value: 0, unit: "percent", delta: null, series: [] },
-    ],
+    overview: buildOverview(insights, hasConnection, canSeeInsights),
+    insights,
+    canSeeInsights,
   };
 }
