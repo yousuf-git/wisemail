@@ -22,14 +22,14 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 - [x] shadcn/ui base components restyled (button, input, card, dialog, dropdown, badge/chip, tooltip, toast/sonner)
 - [x] `lib/env.ts` Zod env schema (fake modes, Stripe mode check) + `scripts/check-env.ts` prebuild + `instrumentation.ts`
 - [x] Tooling: ESLint, Prettier, Vitest (+ `mongodb-memory-server`), Playwright skeleton
-- [ ] Mongo: `lib/db/connect`, `withTransaction`, branded `Id<"...">` types, `assertRefs`
-- [ ] Better Auth (MongoDB adapter + organization plugin, roles owner/admin/developer/support/viewer, permissions)
-- [ ] Auth pages: sign-in, sign-up; org creation onboarding; `(app)/[orgSlug]` guard + active org
-- [ ] `org_settings` created with org (free plan, UTC)
-- [ ] App shell: sidebar dock (nav groups Mail / Audience / Health), topbar (breadcrumb, search ⌘K placeholder, notifications), usage tile, theme toggle
-- [ ] Wizi mascot component (moods: idle, wave, wow, think, sleep, sad) with reduced-motion support
-- [ ] Overview dashboard layout (greeting, KPI cards, empty states) — data from rollups later
-- [ ] Marketing placeholder landing page
+- [x] Mongo: `lib/db/connect`, `withTransaction`, branded `Id<"...">` types, `assertRefs`
+- [x] Better Auth (MongoDB adapter + organization plugin, roles owner/admin/developer/support/viewer, permissions)
+- [x] Auth pages: sign-in, sign-up; org creation onboarding; `(app)/[orgSlug]` guard + active org
+- [x] `org_settings` created with org (free plan, UTC)
+- [x] App shell: sidebar dock (nav groups Mail / Audience / Health), topbar (breadcrumb, search ⌘K placeholder, notifications), usage tile, theme toggle
+- [x] Wizi mascot component (moods: idle, wave, wow, think, sleep, sad) with reduced-motion support
+- [x] Overview dashboard layout (greeting, KPI cards, empty states) — data from rollups later
+- [x] Marketing placeholder landing page
 
 ## Phase 2 — Connections & webhook ingest
 
@@ -81,6 +81,8 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 ---
 
 ## Log
+
+- 2026-09-29 — Phase 1 done. Auth via Better Auth client (rate limits apply only through /api/auth); org_settings provisioned in `afterCreateOrganization` + self-heal. Follow-ups: `/sign-out` route, email verification (needs system email, Phase 2), move render-time writes in `getOrgContext` out of render, invite page.
 
 - 2026-09-29 — Phase 1 scaffold landed: Node 24 LTS, Next 16.3, React 19.2, TS 5.9, Tailwind 4.3, Vitest 5. `lib/env.ts` is `server-only`; pure parser in `lib/env-schema.ts`. nextjs.org / ui.shadcn.com blocked → Next docs read from `node_modules/next/dist/docs`, shadcn sources pulled from GitHub.
 - 2026-09-29 — Product renamed Mailwise → **Wisemail** across docs. Plan created. Session scope: Phases 1–2.
