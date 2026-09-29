@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings2 } from "lucide-react";
+import { LogOut, Settings2, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTours } from "@/components/tour/tour-context";
 
 type User = { name: string; email: string; image?: string | null };
 
@@ -33,6 +34,8 @@ export function UserMenu({
   orgSlug: string;
   badge?: React.ReactNode;
 }) {
+  const tours = useTours();
+  const welcome = tours?.tours.find((t) => t.id === "welcome");
   return (
     <div className="flex items-center gap-2">
       <DropdownMenu>
@@ -60,6 +63,12 @@ export function UserMenu({
               Settings
             </Link>
           </DropdownMenuItem>
+          {welcome ? (
+            <DropdownMenuItem onSelect={() => tours?.start("welcome")}>
+              <Sparkles aria-hidden />
+              Restart product tour
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem asChild>
             <Link href="/sign-out" prefetch={false}>
               <LogOut aria-hidden />

@@ -3,13 +3,15 @@
 import { Menu, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useBreadcrumbLabel, looksLikeId } from "@/components/app/breadcrumb-label";
 import { LiveDot } from "@/components/app/live-provider";
 import { BellIcon } from "@/components/icons/animated";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { TOUR_START_EVENT } from "@/components/tour/tour-context";
+import { TourMenu } from "@/components/tour/tour-menu";
 import {
   Sheet,
   SheetContent,
@@ -74,6 +76,13 @@ export function Topbar({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
+
+  // Starting a tour from the sheet's user menu closes the sheet first.
+  useEffect(() => {
+    const close = () => setOpen(false);
+    window.addEventListener(TOUR_START_EVENT, close);
+    return () => window.removeEventListener(TOUR_START_EVENT, close);
+  }, []);
   if (pathname !== lastPath) {
     // close the sheet after navigating
     setLastPath(pathname);
@@ -91,6 +100,7 @@ export function Topbar({
           <button
             type="button"
             aria-label="Open menu"
+            data-tour="nav-button"
             className={cn(iconButton, "min-[1000px]:hidden")}
           >
             <Menu aria-hidden className="size-[18px]" />
@@ -168,6 +178,7 @@ export function Topbar({
             <BellIcon size={18} />
           </Link>
         )}
+        <TourMenu className="hidden min-[420px]:grid" />
         <ThemeToggle className="hidden md:inline-flex" />
       </div>
     </div>

@@ -7,6 +7,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { acknowledgeIncidentAction } from "@/app/(app)/[orgSlug]/alerts/actions";
+import { ExplainIncident } from "@/components/ai/explain-incident";
 import { absoluteTime, relativeTime, useNow } from "@/components/inbox/format";
 import { Button } from "@/components/ui/button";
 import { ALERT_KIND_INFO } from "@/lib/alerts/kinds";
@@ -109,6 +110,8 @@ export function IncidentDetail({
             </ul>
           </div>
         ) : null}
+
+        <ExplainIncident orgSlug={orgSlug} incident={incident} />
 
         {incident.status === "open" && canAcknowledge ? (
           <div className="border-t border-line pt-4">

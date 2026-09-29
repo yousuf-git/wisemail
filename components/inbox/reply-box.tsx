@@ -13,6 +13,7 @@ export function ReplyBox({
   open,
   onOpenChange,
   reply,
+  aiDraft = null,
   onSent,
 }: {
   orgSlug: string;
@@ -21,6 +22,8 @@ export function ReplyBox({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reply: ComposerReply;
+  /** AI-drafted body to start the reply with (Draft reply button). */
+  aiDraft?: { html: string; nonce: number } | null;
   onSent: () => void;
 }) {
   if (!open) {
@@ -42,6 +45,7 @@ export function ReplyBox({
         senders={senders}
         canSend={canSend}
         reply={reply}
+        aiDraft={aiDraft}
         variant="inline"
         onSent={() => onSent()}
       />

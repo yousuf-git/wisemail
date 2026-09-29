@@ -41,6 +41,8 @@ export type IncidentDTO = {
     volume?: number;
     sampleEmailIds?: string[];
   };
+  /** Cached AI explanation (PRD §5.10), when someone asked for one. */
+  aiExplanation?: { text: string; generatedAt: string | null } | null;
 };
 
 export type AlertQuota = {

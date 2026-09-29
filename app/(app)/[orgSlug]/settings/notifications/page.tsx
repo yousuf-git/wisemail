@@ -19,7 +19,7 @@ export default async function NotificationSettingsPage({
         title="Notifications"
         description="Choose what reaches you, and where. These settings are yours alone."
       />
-      <PreferencesForm orgSlug={orgSlug} initial={initial} />
+      <PreferencesForm orgSlug={orgSlug} initial={initial} isOwner={ctx.can("billing:manage")} />
     </>
   );
 }

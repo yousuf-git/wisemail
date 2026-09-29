@@ -32,9 +32,25 @@ const threadSchema = new Schema(
     starred: { type: Boolean, default: false },
     archived: { type: Boolean, default: false },
     aiCategory: { type: String },
+    /** Triage of the newest inbound message (Phase 7); the row chip and the inbox filter read it. */
+    aiTriage: {
+      type: new Schema(
+        {
+          emailId: { type: Schema.Types.ObjectId },
+          category: String,
+          priority: String,
+          sentiment: String,
+          summary: String,
+          model: String,
+          generatedAt: Date,
+        },
+        { _id: false },
+      ),
+    },
     trashedAt: { type: Date, default: null },
     trashedBy: { type: Schema.Types.ObjectId, ref: "user", default: null },
     purgeAt: { type: Date, default: null },
+    trashedByOpId: { type: Schema.Types.ObjectId, default: null },
     expireAt: { type: Date, default: null },
   },
   { timestamps: true, collection: "threads" },
@@ -42,6 +58,7 @@ const threadSchema = new Schema(
 
 threadSchema.index({ orgId: 1, archived: 1, lastMessageAt: -1 });
 threadSchema.index({ orgId: 1, assigneeId: 1, lastMessageAt: -1 });
+threadSchema.index({ orgId: 1, aiCategory: 1, lastMessageAt: -1 });
 threadSchema.index({ orgId: 1, projectId: 1, lastMessageAt: -1 });
 threadSchema.index({ orgId: 1, participants: 1, lastMessageAt: -1 });
 // Threading fallback: same normalized subject within a window.

@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MailOpen, Reply } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { DraftReplyButton } from "@/components/ai/draft-reply-button";
+import { TriageSummary } from "@/components/ai/triage-chip";
 import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { TrashIcon } from "@/components/icons/animated";
 import type { SenderOptionDTO } from "@/components/composer/composer";
@@ -72,6 +74,8 @@ export function ThreadView({
   const thread = query.data;
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const replyRef = useRef<HTMLDivElement>(null);
+  // An AI-drafted reply waiting for the inline composer (a new nonce replaces the body).
+  const [aiDraft, setAiDraft] = useState<{ html: string; nonce: number } | null>(null);
 
   // Opening a conversation that was unread marks it read, once. Later "mark unread" by the member
   // must stick, so only the state seen when the conversation first loads counts.
@@ -97,6 +101,16 @@ export function ThreadView({
         <ArrowLeft aria-hidden /> Back
       </Button>
       <div className="ml-auto flex items-center gap-1">
+        {canSend && target ? (
+          <DraftReplyButton
+            orgSlug={orgSlug}
+            threadId={threadId}
+            onDraft={(html) => {
+              setAiDraft({ html, nonce: Date.now() });
+              onReplyOpenChange(true);
+            }}
+          />
+        ) : null}
         {canSend && target ? (
           <Button type="button" variant="ghost" size="sm" onClick={() => onReplyOpenChange(true)}>
             <Reply aria-hidden /> <span className="sr-only sm:not-sr-only">Reply</span>
@@ -159,6 +173,7 @@ export function ThreadView({
           {thread.messageCount} {thread.messageCount === 1 ? "message" : "messages"} ·{" "}
           {thread.participants.join(", ")}
         </p>
+        {thread.ai ? <TriageSummary ai={thread.ai} /> : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <div className="mx-auto grid max-w-[68ch] gap-3 min-[1280px]:max-w-[76ch]">
@@ -190,6 +205,7 @@ export function ThreadView({
                 canSend={canSend}
                 open={replyOpen}
                 onOpenChange={onReplyOpenChange}
+                aiDraft={aiDraft}
                 reply={{
                   threadId: thread.id,
                   inReplyToEmailId: target.inReplyToEmailId,

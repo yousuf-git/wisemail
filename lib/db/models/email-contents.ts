@@ -23,7 +23,14 @@ const emailContentSchema = new Schema(
     rawStorageKey: { type: String, default: null },
     aiSummary: {
       type: new Schema(
-        { summary: String, category: String, model: String, generatedAt: Date },
+        {
+          summary: String,
+          category: String,
+          priority: String,
+          sentiment: String,
+          model: String,
+          generatedAt: Date,
+        },
         { _id: false },
       ),
     },

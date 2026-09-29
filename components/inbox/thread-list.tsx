@@ -1,12 +1,14 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { ListChecks, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
+import { useAiStatus } from "@/components/ai/use-ai-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CATEGORY_LABEL, TRIAGE_CATEGORIES } from "@/lib/ai/types";
 import type { MailFolder, MailListRowDTO } from "@/lib/dto/mail";
 import { cn } from "@/lib/utils";
 import { FOLDERS, inboxHref } from "./routes";
@@ -61,6 +63,8 @@ export function ThreadList({
   onQuery,
   unreadOnly,
   onUnreadOnly,
+  category = "",
+  onCategory,
   searchRef,
   loading,
   error,
@@ -70,6 +74,9 @@ export function ThreadList({
   onSelect,
   onRestore,
   empty,
+  selection,
+  bulkBar,
+  trashTools,
 }: {
   orgSlug: string;
   folder: MailFolder;
@@ -79,6 +86,9 @@ export function ThreadList({
   onQuery: (value: string) => void;
   unreadOnly: boolean;
   onUnreadOnly: (value: boolean) => void;
+  /** AI triage category filter; the control shows only where AI triage is available. */
+  category?: string;
+  onCategory?: (value: string) => void;
   searchRef: RefObject<HTMLInputElement | null>;
   loading: boolean;
   error: boolean;
@@ -89,9 +99,28 @@ export function ThreadList({
   onRestore: (row: MailListRowDTO) => void;
   /** Rendered when there are no rows (and nothing is loading). */
   empty: React.ReactNode;
+  /** Selection mode (bulk trash / delete): checkboxes on rows, "Select" toggle in the header. */
+  selection?: {
+    selecting: boolean;
+    keys: ReadonlySet<string>;
+    onToggle: (row: MailListRowDTO) => void;
+    onSelecting: (selecting: boolean) => void;
+  };
+  /** The selection toolbar, rendered under the search row while selecting. */
+  bulkBar?: React.ReactNode;
+  /** Shown in the Trash folder while not selecting (Empty trash for Owners and Admins). */
+  trashTools?: React.ReactNode;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
-  const arrivals = useArrivals(rows, `${folder}|${query}|${unreadOnly}`, loading);
+  const arrivals = useArrivals(rows, `${folder}|${query}|${unreadOnly}|${category}`, loading);
+  const { status: aiStatus } = useAiStatus(orgSlug);
+  const showCategories =
+    folder === "inbox" &&
+    !!onCategory &&
+    !!aiStatus?.canUse &&
+    aiStatus.planIncluded &&
+    aiStatus.enabled &&
+    aiStatus.features.triage;
 
   // Infinite scroll: load the next page when the sentinel nears the bottom of the list.
   useEffect(() => {
@@ -126,6 +155,21 @@ export function ThreadList({
               {f.label}
             </Link>
           ))}
+          {selection ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={selection.selecting ? "secondary" : "ghost"}
+              aria-pressed={selection.selecting}
+              onClick={() => selection.onSelecting(!selection.selecting)}
+              className={cn(
+                "ml-auto h-7",
+                selection.selecting && "bg-accent-soft text-info-ink hover:bg-accent-soft",
+              )}
+            >
+              <ListChecks aria-hidden /> Select
+            </Button>
+          ) : null}
         </nav>
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
@@ -168,8 +212,33 @@ export function ThreadList({
               Unread
             </Button>
           ) : null}
+          {showCategories ? (
+            <select
+              aria-label="Filter by AI category"
+              value={category}
+              onChange={(event) => onCategory?.(event.target.value)}
+              className={cn(
+                "h-8 max-w-28 rounded-md border border-line bg-surface px-2 text-[13px] font-medium text-ink-secondary outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                category && "bg-engaged-soft text-engaged-ink",
+              )}
+            >
+              <option value="">All types</option>
+              {TRIAGE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABEL[c]}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
       </div>
+      {selection?.selecting ? bulkBar : null}
+      {!selection?.selecting && trashTools ? (
+        <div className="flex items-center justify-between gap-2 px-4 pb-1.5 text-[13px] text-ink-muted">
+          <span>Trash is emptied after 30 days.</span>
+          {trashTools}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
         {loading ? (
@@ -203,6 +272,9 @@ export function ThreadList({
                   onSelect={onSelect}
                   onRestore={onRestore}
                   arrived={arrivals.has(`${row.kind}-${row.id}`)}
+                  selecting={selection?.selecting}
+                  checked={selection?.keys.has(`${row.kind}-${row.id}`)}
+                  onToggle={selection?.onToggle}
                 />
               ))}
             </ul>

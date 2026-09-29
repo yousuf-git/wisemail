@@ -49,7 +49,25 @@ export const broadcastSendRequested = eventType("broadcast/send.requested", {
   schema: z.object({ broadcastId: z.string(), orgId: z.string(), connectionId: z.string() }),
 });
 
+/** Work through a large or "all matching" trash / delete / restore in batches (TRD §2.14). */
+export const bulkDeleteRequested = eventType("mail/bulk-delete.requested", {
+  schema: z.object({ opId: z.string(), orgId: z.string() }),
+});
+
+/** Delete what a removed connection synced (mirrors and mail), a batch at a time (DBD §5). */
+export const connectionDataDeleteRequested = eventType("connection/data-delete.requested", {
+  schema: z.object({ connectionId: z.string(), orgId: z.string(), requestedBy: z.string() }),
+});
+
+/** Triage one received email with the fast model (PRD §5.10). */
+export const aiTriageRequested = eventType("ai/triage.requested", {
+  schema: z.object({ emailId: z.string(), orgId: z.string() }),
+});
+
 export const eventTypes = {
+  aiTriageRequested,
+  bulkDeleteRequested,
+  connectionDataDeleteRequested,
   contactImportRequested,
   broadcastSendRequested,
   domainDnsCheckRequested,

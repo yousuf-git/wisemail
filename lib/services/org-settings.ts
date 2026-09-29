@@ -5,7 +5,7 @@ import { writeAuditLog } from "./audit";
 
 /**
  * Creates the `org_settings` document for a new organization (free plan, UTC, current calendar
- * month, AI disabled) and records `organization.created` in the audit log. Idempotent: an
+ * month, AI on but plan-gated) and records `organization.created` in the audit log. Idempotent: an
  * existing settings document is left untouched and no second audit entry is written.
  * Call inside `withTransaction` so both writes land together.
  */
@@ -30,9 +30,10 @@ export async function provisionOrganization(
         grace: {},
         pendingChange: null,
         timezone: "UTC",
+        // Opt-out (PRD §5.10): on by default, but inert until the plan includes AI.
         ai: {
-          enabled: false,
-          features: { triage: false, drafts: false, compose: false, anomalies: false },
+          enabled: true,
+          features: { triage: true, drafts: true, compose: true, anomalies: true },
         },
         deletedAt: null,
         createdAt: now,

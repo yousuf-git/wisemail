@@ -26,6 +26,10 @@ export const removeConnectionSchema = z.object({
   connectionId: idSchema,
   /** Typed by the person to confirm; must equal the connection's name. */
   confirmName: z.string(),
+  /** Also delete what this connection synced (mirrors and mail); default keeps it read-only. */
+  deleteSyncedData: z.boolean().optional(),
+  /** Must be `DELETE` when `deleteSyncedData` is set. */
+  confirmDelete: z.string().optional(),
 });
 export type RemoveConnectionInput = z.infer<typeof removeConnectionSchema>;
 

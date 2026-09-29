@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { updateNotificationPreferencesAction } from "@/app/(app)/[orgSlug]/settings/notifications/actions";
 import { FormAlert } from "@/components/auth/auth-shell";
+import { LockedFeature } from "@/components/billing/locked-feature";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -23,9 +24,12 @@ const GROUPS = ["Mail", "Health"] as const;
 export function PreferencesForm({
   orgSlug,
   initial,
+  isOwner = false,
 }: {
   orgSlug: string;
   initial: NotificationPreferencesDTO;
+  /** Owners see "See plans" in the locked-feature popover. */
+  isOwner?: boolean;
 }) {
   const [channels, setChannels] = useState(initial.channels);
   const [quiet, setQuiet] = useState(initial.quietHours);
@@ -149,9 +153,22 @@ export function PreferencesForm({
           <span className="grid">
             <span className="text-sm font-semibold">Email me a summary each morning</span>
             <span className="text-[0.8125rem] text-ink-muted">
-              {initial.digestAllowed
-                ? `Sent around ${String(DIGEST_HOUR).padStart(2, "0")}:00 ${initial.orgTimezone}: last 24 hours of mail, alerts and unread items.`
-                : `Digests are on Pro and above. You're on ${initial.planLabel}.`}
+              {initial.digestAllowed ? (
+                `Sent around ${String(DIGEST_HOUR).padStart(2, "0")}:00 ${initial.orgTimezone}: last 24 hours of mail, alerts and unread items.`
+              ) : (
+                <>
+                  <LockedFeature
+                    variant="inline"
+                    name="Daily digests"
+                    planLabel="Pro"
+                    orgSlug={orgSlug}
+                    isOwner={isOwner}
+                  >
+                    Digests are on Pro and above
+                  </LockedFeature>
+                  . You&apos;re on {initial.planLabel}.
+                </>
+              )}
             </span>
           </span>
           <Switch

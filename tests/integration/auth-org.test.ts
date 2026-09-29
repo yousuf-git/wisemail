@@ -61,7 +61,8 @@ describe("organization creation", () => {
     const orgId = new Types.ObjectId(org.id);
     const settings = await models.OrgSettingsModel.findOne({ orgId }).lean();
     expect(settings).toMatchObject({ plan: "free", planState: "free", timezone: "UTC" });
-    expect(settings!.ai).toMatchObject({ enabled: false });
+    // Opt-out model (PRD §5.10): on by default, inert until the plan includes AI.
+    expect(settings!.ai).toMatchObject({ enabled: true });
     const now = new Date();
     expect(settings!.billingPeriod.start.toISOString()).toBe(
       new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString(),

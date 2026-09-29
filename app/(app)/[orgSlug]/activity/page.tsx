@@ -44,6 +44,8 @@ export default async function ActivityPage({
         canManageConnections={ctx.can("connection:create")}
         connections={options.connections}
         domains={options.domains}
+        canTrash={ctx.can("email:trash")}
+        canDelete={ctx.can("email:delete")}
       />
     </>
   );

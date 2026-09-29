@@ -3,13 +3,15 @@ import "server-only";
 import { Types, type ClientSession } from "mongoose";
 
 import { authorize, type OrgContext } from "@/lib/dal";
-import { PLAN_LABELS, getNextTier, getPlanLimits } from "@/lib/billing/plans";
+import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
 import { decryptSecret, encryptSecret, last4 } from "@/lib/crypto/envelope";
 import { withTransaction } from "@/lib/db/transaction";
 import { connectDb } from "@/lib/db/connect";
 import { ConnectionModel, type ConnectionDoc } from "@/lib/db/models/connections";
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";
+import { runConnectionDataToCompletion } from "@/lib/deletion/connection-data";
 import { env } from "@/lib/env";
+import { enqueueConnectionDataDelete } from "@/lib/jobs/send";
 import type { ConnectionDTO, ConnectionQuota } from "@/lib/dto/connection";
 import { publish } from "@/lib/realtime/publish";
 import { isResendError, ResendError } from "@/lib/resend/errors";
@@ -25,7 +27,7 @@ import type {
 import { recomputeSenderStatuses } from "./senders";
 import { writeAuditLog } from "./audit";
 import { toChecklistDTO } from "./checklist";
-import { getLatestSyncStatuses, requestSync } from "./sync";
+import { getLatestSyncStatuses, requestSync, shouldRunInline } from "./sync";
 import { ServiceError } from "./errors";
 import { keyAad, secretAad } from "./webhook-secret";
 import { notifyConnectionAttention } from "./mail-notifications";
@@ -227,18 +229,12 @@ export async function addConnection(
   const apiKey = input.apiKey.trim();
 
   // Cheap, non-authoritative pre-checks so we don't call Resend for a doomed request.
-  const settings = await OrgSettingsModel.findOne({ orgId }).lean();
-  const plan = settings?.plan ?? "free";
-  const limit = getPlanLimits(plan, settings?.limitOverrides).connections;
-  const limitError = () => {
-    const next = getNextTier(plan);
-    return new ServiceError(
-      "plan_limit_reached",
-      `You've connected ${limit} of ${limit} Resend ${limit === 1 ? "account" : "accounts"} on ${PLAN_LABELS[plan]}.` +
-        (next ? ` Upgrade to ${PLAN_LABELS[next]} to connect more.` : ""),
-    );
-  };
-  if ((await ConnectionModel.countDocuments({ orgId, ...live })) >= limit) throw limitError();
+  const entitlements = await getEntitlements(orgId);
+  assertLimitFor(
+    entitlements,
+    "connections",
+    await ConnectionModel.countDocuments({ orgId, ...live }),
+  );
   if (await ConnectionModel.exists({ orgId, name, ...live })) {
     throw new ServiceError("conflict", "You already have a connection with that name.", {
       name: ["You already have a connection with that name."],
@@ -275,8 +271,12 @@ export async function addConnection(
         { $currentDate: { updatedAt: true } },
         { session, timestamps: false },
       );
-      if ((await ConnectionModel.countDocuments({ orgId, ...live }, { session })) >= limit) {
-        throw limitError();
+      {
+        assertLimitFor(
+          entitlements,
+          "connections",
+          await ConnectionModel.countDocuments({ orgId, ...live }, { session }),
+        );
       }
       const [doc] = await ConnectionModel.create(
         [
@@ -409,19 +409,31 @@ export async function renameConnection(
 /**
  * UC-06 (remove): delete our webhook in Resend (best effort), soft-delete the connection, and
  * wipe its encrypted key material. The typed name must match.
- * TODO(phase 3+): offer to keep or delete synced data (domains, emails, ...) and set senders to
- * `connection_inactive`; today synced data is untouched (none exists yet).
+ * By default synced data stays read-only (senders become `connection_inactive`); with
+ * `deleteSyncedData` (typed `DELETE`) the `connection-data-delete` job erases the mirrors and mail
+ * of this connection only (`lib/deletion/connection-data.ts`).
  */
 export async function removeConnection(
   ctx: OrgContext,
   input: RemoveConnectionInput,
-): Promise<{ id: string; webhook: "deleted" | "already_gone" | "failed" | "none" }> {
+): Promise<{
+  id: string;
+  webhook: "deleted" | "already_gone" | "failed" | "none";
+  /** `queued`: synced data is being deleted in the background; `kept`: left read-only. */
+  data: "queued" | "kept";
+}> {
   authorize(ctx, "connection:delete");
   await connectDb();
   const connection = await findLive(ctx, input.connectionId);
   if (input.confirmName.trim() !== connection.name) {
     throw new ServiceError("validation", "Type the connection's name to confirm.", {
       confirmName: ["That doesn't match the connection's name."],
+    });
+  }
+
+  if (input.deleteSyncedData && input.confirmDelete?.trim() !== "DELETE") {
+    throw new ServiceError("validation", "Type DELETE to erase the synced data.", {
+      confirmDelete: ["Type DELETE to confirm."],
     });
   }
 
@@ -458,7 +470,10 @@ export async function removeConnection(
         actor: { type: "user", id: userOid(ctx) },
         action: "connection.removed",
         target: { type: "connection", id: connection._id },
-        changes: { before: { name: connection.name }, after: { webhook } },
+        changes: {
+          before: { name: connection.name },
+          after: { webhook, syncedData: input.deleteSyncedData ? "deleted" : "kept" },
+        },
       },
       { session },
     );
@@ -472,7 +487,26 @@ export async function removeConnection(
     );
   });
 
-  return { id: connection._id.toHexString(), webhook };
+  if (input.deleteSyncedData) {
+    const job = {
+      connectionId: connection._id.toHexString(),
+      orgId: connection.orgId.toHexString(),
+      requestedBy: ctx.user.id,
+    };
+    const delivered = await enqueueConnectionDataDelete(job);
+    // Development without an Inngest dev server: work through it in this process.
+    if (shouldRunInline({ delivered, inngestDev: env.INNGEST_DEV, nodeEnv: env.NODE_ENV })) {
+      void runConnectionDataToCompletion(job).catch((error) =>
+        console.error("[connections] inline data deletion failed", error),
+      );
+    }
+  }
+
+  return {
+    id: connection._id.toHexString(),
+    webhook,
+    data: input.deleteSyncedData ? "queued" : "kept",
+  };
 }
 
 export async function listConnections(ctx: OrgContext): Promise<ConnectionDTO[]> {
@@ -509,17 +543,15 @@ export async function getConnectionQuota(ctx: OrgContext): Promise<ConnectionQuo
   authorize(ctx, "connection:read");
   await connectDb();
   const orgId = orgOid(ctx);
-  const [settings, used] = await Promise.all([
-    OrgSettingsModel.findOne({ orgId }).lean(),
+  const [e, used] = await Promise.all([
+    getEntitlements(orgId),
     ConnectionModel.countDocuments({ orgId, ...live }),
   ]);
-  const plan = settings?.plan ?? "free";
-  const next = getNextTier(plan);
   return {
     used,
-    limit: getPlanLimits(plan, settings?.limitOverrides).connections,
-    planLabel: PLAN_LABELS[plan],
-    nextTierLabel: next ? PLAN_LABELS[next] : null,
+    limit: e.limits.connections,
+    planLabel: e.planLabel,
+    nextTierLabel: e.nextTierLabel,
   };
 }
 

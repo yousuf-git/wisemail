@@ -103,3 +103,12 @@ Seeded per team on first use: 3 domains (verified without open tracking + receiv
 - Email verification is required: sign-up creates no session; tests create users with `signUpVerified(auth, ...)` from `tests/integration/helpers.ts`. Invite links are `/invite/<random token>` (only its SHA-256 is stored); never build them from the invitation id.
 - Alerts: `lib/services/alerts.ts` (CRUD, limits) and `alert-evaluation.ts` (engine, reads hourly rollups). Notifications: `notifications.ts` (fan-out by permission, project scope, preferences; email outbox), `mail-notifications.ts` (wording and audience per event). Call these from inside the caller's transaction with `{ session }`; emails are sent after commit by `sendPendingNotificationEmails`.
 - Realtime topics for the bell and incidents: `topics.notifications(orgId, userId)` and `topics.incidents(orgId)`.
+
+## AI (Phase 7)
+
+- One door: `lib/ai/client.ts` (`getAiClient()`; tests inject with `setAiClient`). Features never call the SDK; they call `runAi` (`lib/ai/run.ts`): plan gate + org opt-out (`access.ts`) → `reserveCredits` → model → `commitCredits` (+ `ai_usage` row) or `releaseCredits`. Add a feature by adding a prompt in `lib/ai/prompts/`, a cost in `AI_CREDIT_COST`, a flag in `org_settings.ai.features`, and a service under `lib/services/ai-*.ts`.
+- Privacy rules live in `lib/ai/prompts/text.ts`: strip quoted history and signatures, truncate, no attachments, wrap third-party text with `untrusted()`. Never put addresses or bodies into the anomaly facts.
+- Errors are `AiError` (`ai_not_in_plan`, `ai_disabled`, `ai_feature_disabled`, `ai_credits_exhausted`, `ai_unavailable`, `ai_bad_output`, `ai_no_content`) with friendly copy; `orgRoute`/`orgAction` already surface them.
+- Client code reads availability from `components/ai/use-ai-status.ts` (fetches `/api/v1/ai/status`, shared cache) and calls `/api/v1/ai/{draft,compose,explain}` with JSON; none of it imports server actions, so composer/inbox tests need no mocks.
+- `AI_MODE=fake` (dev/test default) uses `lib/ai/fake.ts`: deterministic outputs (keyword rules for triage, tone openers for drafts); `[[ai-fail]]` in the input makes a call fail. AI is on by default for paid orgs and inert on Free: set `org_settings.plan` to `pro` in dev to try it. Credits: Pro 1,000, Team 5,000, Agency 15,000 per month (200 during the trial), from the plan catalog.
+- Triage runs as the `ai-triage` job (in dev without an Inngest server it runs in-process). Tests: `tests/unit/ai-*.test.ts`, `tests/integration/ai.test.ts`, `components/ai/__tests__`.

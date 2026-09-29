@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ArrowDownLeft, ArrowUpRight, Search, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ListChecks, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,7 +14,11 @@ import {
   fetchActivity,
   type ActivityFilterState,
 } from "@/components/inbox/api";
+import { BulkBar } from "@/components/deletion/bulk-bar";
+import { useBulkProgress } from "@/components/deletion/bulk-progress";
+import { useRowSelection } from "@/components/deletion/use-selection";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,7 +32,8 @@ import { useLiveTopics } from "@/lib/realtime/live-context";
 import { topics } from "@/lib/realtime/topics";
 import { useLiveFallbackInterval } from "@/lib/realtime/use-live-query";
 import type { ActivityRowDTO, Page } from "@/lib/dto/mail";
-import { filtersToSearch, hasActiveFilters } from "./filters";
+import type { BulkFilter } from "@/lib/deletion/filters";
+import { activityBulkFilters, filtersToSearch, hasActiveFilters } from "./filters";
 import { STATUS_FILTERS, statusLabel, statusState } from "./status";
 
 const ALL = "__all";
@@ -63,7 +68,19 @@ function FilterSelect({
   );
 }
 
-function ActivityRow({ orgSlug, row }: { orgSlug: string; row: ActivityRowDTO }) {
+function ActivityRow({
+  orgSlug,
+  row,
+  selecting = false,
+  checked = false,
+  onToggle,
+}: {
+  orgSlug: string;
+  row: ActivityRowDTO;
+  selecting?: boolean;
+  checked?: boolean;
+  onToggle?: (row: ActivityRowDTO) => void;
+}) {
   const now = useNow();
   const outbound = row.direction === "outbound";
   const [first, ...rest] = row.to;
@@ -72,10 +89,27 @@ function ActivityRow({ orgSlug, row }: { orgSlug: string; row: ActivityRowDTO })
     : row.from.address;
   const Arrow = outbound ? ArrowUpRight : ArrowDownLeft;
   return (
-    <li data-testid="activity-row">
+    <li
+      data-testid="activity-row"
+      className={selecting ? "flex items-center gap-1 rounded-lg" : undefined}
+      data-checked={selecting ? checked : undefined}
+    >
+      {selecting ? (
+        <Checkbox
+          checked={checked}
+          onCheckedChange={() => onToggle?.(row)}
+          aria-label={`Select ${row.subject || "(no subject)"}`}
+          className="ml-2 shrink-0"
+        />
+      ) : null}
       <Link
         href={`/${orgSlug}/activity/${row.id}`}
-        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-3 py-2.5 transition-colors duration-150 outline-none hover:bg-canvas focus-visible:ring-2 focus-visible:ring-accent md:grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1.6fr)_7.5rem] md:gap-y-0"
+        onClick={(event) => {
+          if (!selecting) return;
+          event.preventDefault();
+          onToggle?.(row);
+        }}
+        className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-3 py-2.5 transition-colors duration-150 outline-none hover:bg-canvas focus-visible:ring-2 focus-visible:ring-accent md:grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1.6fr)_7.5rem] md:gap-y-0 ${checked ? "bg-accent-soft" : ""}`}
       >
         <span className="order-2 justify-self-start md:order-none">
           <StatusChip state={statusState(row.status)}>{statusLabel(row.status)}</StatusChip>
@@ -114,6 +148,10 @@ export type ActivityViewProps = {
   canManageConnections: boolean;
   connections: { id: string; name: string }[];
   domains: { id: string; name: string; connectionId: string }[];
+  /** Move to Trash (email:trash). */
+  canTrash?: boolean;
+  /** Owner/Admin: delete permanently. */
+  canDelete?: boolean;
 };
 
 /**
@@ -129,6 +167,8 @@ export function ActivityView({
   canManageConnections,
   connections,
   domains,
+  canTrash = false,
+  canDelete = false,
 }: ActivityViewProps) {
   const [filters, setFilters] = useState(initialFilters);
   const [applied, setApplied] = useState(initialFilters);
@@ -164,6 +204,20 @@ export function ActivityView({
     void queryClient.invalidateQueries({ queryKey: ["activity", orgSlug] });
   });
   const rows = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
+
+  // Bulk selection: move to Trash / delete permanently, also "all matching this filter".
+  const selectableRows = useMemo(
+    () => rows.map((r) => ({ kind: "email" as const, id: r.id })),
+    [rows],
+  );
+  const selection = useRowSelection(selectableRows);
+  const progress = useBulkProgress(orgSlug, () => {
+    void queryClient.invalidateQueries({ queryKey: ["activity", orgSlug] });
+  });
+  const bulkFilter: BulkFilter = {
+    source: "activity",
+    filters: activityBulkFilters(applied),
+  };
 
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = list;
   useEffect(() => {
@@ -285,7 +339,37 @@ export function ActivityView({
             <X aria-hidden /> Clear filters
           </Button>
         ) : null}
+        {canTrash || canDelete ? (
+          <Button
+            type="button"
+            size="sm"
+            variant={selection.selecting ? "secondary" : "outline"}
+            aria-pressed={selection.selecting}
+            onClick={() => (selection.selecting ? selection.stop() : selection.setSelecting(true))}
+            className="ml-auto"
+          >
+            <ListChecks aria-hidden /> Select
+          </Button>
+        ) : null}
       </div>
+      {progress.card}
+      {selection.selecting ? (
+        <div className="-mx-3">
+          <BulkBar
+            orgSlug={orgSlug}
+            mode="activity"
+            selection={selection}
+            rows={selectableRows}
+            hasMore={!!hasNextPage}
+            filter={bulkFilter}
+            canTrash={canTrash}
+            canDelete={canDelete}
+            noun="emails"
+            onDone={() => void queryClient.invalidateQueries({ queryKey: ["activity", orgSlug] })}
+            track={progress.track}
+          />
+        </div>
+      ) : null}
 
       <section aria-label="Activity" className="rounded-xl bg-surface p-1.5 shadow-md">
         <div
@@ -344,7 +428,14 @@ export function ActivityView({
           <>
             <ul role="list" className="grid gap-0.5">
               {rows.map((row) => (
-                <ActivityRow key={row.id} orgSlug={orgSlug} row={row} />
+                <ActivityRow
+                  key={row.id}
+                  orgSlug={orgSlug}
+                  row={row}
+                  selecting={selection.selecting}
+                  checked={selection.keys.has(`email-${row.id}`)}
+                  onToggle={(r) => selection.toggle({ kind: "email", id: r.id })}
+                />
               ))}
             </ul>
             <div ref={sentinel} aria-hidden className="h-px" />

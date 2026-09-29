@@ -12,6 +12,7 @@ export const SETTINGS_SECTIONS = [
   { slug: "connections", label: "Connections" },
   { slug: "senders", label: "Senders" },
   { slug: "notifications", label: "Notifications" },
+  { slug: "cleanup", label: "Cleanup" },
   { slug: "ai", label: "AI" },
   { slug: "usage", label: "Usage" },
   { slug: "billing", label: "Billing" },

@@ -28,7 +28,7 @@ const alertIncidentSchema = new Schema(
     /** Scope ids, the threshold in force and sample email ids. */
     context: { type: Schema.Types.Mixed, default: () => ({}) },
     aiExplanation: {
-      type: new Schema({ text: String, generatedAt: Date }, { _id: false }),
+      type: new Schema({ text: String, model: String, generatedAt: Date }, { _id: false }),
     },
   },
   { timestamps: true, collection: "alert_incidents" },

@@ -315,7 +315,7 @@ describe("ThreadRow", () => {
     expect(screen.getByText("jane@northwind.io")).toBeInTheDocument();
   });
 
-  it("shows sender, subject, snippet, unread dot and attachment icon; keeps the AI slot hidden", () => {
+  it("shows sender, subject, snippet, unread dot and attachment icon; no AI chip without triage", () => {
     const onSelect = vi.fn();
     const { container } = render(
       <ul>
@@ -329,9 +329,46 @@ describe("ThreadRow", () => {
     expect(screen.getByText("Invoice question")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Unread" })).toBeInTheDocument();
     expect(screen.getByLabelText("Has attachments")).toBeInTheDocument();
-    expect(container.querySelector('[data-slot="ai-chip"]')).toHaveAttribute("hidden");
+    expect(container.querySelector('[data-slot="ai-chip"]')).toBeNull();
     fireEvent.click(link);
     expect(onSelect).toHaveBeenCalledWith(row);
+  });
+
+  it("shows the AI triage chip in the inbox, with the summary as its tooltip", () => {
+    const ai = {
+      category: "billing",
+      priority: "urgent",
+      sentiment: "negative",
+      summary: "Charged twice.",
+    } as const;
+    const { container, rerender } = render(
+      <ul>
+        <ThreadRow
+          row={{ ...row, ai }}
+          folder="inbox"
+          href="/acme/inbox/t1"
+          selected
+          onSelect={vi.fn()}
+        />
+      </ul>,
+    );
+    const chip = container.querySelector('[data-slot="ai-chip"]')!;
+    expect(chip).toHaveTextContent("Billing");
+    expect(chip).toHaveTextContent("Urgent");
+    expect(chip.getAttribute("title")).toContain("Charged twice.");
+    // Sent and Trash rows never carry it.
+    rerender(
+      <ul>
+        <ThreadRow
+          row={{ ...row, ai }}
+          folder="sent"
+          href="/acme/inbox/t1"
+          selected
+          onSelect={vi.fn()}
+        />
+      </ul>,
+    );
+    expect(container.querySelector('[data-slot="ai-chip"]')).toBeNull();
   });
 
   it("offers Restore in Trash instead of a link", () => {

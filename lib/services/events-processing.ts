@@ -2,6 +2,7 @@ import "server-only";
 
 import { Types, type ClientSession } from "mongoose";
 
+import { meterEmail } from "@/lib/billing/metering";
 import { connectDb } from "@/lib/db/connect";
 import { parseId } from "@/lib/db/ids";
 import { BroadcastModel } from "@/lib/db/models/broadcasts";
@@ -417,7 +418,8 @@ async function processEmailEvent(
     { session },
   );
 
-  // TODO(phase 7): meter the email toward `usage_periods` (idempotent via `emails.meteredAt`).
+  // Count it once toward the plan allowance (idempotent via `emails.meteredAt`, same transaction).
+  await meterEmail({ orgId, emailId: email._id, stream }, { session });
   // Notifications for bounces, complaints and opened replies (tombstoned emails returned above;
   // `inbound_received` is sent by `fetch-inbound` once the message is threaded). Alert
   // evaluation is requested by the caller after the transaction (`alertOrgId`).

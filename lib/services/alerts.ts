@@ -3,14 +3,13 @@ import "server-only";
 import { Types } from "mongoose";
 
 import type { AlertKind } from "@/lib/alerts/kinds";
-import { PLAN_LABELS, getNextTier, getPlanLimits } from "@/lib/billing/plans";
+import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
 import { authorize, type OrgContext } from "@/lib/dal";
 import { connectDb } from "@/lib/db/connect";
 import { AlertIncidentModel, type AlertIncidentDoc } from "@/lib/db/models/alert-incidents";
 import { AlertRuleModel, type AlertRuleDoc } from "@/lib/db/models/alert-rules";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { DomainModel } from "@/lib/db/models/domains";
-import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { ProjectModel } from "@/lib/db/models/projects";
 import { assertRefs } from "@/lib/db/refs";
 import type { AlertQuota, AlertRuleDTO, AlertScopeOptions, IncidentDTO } from "@/lib/dto/alert";
@@ -82,6 +81,12 @@ export function toIncidentDTO(
     resolvedAt: d.resolvedAt?.toISOString() ?? null,
     acknowledgedAt: d.acknowledgedAt?.toISOString() ?? null,
     context: (d.context ?? {}) as IncidentDTO["context"],
+    aiExplanation: d.aiExplanation?.text
+      ? {
+          text: d.aiExplanation.text,
+          generatedAt: d.aiExplanation.generatedAt?.toISOString() ?? null,
+        }
+      : null,
   };
 }
 
@@ -92,22 +97,15 @@ function ruleVisible(ctx: OrgContext, rule: { scope?: { projectIds?: Types.Objec
   return projects.length > 0 && projects.every((p) => canSeeProject(ctx, p));
 }
 
-async function planLimits(orgId: Types.ObjectId) {
-  const settings = await OrgSettingsModel.findOne({ orgId }).lean();
-  const plan = settings?.plan ?? "free";
-  return { plan, limit: getPlanLimits(plan, settings?.limitOverrides).alertRules };
-}
-
 export async function getAlertQuota(ctx: OrgContext): Promise<AlertQuota> {
   await connectDb();
   const orgId = orgOid(ctx);
-  const { plan, limit } = await planLimits(orgId);
-  const next = getNextTier(plan);
+  const e = await getEntitlements(orgId);
   return {
     used: await AlertRuleModel.countDocuments({ orgId }),
-    limit,
-    planLabel: PLAN_LABELS[plan],
-    nextTierLabel: next ? PLAN_LABELS[next] : null,
+    limit: e.limits.alertRules,
+    planLabel: e.planLabel,
+    nextTierLabel: e.nextTierLabel,
   };
 }
 
@@ -168,16 +166,11 @@ export async function createAlertRule(ctx: OrgContext, raw: AlertRuleInput): Pro
   const orgId = orgOid(ctx);
   await checkScope(ctx, input);
 
-  const { plan, limit } = await planLimits(orgId);
-  const used = await AlertRuleModel.countDocuments({ orgId });
-  if (limit !== null && used >= limit) {
-    const next = getNextTier(plan);
-    throw new ServiceError(
-      "plan_limit_reached",
-      `You have ${used} of ${limit} alert rules on ${PLAN_LABELS[plan]}.` +
-        (next ? ` Upgrade to ${PLAN_LABELS[next]} for more.` : ""),
-    );
-  }
+  assertLimitFor(
+    await getEntitlements(orgId),
+    "alertRules",
+    await AlertRuleModel.countDocuments({ orgId }),
+  );
 
   const rule = await AlertRuleModel.create({
     orgId,

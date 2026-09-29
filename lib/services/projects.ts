@@ -3,7 +3,7 @@ import "server-only";
 import mongoose, { Types, type ClientSession } from "mongoose";
 
 import { authorize, type OrgContext } from "@/lib/dal";
-import { PLAN_LABELS, getNextTier, getPlanLimits } from "@/lib/billing/plans";
+import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
 import { connectDb } from "@/lib/db/connect";
 import { MemberScopeModel } from "@/lib/db/models/member-scopes";
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";
@@ -66,12 +66,6 @@ async function findLive(ctx: OrgContext, projectId: string, session?: ClientSess
   return doc;
 }
 
-async function planFor(orgId: Types.ObjectId) {
-  const settings = await OrgSettingsModel.findOne({ orgId }).lean();
-  const plan = settings?.plan ?? "free";
-  return { plan, limit: getPlanLimits(plan, settings?.limitOverrides).projects };
-}
-
 /** Projects of the org with domain and scoped-member counts. Newest last (stable, by name). */
 export async function listProjects(ctx: OrgContext): Promise<ProjectDTO[]> {
   authorize(ctx, "project:read");
@@ -111,23 +105,13 @@ export async function listProjects(ctx: OrgContext): Promise<ProjectDTO[]> {
 export async function getProjectQuota(ctx: OrgContext): Promise<ProjectQuota> {
   await connectDb();
   const orgId = orgOid(ctx);
-  const { plan, limit } = await planFor(orgId);
-  const next = getNextTier(plan);
+  const e = await getEntitlements(orgId);
   return {
     used: await ProjectModel.countDocuments({ orgId, ...live }),
-    limit,
-    planLabel: PLAN_LABELS[plan],
-    nextTierLabel: next ? PLAN_LABELS[next] : null,
+    limit: e.limits.projects,
+    planLabel: e.planLabel,
+    nextTierLabel: e.nextTierLabel,
   };
-}
-
-function limitError(plan: keyof typeof PLAN_LABELS, limit: number) {
-  const next = getNextTier(plan);
-  return new ServiceError(
-    "plan_limit_reached",
-    `You've created ${limit} of ${limit} ${limit === 1 ? "project" : "projects"} on ${PLAN_LABELS[plan]}.` +
-      (next ? ` Upgrade to ${PLAN_LABELS[next]} to add more.` : ""),
-  );
 }
 
 export async function createProject(
@@ -139,7 +123,7 @@ export async function createProject(
   const orgId = orgOid(ctx);
   const name = input.name.trim();
   const slug = slugifyProjectName(name);
-  const { plan, limit } = await planFor(orgId);
+  const entitlements = await getEntitlements(orgId);
 
   try {
     return await withTransaction(async (session) => {
@@ -150,11 +134,11 @@ export async function createProject(
         { $currentDate: { updatedAt: true } },
         { session, timestamps: false },
       );
-      if (limit !== null) {
-        if ((await ProjectModel.countDocuments({ orgId, ...live }, { session })) >= limit) {
-          throw limitError(plan, limit);
-        }
-      }
+      assertLimitFor(
+        entitlements,
+        "projects",
+        await ProjectModel.countDocuments({ orgId, ...live }, { session }),
+      );
       const clash = await ProjectModel.exists({
         orgId,
         ...live,

@@ -36,6 +36,9 @@ export const COLLECTIONS = [
   "projects",
   "broadcasts",
   "templates",
+  "tour_progress",
+  "cleanup_rules",
+  "bulk_operations",
 ] as const;
 
 export type CollectionName = (typeof COLLECTIONS)[number];

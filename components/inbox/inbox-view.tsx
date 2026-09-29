@@ -9,7 +9,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { EmptyState } from "@/components/app/empty-state";
 import type { SenderOptionDTO } from "@/components/composer/composer";
+import { BulkBar, EmptyTrashButton } from "@/components/deletion/bulk-bar";
+import { useBulkProgress } from "@/components/deletion/bulk-progress";
+import { useRowSelection } from "@/components/deletion/use-selection";
 import { Button } from "@/components/ui/button";
+import type { BulkFilter } from "@/lib/deletion/filters";
 import type { MailFolder, MailListRowDTO, Page, ThreadDetailDTO } from "@/lib/dto/mail";
 import { useLiveTopics } from "@/lib/realtime/live-context";
 import { useLiveFallbackInterval } from "@/lib/realtime/use-live-query";
@@ -60,6 +64,8 @@ export type InboxViewProps = {
   senders: SenderOptionDTO[];
   canSend: boolean;
   canTrash: boolean;
+  /** Owner/Admin: delete permanently, Empty trash. */
+  canDelete?: boolean;
   hasConnection: boolean;
   canManageConnections: boolean;
 };
@@ -77,6 +83,7 @@ export function InboxView({
   senders,
   canSend,
   canTrash,
+  canDelete = false,
   hasConnection,
   canManageConnections,
 }: InboxViewProps) {
@@ -88,6 +95,7 @@ export function InboxView({
 
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [category, setCategory] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
   const debounced = useDebounced(query, 250);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -98,8 +106,9 @@ export function InboxView({
     folder,
     q: debounced.trim(),
     unread: folder === "inbox" && unreadOnly,
+    category: folder === "inbox" ? category : "",
   };
-  const isInitialKey = !params.q && !params.unread;
+  const isInitialKey = !params.q && !params.unread && !params.category;
   const list = useInfiniteQuery({
     queryKey: threadListKey(params),
     queryFn: ({ pageParam }) => fetchThreadList(params, pageParam),
@@ -118,6 +127,19 @@ export function InboxView({
     void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] });
   });
   const rows = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
+
+  // Bulk selection: trash, restore, delete permanently, "all matching" as a background job.
+  const selectable = folder !== "scheduled" && (canTrash || canDelete);
+  const selection = useRowSelection(rows);
+  const progress = useBulkProgress(orgSlug, () => {
+    void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] });
+  });
+  const bulkFilter: BulkFilter | null =
+    folder === "trash"
+      ? { source: "trash" }
+      : folder === "inbox" && !unreadOnly && !category
+        ? { source: "inbox", ...(debounced.trim() ? { q: debounced.trim() } : {}) }
+        : null;
 
   const go = useCallback(
     (threadId: string | null) => {
@@ -174,21 +196,23 @@ export function InboxView({
 
   if (!hasConnection) {
     return (
-      <EmptyState
-        title="Connect Resend to start your inbox"
-        mood="idle"
-        action={
-          canManageConnections ? (
-            <Button asChild>
-              <Link href={`/${orgSlug}/settings/connections`}>Connect an account</Link>
-            </Button>
-          ) : null
-        }
-      >
-        {canManageConnections
-          ? "Once a Resend account is connected, replies to your emails and everything you send show up here."
-          : "Ask an Owner or Admin to connect a Resend account. Mail appears here as soon as they do."}
-      </EmptyState>
+      <div data-tour="inbox-list">
+        <EmptyState
+          title="Connect Resend to start your inbox"
+          mood="idle"
+          action={
+            canManageConnections ? (
+              <Button asChild>
+                <Link href={`/${orgSlug}/settings/connections`}>Connect an account</Link>
+              </Button>
+            ) : null
+          }
+        >
+          {canManageConnections
+            ? "Once a Resend account is connected, replies to your emails and everything you send show up here."
+            : "Ask an Owner or Admin to connect a Resend account. Mail appears here as soon as they do."}
+        </EmptyState>
+      </div>
     );
   }
 
@@ -197,6 +221,10 @@ export function InboxView({
   const empty = searching ? (
     <EmptyState mood="detective" mascotSize={96} title={`No results for “${query.trim()}”`}>
       Try a different word, an address, or part of the subject.
+    </EmptyState>
+  ) : category ? (
+    <EmptyState mood="detective" mascotSize={96} title="Nothing in this category">
+      Conversations Wizi sorts here will show up as they arrive.
     </EmptyState>
   ) : unreadOnly ? (
     <EmptyState mood="sleep" mascotSize={96} title="Nothing unread">
@@ -214,10 +242,14 @@ export function InboxView({
   return (
     <div className="flex flex-col gap-3.5">
       <h1 className="sr-only">Inbox</h1>
+      {progress.card}
       {selectedId && selectedRow ? (
         <BreadcrumbLabel segment={selectedId} label={selectedRow.subject || "(no subject)"} />
       ) : null}
-      <div className="flex h-[calc(100dvh-7.75rem)] min-h-[520px] overflow-hidden rounded-xl bg-surface shadow-md">
+      <div
+        data-tour="inbox-list"
+        className="flex h-[calc(100dvh-7.75rem)] min-h-[520px] overflow-hidden rounded-xl bg-surface shadow-md"
+      >
         <div
           className={cn(
             "w-full min-w-0 flex-col lg:flex lg:w-[380px] lg:flex-none lg:border-r lg:border-line",
@@ -233,6 +265,8 @@ export function InboxView({
             onQuery={setQuery}
             unreadOnly={unreadOnly}
             onUnreadOnly={setUnreadOnly}
+            category={category}
+            onCategory={setCategory}
             searchRef={searchRef}
             loading={list.isPending}
             error={list.isError}
@@ -246,6 +280,44 @@ export function InboxView({
               )
             }
             empty={empty}
+            selection={
+              selectable
+                ? {
+                    selecting: selection.selecting,
+                    keys: selection.keys,
+                    onToggle: selection.toggle,
+                    onSelecting: (on) => (on ? selection.setSelecting(true) : selection.stop()),
+                  }
+                : undefined
+            }
+            trashTools={
+              folder === "trash" && canDelete ? (
+                <EmptyTrashButton
+                  orgSlug={orgSlug}
+                  variant="outline"
+                  track={progress.track}
+                  onDone={() =>
+                    void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] })
+                  }
+                />
+              ) : undefined
+            }
+            bulkBar={
+              <BulkBar
+                orgSlug={orgSlug}
+                mode={folder === "trash" ? "trash" : "inbox"}
+                selection={selection}
+                rows={rows}
+                hasMore={!!list.hasNextPage}
+                filter={bulkFilter}
+                canTrash={canTrash}
+                canDelete={canDelete}
+                onDone={() =>
+                  void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] })
+                }
+                track={progress.track}
+              />
+            }
           />
         </div>
         <div className={cn("min-w-0 flex-1 flex-col lg:flex", showThread ? "flex" : "hidden")}>

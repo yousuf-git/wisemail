@@ -355,7 +355,8 @@ describe("usage summary (sidebar tile)", () => {
       used: { transactional: 0, broadcast: 0, inbound: 0 },
     });
     expect(summary.connections!.map((c) => c.health)).toEqual(["healthy", "attention"]);
-    expect(summary.aiCredits).toBeUndefined();
+    // Pro includes AI: the tile shows the whole monthly allowance while nothing has been used.
+    expect(summary.aiCredits).toBe(1_000);
   });
 });
 

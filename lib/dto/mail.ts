@@ -1,5 +1,6 @@
 /** Client-safe mail DTOs (no server imports). Dates are ISO strings, ids are hex strings. */
 
+import type { TriageDTO } from "@/lib/ai/types";
 import type { EmailStatus } from "@/lib/db/models/emails";
 
 export type AddressDTO = { address: string; name?: string };
@@ -114,6 +115,8 @@ export type ThreadDetailDTO = {
   assigneeId: string | null;
   unread: boolean;
   projectId: string | null;
+  /** AI triage of the newest inbound message. */
+  ai?: TriageDTO | null;
   messages: MessageDTO[];
 };
 
@@ -140,6 +143,8 @@ export type MailListRowDTO = {
   scheduledAt: string | null;
   trashedAt: string | null;
   purgeAt: string | null;
+  /** AI triage of the newest inbound message (paid plans with AI on); null when there is none. */
+  ai?: TriageDTO | null;
 };
 
 export type Page<T> = { items: T[]; nextCursor: string | null };
