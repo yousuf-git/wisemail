@@ -4,11 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/check-env.ts",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "db:dev": "bash scripts/dev-mongo.sh"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@hookform/resolvers": "^5.9.1",
     "@number-flow/react": "^0.6.2",
     "@tanstack/react-query": "^5.104.0",
@@ -27,6 +35,7 @@
     "react-hook-form": "^7.89.0",
     "recharts": "^3.10.1",
     "resend": "^6.30.0",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.8",
     "svix": "^2.5.0",
     "tailwind-merge": "^3.7.0",
@@ -56,5 +65,8 @@
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.2"
   },
-  "packageManager": "pnpm@12.8.1"
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24"
+  }
 }
