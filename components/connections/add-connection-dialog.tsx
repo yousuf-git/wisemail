@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -43,7 +44,9 @@ export function AddConnectionDialog({
   atLimit: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  // `?connect=1` (the end of the welcome tour) opens the dialog right away.
+  const searchParams = useSearchParams();
+  const [open, setOpen] = useState(searchParams.get("connect") === "1");
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<AddConnectionInput>({
@@ -90,7 +93,7 @@ export function AddConnectionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="font-bold">
+        <Button className="font-bold" data-tour="connections-add">
           <Plus aria-hidden />
           Connect account
         </Button>
@@ -105,9 +108,20 @@ export function AddConnectionDialog({
                 {quota.limit === 1 ? "account" : "accounts"} on {quota.planLabel}
               </DialogTitle>
               <DialogDescription>
-                {quota.nextTierLabel
-                  ? `${quota.nextTierLabel} includes more connections. Plans and upgrades arrive soon; for now, remove a connection you no longer need to make room.`
-                  : "Remove a connection you no longer need to make room."}
+                {quota.nextTierLabel ? (
+                  <>
+                    {quota.nextTierLabel} includes more connections.{" "}
+                    <Link
+                      href={`/${orgSlug}/settings/billing`}
+                      className="font-semibold text-ink underline underline-offset-4"
+                    >
+                      See plans
+                    </Link>{" "}
+                    (Owners can upgrade), or remove a connection you no longer need to make room.
+                  </>
+                ) : (
+                  "Remove a connection you no longer need to make room."
+                )}
               </DialogDescription>
             </DialogHeader>
           </div>

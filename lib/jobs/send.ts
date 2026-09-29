@@ -3,8 +3,11 @@ import "server-only";
 import { z } from "zod";
 
 import {
+  aiTriageRequested,
   alertsEvaluateRequested,
   broadcastSendRequested,
+  bulkDeleteRequested,
+  connectionDataDeleteRequested,
   contactImportRequested,
   connectionSyncRequested,
   domainDnsCheckRequested,
@@ -23,6 +26,14 @@ import { env } from "@/lib/env";
  *   Resend retries).
  */
 export type JobEvent =
+  | {
+      name: typeof bulkDeleteRequested.name;
+      data: z.infer<NonNullable<typeof bulkDeleteRequested.schema>>;
+    }
+  | {
+      name: typeof connectionDataDeleteRequested.name;
+      data: z.infer<NonNullable<typeof connectionDataDeleteRequested.schema>>;
+    }
   | {
       name: typeof resendEventReceived.name;
       data: z.infer<NonNullable<typeof resendEventReceived.schema>>;
@@ -54,6 +65,10 @@ export type JobEvent =
   | {
       name: typeof domainDnsCheckRequested.name;
       data: z.infer<NonNullable<typeof domainDnsCheckRequested.schema>>;
+    }
+  | {
+      name: typeof aiTriageRequested.name;
+      data: z.infer<NonNullable<typeof aiTriageRequested.schema>>;
     };
 
 export const sentJobs: JobEvent[] = [];
@@ -123,3 +138,18 @@ export const enqueueBroadcastSend = (data: {
   orgId: string;
   connectionId: string;
 }) => send({ name: "broadcast/send.requested", data });
+
+/** Run a large bulk trash / delete / restore (`bulk_operations`) in the background. */
+export const enqueueBulkDelete = (data: { opId: string; orgId: string }) =>
+  send({ name: "mail/bulk-delete.requested", data });
+
+/** Delete the synced data of a removed connection in the background. */
+export const enqueueConnectionDataDelete = (data: {
+  connectionId: string;
+  orgId: string;
+  requestedBy: string;
+}) => send({ name: "connection/data-delete.requested", data });
+
+/** Ask for AI triage of one received email (only enqueued when the org's AI is on). */
+export const enqueueAiTriage = (data: { emailId: string; orgId: string }) =>
+  send({ name: "ai/triage.requested", data });

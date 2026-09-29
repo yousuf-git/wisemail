@@ -428,6 +428,7 @@ describe("removeConnection", () => {
     ).toEqual({
       id: dto.id,
       webhook: "deleted",
+      data: "kept",
     });
     expect(team.webhooks.size).toBe(0);
 

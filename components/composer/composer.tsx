@@ -11,6 +11,7 @@ import {
   getDraftAction,
   sendEmailAction,
 } from "@/app/(app)/[orgSlug]/compose/actions";
+import { useComposeAi } from "@/components/ai/compose-tools";
 import { senderReason } from "@/components/senders/sender-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,11 @@ export type ComposerProps = {
   templates?: TemplateOptionDTO[];
   /** Connection id per sender id, to match templates to the sender. */
   senderConnections?: Record<string, string>;
+  /**
+   * AI-drafted reply body (Draft reply in the inbox). The body starts with it, and a new `nonce`
+   * replaces the body later (with Undo). The member still edits and sends.
+   */
+  aiDraft?: { html: string; nonce: number } | null;
 };
 
 type Mode = "rich" | "html" | "template";
@@ -86,6 +92,7 @@ export function Composer({
   timezone,
   templates = [],
   senderConnections = {},
+  aiDraft = null,
 }: ComposerProps) {
   const router = useRouter();
   const zone = isValidTimeZone(timezone)
@@ -100,6 +107,10 @@ export function Composer({
       : pickDefaultSender(senders);
     const scheduled = draft?.scheduledAt ? new Date(draft.scheduledAt) : null;
     const auto = draft ? "" : signatureBody(sender ?? undefined);
+    const aiStart =
+      !draft && aiDraft
+        ? aiDraft.html + (sender?.signatureHtml.trim() ? sender.signatureHtml : "")
+        : null;
     const fields: DraftFields = {
       senderId: draft ? draft.senderId : (sender?.id ?? null),
       threadId: draft?.threadId ?? reply?.threadId ?? null,
@@ -109,12 +120,12 @@ export function Composer({
       bcc: draft?.bcc ?? [],
       subject: draft?.subject ?? reply?.subject ?? "",
       mode: draft ? draft.mode : "rich",
-      bodyHtml: draft?.bodyHtml ?? auto,
+      bodyHtml: draft?.bodyHtml ?? aiStart ?? auto,
       scheduledAt: scheduled && scheduled.getTime() > Date.now() ? scheduled.toISOString() : null,
       templateId: draft?.templateId ?? null,
       templateVariables: draft ? draftToFields(draft).templateVariables : {},
     };
-    return { fields, auto, baselineKey: fieldsKey(fields) };
+    return { fields, auto: aiStart ? "" : auto, baselineKey: fieldsKey(fields) };
   });
 
   const [senderId, setSenderId] = useState(initial.fields.senderId);
@@ -231,6 +242,51 @@ export function Composer({
     initial: draft?.attachments ?? [],
     ensureDraft: autosave.ensureDraft,
     onError: (message) => toast.error(message),
+  });
+
+  // ---- AI suggestions (never applied without the member) ----
+
+  const signatureHtml = sender?.signatureHtml.trim() ? sender.signatureHtml : "";
+  const hasSignature = !!signatureHtml && bodyHtml.includes(signatureHtml);
+
+  function replaceBodyWithAi(html: string, label: string, keepSignature: boolean) {
+    const previous = bodyHtml;
+    if (mode === "template") setMode("rich");
+    setBodyHtml(html + (keepSignature ? signatureHtml : ""));
+    autoBody.current = "";
+    setEditorKey((k) => k + 1);
+    setErrors((e) => ({ ...e, html: "" }));
+    toast(label, {
+      duration: 8000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          setBodyHtml(previous);
+          setEditorKey((k) => k + 1);
+        },
+      },
+    });
+  }
+
+  const appliedDraft = useRef(aiDraft?.nonce ?? null);
+  useEffect(() => {
+    if (!aiDraft || aiDraft.nonce === appliedDraft.current) return;
+    appliedDraft.current = aiDraft.nonce;
+    replaceBodyWithAi(aiDraft.html, "Draft inserted", true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiDraft]);
+
+  const ai = useComposeAi({
+    orgSlug,
+    subject,
+    bodyHtml: hasSignature ? bodyHtml.replace(signatureHtml, "") : bodyHtml,
+    richMode: mode === "rich",
+    disabled: !editable,
+    onUseSubject: (value) => {
+      setSubject(value);
+      setErrors((e) => ({ ...e, subject: "" }));
+    },
+    onReplaceBody: (html) => replaceBodyWithAi(html, "Draft replaced", hasSignature),
   });
 
   // ---- actions ----
@@ -565,7 +621,10 @@ export function Composer({
           </p>
         ) : null}
 
-        <div className="flex items-center gap-2 border-b border-line py-1">
+        <div
+          data-tour="compose-sender"
+          className="flex items-center gap-2 border-b border-line py-1"
+        >
           <span className="w-11 shrink-0 text-[0.8125rem] text-ink-muted">From</span>
           <div className="min-w-0 flex-1">
             <SenderSelect
@@ -836,6 +895,9 @@ export function Composer({
             </Button>
           </div>
         ) : null}
+
+        {mode === "template" ? null : ai.toolbar ? <div className="pt-2">{ai.toolbar}</div> : null}
+        {ai.panel}
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
           <AttachButton onFiles={attachments.addFiles} disabled={!editable} />

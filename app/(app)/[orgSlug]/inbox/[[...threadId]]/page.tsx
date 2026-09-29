@@ -45,6 +45,7 @@ export default async function InboxPage({ params }: PageProps<"/[orgSlug]/inbox/
       senders={senders}
       canSend={canSend}
       canTrash={ctx.can("thread:trash")}
+      canDelete={ctx.can("email:delete")}
       hasConnection={options.hasConnection}
       canManageConnections={ctx.can("connection:create")}
     />

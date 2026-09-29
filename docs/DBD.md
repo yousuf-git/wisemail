@@ -531,6 +531,23 @@ Sync upserts and `process-event` check this collection before creating or updati
 | lastRunCount | number | Items affected in the last run |
 | createdBy | ObjectId → `user` | R |
 
+**`bulk_operations`** — progress of a large or "all matching" trash / delete / restore (TRD §2.14; TTL 7 days)
+
+| Field | Type | Notes |
+|---|---|---|
+| action | enum `trash \| delete \| restore` | R |
+| target | enum `threads \| emails` | What the filter selects |
+| filter | object | Snapshot of the client's filter (`source`: `inbox`, `activity`, `trash`, `operation`) |
+| scoped, projectScope | boolean, ObjectId[] | The requester's project scope, re-applied by the job |
+| capAt | Date | Items created later are not included |
+| total, processed | number | Progress; `processed` only moves with `cursor` |
+| cursor | ObjectId \| null | Last `_id` handled; a retried step never counts a batch twice |
+| status | enum `queued \| running \| done \| failed` | |
+| undoOf | ObjectId \| null | For a restore that undoes a bulk trash |
+| createdBy, finishedAt, expireAt | | |
+
+`emails` and `threads` also carry `trashedByOpId` (the operation that trashed them), which is what its Undo restores.
+
 **`realtime_events`** — append-only, short-lived (no `updatedAt`)
 
 | Field | Type | Notes |

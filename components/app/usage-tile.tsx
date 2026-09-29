@@ -1,3 +1,4 @@
+import type { PlanBannerData } from "@/components/billing/plan-banner";
 import { cn } from "@/lib/utils";
 
 export type ConnectionHealth = "healthy" | "attention" | "down";
@@ -10,7 +11,12 @@ export type UsageSummary = {
   /** Tracked emails this period, split by kind (for the meter segments). */
   used?: { transactional: number; broadcast: number; inbound: number };
   allowance?: number | null;
+  /** AI credits still available this period; `null` when the plan has no AI. */
   aiCredits?: number | null;
+  /** Estimated overage in USD when over the allowance on a paid plan. */
+  overageCostUsd?: number | null;
+  /** Plan banner to show above the page (over allowance, trial). */
+  banner?: PlanBannerData | null;
 };
 
 const dot: Record<ConnectionHealth, string> = {
@@ -28,6 +34,13 @@ export function UsageTile({ usage, className }: { usage?: UsageSummary; classNam
   const total = used.transactional + used.broadcast + used.inbound;
   const allowance = usage?.allowance ?? null;
   const pct = (n: number) => (allowance ? Math.min(100, (n / allowance) * 100) : 0);
+  const ratio = allowance ? total / allowance : 0;
+  const over = allowance ? Math.max(0, total - allowance) : 0;
+  // FED §8: the bar turns warning from 80% and danger past 100%.
+  const tone = ratio > 1 ? "danger" : ratio >= 0.8 ? "warning" : null;
+  const segment = (base: string) =>
+    tone === "danger" ? "bg-danger" : tone === "warning" ? "bg-warning" : base;
+  const overCost = usage?.overageCostUsd ?? null;
 
   return (
     <div
@@ -78,12 +91,31 @@ export function UsageTile({ usage, className }: { usage?: UsageSummary; classNam
           aria-valuenow={total}
           className="flex h-[7px] overflow-hidden rounded-full bg-line"
         >
-          <i className="block h-full bg-accent" style={{ width: `${pct(used.transactional)}%` }} />
-          <i className="block h-full bg-engaged" style={{ width: `${pct(used.broadcast)}%` }} />
-          <i className="block h-full bg-success" style={{ width: `${pct(used.inbound)}%` }} />
+          <i
+            className={cn("block h-full", segment("bg-accent"))}
+            style={{ width: `${pct(used.transactional)}%` }}
+          />
+          <i
+            className={cn("block h-full", segment("bg-engaged"))}
+            style={{ width: `${pct(used.broadcast)}%` }}
+          />
+          <i
+            className={cn("block h-full", segment("bg-success"))}
+            style={{ width: `${pct(used.inbound)}%` }}
+          />
         </div>
-        <span className="text-[0.72rem] text-ink-faint">
-          {allowance ? `of ${nf.format(allowance)} this period` : "Allowance not set"}
+        <span
+          className={cn(
+            "text-[0.72rem]",
+            over > 0 ? "font-semibold text-danger-ink" : "text-ink-faint",
+          )}
+          data-testid="usage-allowance"
+        >
+          {over > 0
+            ? `Over by ${nf.format(over)}${overCost ? ` · est. $${overCost.toFixed(2).replace(/\.00$/, "")} overage` : ""}`
+            : allowance
+              ? `of ${nf.format(allowance)} this period`
+              : "Allowance not set"}
         </span>
       </div>
       {usage?.aiCredits != null ? (

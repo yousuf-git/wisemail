@@ -29,6 +29,7 @@ import { ServiceError } from "./errors";
 import { attachmentInlineUrl } from "./attachments";
 import { toAttachmentDTO } from "./drafts";
 import { dispatchFetchInbound } from "./inbound";
+import { toTriageDTO } from "./ai-triage";
 import { projectFilter } from "./project-scope";
 
 const orgOid = (ctx: OrgContext) => new Types.ObjectId(ctx.org.id);
@@ -91,6 +92,8 @@ export type ListThreadsInput = {
   projectId?: string;
   connectionId?: string;
   starred?: boolean;
+  /** Inbox only: AI triage category (`support`, `sales`, ...). */
+  category?: string;
 };
 
 type ThreadLean = {
@@ -106,6 +109,12 @@ type ThreadLean = {
   trashedAt?: Date | null;
   purgeAt?: Date | null;
   unread?: boolean;
+  aiTriage?: {
+    category?: string | null;
+    priority?: string | null;
+    sentiment?: string | null;
+    summary?: string | null;
+  } | null;
 };
 
 /** Display name when the message carried one, else the address. */
@@ -130,6 +139,7 @@ const threadRow = (t: ThreadLean): MailListRowDTO => ({
   scheduledAt: null,
   trashedAt: t.trashedAt?.toISOString() ?? null,
   purgeAt: t.purgeAt?.toISOString() ?? null,
+  ai: toTriageDTO(t.aiTriage),
 });
 
 type EmailLean = Pick<
@@ -252,6 +262,7 @@ async function inboxThreads(
     match.assigneeId = new Types.ObjectId(input.assigneeId);
   }
   if (input.starred) match.starred = true;
+  if (input.category) match.aiCategory = input.category;
   if (input.q?.trim()) match._id = { $in: await matchingThreadIds(ctx, input.q.trim()) };
 
   const lookup: PipelineStage[] = [
@@ -563,6 +574,7 @@ export async function getThread(ctx: OrgContext, threadId: string): Promise<Thre
     assigneeId: hex(thread.assigneeId),
     unread,
     projectId: hex(thread.projectId),
+    ai: toTriageDTO(thread.aiTriage),
     messages,
   };
 }
@@ -674,27 +686,23 @@ const activityRow = (
 });
 
 /**
- * Activity log (PRD §5.4): every email, both directions, newest first, with the filters of the
- * event stream. Cursor is keyset on `(createdAt, _id)`.
+ * The Mongo filter behind the Activity list (also the "all matching" selection of bulk
+ * trash/delete): tenant, project scope, and the user's filters. Not trashed, no drafts.
  */
-export async function listActivity(
-  ctx: OrgContext,
-  input: { filters?: ActivityFilters; cursor?: string | null; limit?: number } = {},
-): Promise<Page<ActivityRowDTO>> {
-  authorize(ctx, "activity:read");
-  await connectDb();
-  const f = input.filters ?? {};
-  const limit = pageSize(input.limit);
-  const cursor = decodeCursor(input.cursor);
+export function buildActivityFilter(
+  orgId: Types.ObjectId,
+  projectScope: string[] | null,
+  f: ActivityFilters,
+): Record<string, unknown> {
   const filter: Record<string, unknown> = {
-    orgId: orgOid(ctx),
+    orgId,
     trashedAt: null,
     status: { $ne: "draft" },
-    ...projectFilter(ctx),
+    ...projectFilter({ projectScope }),
   };
   const projectId = oid(f.projectId);
   if (projectId) {
-    const scoped = projectFilter(ctx).projectId?.$in;
+    const scoped = projectFilter({ projectScope }).projectId?.$in;
     filter.projectId = scoped && !scoped.some((p) => p.equals(projectId)) ? { $in: [] } : projectId;
   }
   const connectionId = oid(f.connectionId);
@@ -721,6 +729,23 @@ export async function listActivity(
     };
   }
   if (f.q?.trim()) filter.$text = { $search: f.q.trim() };
+  return filter;
+}
+
+/**
+ * Activity log (PRD §5.4): every email, both directions, newest first, with the filters of the
+ * event stream. Cursor is keyset on `(createdAt, _id)`.
+ */
+export async function listActivity(
+  ctx: OrgContext,
+  input: { filters?: ActivityFilters; cursor?: string | null; limit?: number } = {},
+): Promise<Page<ActivityRowDTO>> {
+  authorize(ctx, "activity:read");
+  await connectDb();
+  const f = input.filters ?? {};
+  const limit = pageSize(input.limit);
+  const cursor = decodeCursor(input.cursor);
+  const filter = buildActivityFilter(orgOid(ctx), ctx.projectScope, f);
 
   const query: Record<string, unknown> = { ...filter };
   if (cursor) {

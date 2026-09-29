@@ -37,10 +37,19 @@ export type ThreadListParams = {
   folder: MailFolder;
   q?: string;
   unread?: boolean;
+  /** AI triage category filter (inbox only). */
+  category?: string;
 };
 
 export const threadListKey = (p: ThreadListParams) =>
-  ["threads", p.orgSlug, p.folder, p.q ?? "", p.unread ? "unread" : "all"] as const;
+  [
+    "threads",
+    p.orgSlug,
+    p.folder,
+    p.q ?? "",
+    p.unread ? "unread" : "all",
+    p.category ?? "",
+  ] as const;
 
 export const fetchThreadList = (p: ThreadListParams, cursor: string | null) =>
   getJson<Page<MailListRowDTO>>("/api/v1/threads", {
@@ -48,6 +57,7 @@ export const fetchThreadList = (p: ThreadListParams, cursor: string | null) =>
     folder: p.folder,
     q: p.q?.trim() || undefined,
     unread: p.unread ? "1" : undefined,
+    category: p.category || undefined,
     cursor: cursor ?? undefined,
     limit: "30",
   });

@@ -90,7 +90,8 @@ describe("models", () => {
     expect(s.plan).toBe("free");
     expect(s.planState).toBe("free");
     expect(s.timezone).toBe("UTC");
-    expect(s.ai?.enabled).toBe(false);
+    // Opt-out model (PRD §5.10): on by default, inert until the plan includes AI.
+    expect(s.ai?.enabled).toBe(true);
 
     await mods.models.OrgSettingsModel.syncIndexes();
     await mods.models.OrgSettingsModel.updateOne({ _id: s._id }, { orgId: new Types.ObjectId() });

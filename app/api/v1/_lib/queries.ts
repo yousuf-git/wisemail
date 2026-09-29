@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TRIAGE_CATEGORIES } from "@/lib/ai/types";
 import { EMAIL_STATUSES } from "@/lib/db/models/emails";
 
 const objectId = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id");
@@ -26,6 +27,7 @@ export const threadsQuery = z.preprocess(
     mailboxAddress: z.string().trim().max(320).optional(),
     projectId: objectId.optional(),
     connectionId: objectId.optional(),
+    category: z.enum(TRIAGE_CATEGORIES).optional(),
   }),
 );
 export type ThreadsQuery = z.output<typeof threadsQuery>;

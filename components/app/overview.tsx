@@ -63,6 +63,7 @@ export function OverviewContent({
       {!overview.hasConnection ? (
         <section
           aria-labelledby="connect-title"
+          data-tour="connect-card"
           className="grid gap-6 rounded-xl bg-surface p-5 shadow-glow min-[760px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[760px]:p-6"
         >
           <div className="grid content-start gap-3">

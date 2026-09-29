@@ -2,9 +2,11 @@
 
 import { Paperclip, Undo2 } from "lucide-react";
 
+import { TriageChip } from "@/components/ai/triage-chip";
 import { StatusChip } from "@/components/app/status-chip";
 import { statusLabel, statusState } from "@/components/activity/status";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { MailFolder, MailListRowDTO } from "@/lib/dto/mail";
 import { cn } from "@/lib/utils";
 import { avatarColor, initials, listTime, useNow } from "./format";
@@ -24,7 +26,7 @@ function purgeNote(purgeAt: string | null, now: number): string | null {
 
 /**
  * One list row (FED §5 / board): avatar, sender, subject and snippet, time, unread dot,
- * attachment icon. The AI-chip slot exists but stays hidden until triage lands (Phase 7).
+ * attachment icon, and the AI triage chip (category, urgency) when the thread has one.
  */
 export function ThreadRow({
   row,
@@ -34,6 +36,9 @@ export function ThreadRow({
   onSelect,
   onRestore,
   arrived = false,
+  selecting = false,
+  checked = false,
+  onToggle,
 }: {
   row: MailListRowDTO;
   folder: MailFolder;
@@ -43,6 +48,10 @@ export function ThreadRow({
   onRestore?: (row: MailListRowDTO) => void;
   /** Just arrived over the live stream: slide in with the accent highlight. */
   arrived?: boolean;
+  /** Selection mode: a checkbox replaces the avatar and the row toggles instead of opening. */
+  selecting?: boolean;
+  checked?: boolean;
+  onToggle?: (row: MailListRowDTO) => void;
 }) {
   const now = useNow();
   const name = people(row, folder);
@@ -56,13 +65,24 @@ export function ThreadRow({
 
   const content = (
     <>
-      <span
-        aria-hidden
-        className="grid size-8 place-items-center rounded-full text-xs font-bold text-white"
-        style={{ backgroundColor: avatarColor(seed) }}
-      >
-        {initials((row.peopleLabels?.[0] ?? row.people[0])?.split("@")[0] ?? "?")}
-      </span>
+      {selecting ? (
+        <span className="grid size-8 place-items-center">
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => onToggle?.(row)}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`Select ${row.subject || "(no subject)"}`}
+          />
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="grid size-8 place-items-center rounded-full text-xs font-bold text-white"
+          style={{ backgroundColor: avatarColor(seed) }}
+        >
+          {initials((row.peopleLabels?.[0] ?? row.people[0])?.split("@")[0] ?? "?")}
+        </span>
+      )}
       <span className="grid min-w-0 gap-0.5">
         <span className="flex min-w-0 items-center gap-2 text-[13.5px] font-semibold">
           {row.unread ? (
@@ -76,12 +96,7 @@ export function ThreadRow({
           {row.messageCount > 1 ? (
             <span className="flex-none text-xs font-medium text-ink-faint">{row.messageCount}</span>
           ) : null}
-          {/* AI chip slot: hidden until AI triage (Phase 7) */}
-          <span
-            hidden
-            data-slot="ai-chip"
-            className="rounded-full bg-canvas-sunken px-[7px] py-px text-[10.5px] font-bold text-ink-muted"
-          />
+          {row.ai && folder === "inbox" ? <TriageChip ai={row.ai} /> : null}
         </span>
         <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-ink-muted">
           <span className="truncate">
@@ -113,7 +128,10 @@ export function ThreadRow({
 
   const base =
     "grid w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left transition-colors duration-150 outline-none";
-  const state = selected ? "bg-accent-soft" : "hover:bg-canvas";
+  const state = selected || (selecting && checked) ? "bg-accent-soft" : "hover:bg-canvas";
+  const toggleProps = selecting
+    ? { onClick: () => onToggle?.(row), "data-selecting": true, "data-checked": checked }
+    : {};
 
   return (
     <li
@@ -124,15 +142,18 @@ export function ThreadRow({
       className={arrived ? "live-arrive" : undefined}
     >
       {trashed ? (
-        <div className={cn(base, "grid-cols-[32px_minmax(0,1fr)_auto_auto]", state)}>
+        <div
+          className={cn(base, "grid-cols-[32px_minmax(0,1fr)_auto_auto]", state)}
+          {...toggleProps}
+        >
           {content}
-          {onRestore ? (
+          {onRestore && !selecting ? (
             <Button type="button" variant="outline" size="sm" onClick={() => onRestore(row)}>
               <Undo2 aria-hidden /> Restore
             </Button>
           ) : null}
         </div>
-      ) : openable ? (
+      ) : openable && !selecting ? (
         <a
           href={href}
           aria-current={selected ? "true" : undefined}
@@ -146,7 +167,9 @@ export function ThreadRow({
           {content}
         </a>
       ) : (
-        <div className={cn(base, state)}>{content}</div>
+        <div className={cn(base, state, selecting && "cursor-pointer")} {...toggleProps}>
+          {content}
+        </div>
       )}
     </li>
   );

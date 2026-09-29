@@ -2,10 +2,8 @@ import "server-only";
 
 import type { ClientSession, Types } from "mongoose";
 
-import { OrgSettingsModel, type Plan } from "@/lib/db/models/org-settings";
-
-/** History retention by plan, in days (PRICING §3). Phase 7 moves this into the plan catalog. */
-const RETENTION_DAYS: Record<Plan, number> = { free: 30, pro: 180, team: 365, agency: 730 };
+import { getEntitlements } from "@/lib/billing/entitlements";
+import type { Plan } from "@/lib/db/models/org-settings";
 
 export type MailSettings = {
   plan: Plan;
@@ -19,15 +17,11 @@ export async function getMailSettings(
   orgId: Types.ObjectId,
   options: { session?: ClientSession } = {},
 ): Promise<MailSettings> {
-  const settings = await OrgSettingsModel.findOne({ orgId }, null, {
-    session: options.session,
-  }).lean();
-  const plan = settings?.plan ?? "free";
-  const trialing = settings?.planState === "trialing";
+  const e = await getEntitlements(orgId, { session: options.session });
   return {
-    plan,
-    storageMode: plan === "free" && !trialing ? "resend" : "r2",
-    retentionDays: settings?.limitOverrides?.retentionDays ?? RETENTION_DAYS[plan],
+    plan: e.plan,
+    storageMode: e.plan === "free" ? "resend" : "r2",
+    retentionDays: e.limits.retentionDays,
   };
 }
 

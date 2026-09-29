@@ -8,15 +8,9 @@ import mongoose, { Types } from "mongoose";
 import { authorize, type OrgContext, type UserDTO } from "@/lib/dal";
 import { auth } from "@/lib/auth/server";
 import { isRole, type Role } from "@/lib/auth/permissions";
-import {
-  PLAN_LABELS,
-  getNextTier,
-  getPlanLimits,
-  planAllowsProjectScopes,
-} from "@/lib/billing/plans";
+import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
 import { connectDb } from "@/lib/db/connect";
 import { MemberScopeModel } from "@/lib/db/models/member-scopes";
-import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { env } from "@/lib/env";
 import type { InvitationDTO, InvitePreview, MemberDTO, MemberQuota } from "@/lib/dto/member";
 import { publish } from "@/lib/realtime/publish";
@@ -90,27 +84,20 @@ async function pendingInvitations(orgId: Types.ObjectId): Promise<InvitationRow[
     .toArray();
 }
 
-async function planFor(orgId: Types.ObjectId) {
-  const settings = await OrgSettingsModel.findOne({ orgId }).lean();
-  const plan = settings?.plan ?? "free";
-  return { plan, limit: getPlanLimits(plan, settings?.limitOverrides).members };
-}
-
 export async function getMemberQuota(ctx: OrgContext): Promise<MemberQuota> {
   await connectDb();
   const orgId = orgOid(ctx);
-  const { plan, limit } = await planFor(orgId);
-  const next = getNextTier(plan);
+  const e = await getEntitlements(orgId);
   const [memberCount, pending] = await Promise.all([
     members().countDocuments({ organizationId: orgId }),
     pendingInvitations(orgId),
   ]);
   return {
     used: memberCount + pending.length,
-    limit,
-    planLabel: PLAN_LABELS[plan],
-    nextTierLabel: next ? PLAN_LABELS[next] : null,
-    scopesAllowed: planAllowsProjectScopes(plan),
+    limit: e.limits.members,
+    planLabel: e.planLabel,
+    nextTierLabel: e.nextTierLabel,
+    scopesAllowed: e.features.projectScopedMembers,
   };
 }
 
@@ -245,16 +232,8 @@ export async function inviteMember(
   }
 
   if (!existing) {
-    const { plan, limit } = await planFor(orgId);
     const used = (await members().countDocuments({ organizationId: orgId })) + pending.length;
-    if (limit !== null && used >= limit) {
-      const next = getNextTier(plan);
-      throw new ServiceError(
-        "plan_limit_reached",
-        `You have ${limit} of ${limit} member seats used on ${PLAN_LABELS[plan]} (invitations count).` +
-          (next ? ` Upgrade to ${PLAN_LABELS[next]} to invite more people.` : ""),
-      );
-    }
+    assertLimitFor(await getEntitlements(orgId), "members", used);
   }
 
   let invitationId: string;

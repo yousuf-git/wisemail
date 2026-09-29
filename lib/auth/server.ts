@@ -13,8 +13,8 @@ import { env } from "@/lib/env";
 import { createOrgSchema } from "@/lib/validation/org";
 import { provisionOrganization } from "@/lib/services/org-settings";
 import { applyInvitationScope, clearMemberScope } from "@/lib/services/project-scope";
-import { getPlanLimits } from "@/lib/billing/plans";
-import { OrgSettingsModel } from "@/lib/db/models/org-settings";
+import { deleteTourProgress } from "@/lib/tours/progress";
+import { getEntitlements } from "@/lib/billing/entitlements";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/system-email";
 import { ac, roles } from "./permissions";
 
@@ -75,11 +75,8 @@ export const auth = betterAuth({
       // Plan member limit (PRICING §3), enforced when an invitation is accepted, whichever way
       // the request arrives. The invite flow in `lib/services/members.ts` checks it earlier.
       membershipLimit: async (_user, org) => {
-        const settings = await OrgSettingsModel.findOne({
-          orgId: new Types.ObjectId(org.id),
-        }).lean();
-        const limit = getPlanLimits(settings?.plan ?? "free", settings?.limitOverrides).members;
-        return limit ?? Number.MAX_SAFE_INTEGER;
+        const e = await getEntitlements(new Types.ObjectId(org.id));
+        return e.limits.members ?? Number.MAX_SAFE_INTEGER;
       },
       organizationHooks: {
         // Projects chosen at invite time become the new member's scope.
@@ -94,6 +91,8 @@ export const auth = betterAuth({
         // A removed member's scope never outlives them (also when removed via the HTTP API).
         afterRemoveMember: async ({ member, organization: org }) => {
           await clearMemberScope(new Types.ObjectId(org.id), new Types.ObjectId(member.id));
+          // Tour progress is per user and org (DBD §5).
+          await deleteTourProgress(new Types.ObjectId(org.id), new Types.ObjectId(member.userId));
         },
         // The client can call /api/auth/organization/create directly, so slug rules live here too.
         beforeCreateOrganization: async ({ organization: org }) => {

@@ -8,7 +8,8 @@ import { parseId } from "@/lib/db/ids";
 import { AttachmentModel } from "@/lib/db/models/attachments";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { EmailContentModel } from "@/lib/db/models/email-contents";
-import { EmailModel } from "@/lib/db/models/emails";
+import { blockedSender } from "@/lib/deletion/rules";
+import { EmailModel, TRASH_RETENTION_DAYS } from "@/lib/db/models/emails";
 import { withTransaction } from "@/lib/db/transaction";
 import { notifyInboundReceived } from "./mail-notifications";
 import { env } from "@/lib/env";
@@ -32,7 +33,8 @@ import { expireAtFrom, getMailSettings } from "./mail-settings";
 import { externalAddresses, ownDomainNames } from "./mail-shared";
 import type { FetchInboundRequest } from "./events-processing";
 import { incrementRollups } from "./rollups";
-import { attachMessageToThread } from "./threads";
+import { requestTriage } from "./ai-triage";
+import { attachMessageToThread, recomputeThreadCache } from "./threads";
 import { keyAad } from "./webhook-secret";
 
 /**
@@ -252,10 +254,26 @@ export async function fetchInboundEmail(
       { session },
     );
 
+    // `block_sender` cleanup rules (TRD §2.14): mail from a blocked sender goes straight to
+    // Trash, without a notification or triage.
+    const blockedByRuleId = await blockedSender(orgId, {
+      fromAddress: fromAddress.address,
+      connectionId,
+      mailbox,
+    });
+
     await EmailModel.updateOne(
       { _id: emailId, orgId },
       {
         $set: {
+          ...(blockedByRuleId
+            ? {
+                trashedAt: new Date(),
+                trashedBy: null,
+                trashedByRuleId: blockedByRuleId,
+                purgeAt: new Date(Date.now() + TRASH_RETENTION_DAYS * 86_400_000),
+              }
+            : {}),
           threadId: threaded.threadId,
           contentStatus: "ready",
           subject,
@@ -302,23 +320,36 @@ export async function fetchInboundEmail(
       },
       { session },
     );
-    await notifyInboundReceived(
-      {
-        orgId,
-        emailId,
-        threadId: threaded.threadId,
-        projectId: email.projectId ?? null,
-        from: fromAddress,
-        subject,
-      },
-      { session },
-    );
-    // TODO(phase 7): enqueue `ai-triage` when AI is on.
-    return threaded.threadId;
+    if (blockedByRuleId) {
+      await recomputeThreadCache(orgId, threaded.threadId, { session });
+    } else {
+      await notifyInboundReceived(
+        {
+          orgId,
+          emailId,
+          threadId: threaded.threadId,
+          projectId: email.projectId ?? null,
+          from: fromAddress,
+          subject,
+        },
+        { session },
+      );
+    }
+    return blockedByRuleId ? ({ blocked: threaded.threadId } as const) : threaded.threadId;
   });
 
   if (result === null) return { status: "skipped", reason: "not_found" };
   if (result === "already") return { status: "skipped", reason: "already_ready" };
+  if ("blocked" in result) {
+    return {
+      status: "ready",
+      threadId: result.blocked.toHexString(),
+      attachments: attachmentDocs.length,
+    };
+  }
+  // After the commit (never inside the transaction): AI triage, only when the plan and the
+  // org's AI settings allow it.
+  await requestTriage({ orgId, emailId: new Types.ObjectId(input.emailId) });
   return { status: "ready", threadId: result.toHexString(), attachments: attachmentDocs.length };
 }
 

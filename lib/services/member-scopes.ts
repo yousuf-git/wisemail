@@ -3,11 +3,10 @@ import "server-only";
 import mongoose, { Types } from "mongoose";
 
 import { authorize, type OrgContext } from "@/lib/dal";
-import { PLAN_LABELS, planAllowsProjectScopes } from "@/lib/billing/plans";
+import { assertFeature } from "@/lib/billing/entitlements";
 import { connectDb } from "@/lib/db/connect";
 import { assertRefs, RefError } from "@/lib/db/refs";
 import { MemberScopeModel } from "@/lib/db/models/member-scopes";
-import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { ProjectModel } from "@/lib/db/models/projects";
 import { withTransaction } from "@/lib/db/transaction";
 import { publish } from "@/lib/realtime/publish";
@@ -25,13 +24,7 @@ type MemberDoc = {
 
 /** Throws unless the org's plan includes project-scoped members (PRICING §3: Team and above). */
 export async function assertScopesAllowedByPlan(orgId: Types.ObjectId): Promise<void> {
-  const settings = await OrgSettingsModel.findOne({ orgId }).lean();
-  const plan = settings?.plan ?? "free";
-  if (planAllowsProjectScopes(plan)) return;
-  throw new ServiceError(
-    "plan_feature_locked",
-    `Project-scoped members are on ${PLAN_LABELS.team} and above. Your workspace is on ${PLAN_LABELS[plan]}.`,
-  );
+  await assertFeature(orgId, "projectScopedMembers");
 }
 
 /** Every project id must be a live project of this org (`assertRefs` + soft-delete check). */

@@ -3,7 +3,7 @@ import "server-only";
 import mongoose, { Types, type ClientSession } from "mongoose";
 
 import { roleHasPermission, type Permission } from "@/lib/auth/permissions";
-import { PLAN_LABELS, planAllowsDigest } from "@/lib/billing/plans";
+import { assertFeature, getEntitlements } from "@/lib/billing/entitlements";
 import type { OrgContext } from "@/lib/dal";
 import { connectDb } from "@/lib/db/connect";
 import { MemberScopeModel } from "@/lib/db/models/member-scopes";
@@ -30,7 +30,6 @@ import {
 import { publish } from "@/lib/realtime/publish";
 import { topics } from "@/lib/realtime/topics";
 import type { NotificationPreferencesInput } from "@/lib/validation/alert";
-import { ServiceError } from "./errors";
 import { roleIsScopable } from "./project-scope";
 import { sendAlertEmail } from "./system-email";
 
@@ -536,11 +535,11 @@ export async function getNotificationPreferences(
 ): Promise<NotificationPreferencesDTO> {
   await connectDb();
   const orgId = new Types.ObjectId(ctx.org.id);
-  const [doc, settings] = await Promise.all([
+  const [doc, settings, entitlements] = await Promise.all([
     NotificationPreferencesModel.findOne({ orgId, userId: new Types.ObjectId(ctx.user.id) }).lean(),
-    OrgSettingsModel.findOne({ orgId }, { plan: 1, timezone: 1 }).lean(),
+    OrgSettingsModel.findOne({ orgId }, { timezone: 1 }).lean(),
+    getEntitlements(orgId),
   ]);
-  const plan = settings?.plan ?? "free";
   return {
     channels: Object.fromEntries(
       PREFERENCE_TYPES.map((t) => [t, effectiveChannel(doc as EffectivePrefs | null, t)]),
@@ -548,8 +547,8 @@ export async function getNotificationPreferences(
     quietHours: doc?.quietHours ?? null,
     digest: doc?.digest === "daily" ? "daily" : "none",
     orgTimezone: settings?.timezone ?? "UTC",
-    digestAllowed: planAllowsDigest(plan),
-    planLabel: PLAN_LABELS[plan],
+    digestAllowed: entitlements.features.digests,
+    planLabel: entitlements.planLabel,
   };
 }
 
@@ -559,13 +558,8 @@ export async function updateNotificationPreferences(
 ): Promise<NotificationPreferencesDTO> {
   await connectDb();
   const orgId = new Types.ObjectId(ctx.org.id);
-  const settings = await OrgSettingsModel.findOne({ orgId }, { plan: 1, timezone: 1 }).lean();
-  if (input.digest !== "none" && !planAllowsDigest(settings?.plan ?? "free")) {
-    throw new ServiceError(
-      "plan_feature_locked",
-      "Daily digests are on Pro and above. Upgrade to get one.",
-    );
-  }
+  if (input.digest !== "none") await assertFeature(orgId, "digests");
+  const settings = await OrgSettingsModel.findOne({ orgId }, { timezone: 1 }).lean();
   const channels = Object.fromEntries(
     PREFERENCE_TYPES.map((t) => [t, input.channels[t] ?? PREFERENCE_INFO[t].defaults]),
   );

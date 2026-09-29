@@ -68,7 +68,7 @@ export default async function ComposePage({
   const canManageSenders = ctx.can("sender:create");
 
   return (
-    <div className="mx-auto grid w-full max-w-[60rem] gap-5">
+    <div data-tour="composer" className="mx-auto grid w-full max-w-[60rem] gap-5">
       <PageHeader
         title={draft ? "Continue your draft" : "What are we sending today?"}
         description="Write it, preview it, send it now or pick a time."
