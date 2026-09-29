@@ -1,0 +1,129 @@
+"use client";
+
+import NumberFlow from "@number-flow/react";
+import { useReducedMotion } from "motion/react";
+import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+
+import { cn } from "@/lib/utils";
+
+export type KpiTone = "accent" | "success" | "engaged" | "danger" | "warning";
+
+const toneVar: Record<KpiTone, string> = {
+  accent: "var(--accent)",
+  success: "var(--success)",
+  engaged: "var(--engaged)",
+  danger: "var(--danger)",
+  warning: "var(--warning)",
+};
+
+export type KpiDelta = {
+  /** Signed change, in the metric's own unit (points for percentages, percent for counts). */
+  value: number;
+  /** Which direction is good: bounce rate improves when it goes down. */
+  goodWhen: "up" | "down";
+  suffix?: string;
+};
+
+export type KpiCardProps = {
+  label: string;
+  value: number;
+  unit?: "count" | "percent";
+  delta?: KpiDelta | null;
+  /** Recent values, oldest first. Empty renders a flat placeholder line. */
+  series?: number[];
+  tone?: KpiTone;
+  /** Accessible summary, e.g. "Bounce rate 1.2%, down 0.4 points from last week". */
+  summary?: string;
+  className?: string;
+};
+
+function Sparkline({ series, tone }: { series: number[]; tone: KpiTone }) {
+  const reduced = useReducedMotion();
+  const color = toneVar[tone];
+  if (series.length < 2) {
+    return (
+      <div aria-hidden className="flex h-8 items-center">
+        <div className="h-0 w-full border-t border-dashed border-line-strong" />
+      </div>
+    );
+  }
+  const data = series.map((v, i) => ({ i, v }));
+  return (
+    <div aria-hidden className="h-8 w-full">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <AreaChart data={data} margin={{ top: 3, right: 3, bottom: 2, left: 0 }}>
+          <YAxis hide domain={["dataMin", "dataMax"]} />
+          <Area
+            type="monotone"
+            dataKey="v"
+            stroke={color}
+            strokeWidth={1.6}
+            fill={color}
+            fillOpacity={0.12}
+            isAnimationActive={!reduced}
+            animationDuration={600}
+            dot={(props: { cx?: number; cy?: number; index?: number }) =>
+              props.index === data.length - 1 && props.cx != null && props.cy != null ? (
+                <circle key="last" cx={props.cx} cy={props.cy} r={2.6} fill={color} />
+              ) : (
+                <g key={props.index} />
+              )
+            }
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** KPI tile: label, rolling metric, delta chip and a 32px sparkline (FED §6). */
+export function KpiCard({
+  label,
+  value,
+  unit = "count",
+  delta,
+  series = [],
+  tone = "accent",
+  summary,
+  className,
+}: KpiCardProps) {
+  const good = delta ? (delta.goodWhen === "up" ? delta.value >= 0 : delta.value <= 0) : true;
+  return (
+    <div
+      data-slot="kpi-card"
+      className={cn(
+        "grid min-w-0 gap-1 rounded-lg bg-surface px-3.5 pt-3.5 pb-2.5 shadow-md",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-1.5 text-[0.78rem] font-medium text-ink-muted">
+        <span className="truncate">{label}</span>
+        {delta ? (
+          <span
+            className={cn(
+              "rounded-full px-[7px] py-px text-[0.72rem] font-bold whitespace-nowrap",
+              good ? "bg-success-soft text-success-ink" : "bg-danger-soft text-danger-ink",
+            )}
+          >
+            {delta.value >= 0 ? "+" : "−"}
+            {Math.abs(delta.value)}
+            {delta.suffix ?? ""}
+          </span>
+        ) : null}
+      </div>
+      <div className="text-[1.375rem] leading-[1.15] font-bold tracking-[-0.02em] tabular-nums min-[420px]:text-[1.625rem]">
+        <NumberFlow
+          value={value}
+          suffix={unit === "percent" ? "%" : undefined}
+          format={
+            unit === "percent"
+              ? { maximumFractionDigits: 1, minimumFractionDigits: 0 }
+              : { maximumFractionDigits: 0 }
+          }
+        />
+      </div>
+      {summary ? <span className="sr-only">{summary}</span> : null}
+      <Sparkline series={series} tone={tone} />
+    </div>
+  );
+}
