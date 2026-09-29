@@ -22,6 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MailListRowDTO, Page } from "@/lib/dto/mail";
+import { useLiveTopics } from "@/lib/realtime/live-context";
+import { topics } from "@/lib/realtime/topics";
+import { useLiveFallbackInterval } from "@/lib/realtime/use-live-query";
 import { fetchThreadList, threadListKey } from "./api";
 import { absoluteTime, useNow } from "./format";
 
@@ -157,8 +160,11 @@ export function ScheduledView({
       pages: [initialList],
       pageParams: [null],
     } satisfies InfiniteData<Page<MailListRowDTO>, string | null>,
-    refetchInterval: 30_000,
+    refetchInterval: useLiveFallbackInterval(),
     enabled: hasConnection,
+  });
+  useLiveTopics([topics.threads()], () => {
+    void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] });
   });
   const rows = list.data?.pages.flatMap((p) => p.items) ?? [];
   const [editing, setEditing] = useState<MailListRowDTO | null>(null);

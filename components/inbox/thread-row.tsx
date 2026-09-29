@@ -33,6 +33,7 @@ export function ThreadRow({
   selected,
   onSelect,
   onRestore,
+  arrived = false,
 }: {
   row: MailListRowDTO;
   folder: MailFolder;
@@ -40,6 +41,8 @@ export function ThreadRow({
   selected: boolean;
   onSelect: (row: MailListRowDTO) => void;
   onRestore?: (row: MailListRowDTO) => void;
+  /** Just arrived over the live stream: slide in with the accent highlight. */
+  arrived?: boolean;
 }) {
   const now = useNow();
   const name = people(row, folder);
@@ -113,7 +116,13 @@ export function ThreadRow({
   const state = selected ? "bg-accent-soft" : "hover:bg-canvas";
 
   return (
-    <li data-testid="thread-row" data-unread={row.unread} data-row-id={row.id}>
+    <li
+      data-testid="thread-row"
+      data-unread={row.unread}
+      data-row-id={row.id}
+      data-arrived={arrived || undefined}
+      className={arrived ? "live-arrive" : undefined}
+    >
       {trashed ? (
         <div className={cn(base, "grid-cols-[32px_minmax(0,1fr)_auto_auto]", state)}>
           {content}

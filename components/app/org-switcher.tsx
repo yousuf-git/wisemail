@@ -3,6 +3,7 @@
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { LiveDot } from "@/components/app/live-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,10 @@ export function OrgSwitcher({ org, orgs, role }: { org: Org; orgs: Org[]; role: 
         <OrgAvatar name={org.name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm leading-tight font-bold">{org.name}</span>
-          <span className="block truncate text-xs text-ink-muted capitalize">{role}</span>
+          <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+            <span className="truncate capitalize">{role}</span>
+            <LiveDot />
+          </span>
         </span>
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-faint" />
       </DropdownMenuTrigger>

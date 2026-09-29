@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MailOpen, Reply } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -9,6 +9,8 @@ import type { SenderOptionDTO } from "@/components/composer/composer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MessageDTO, ThreadDetailDTO } from "@/lib/dto/mail";
+import { useLiveFallbackInterval, useLiveQuery } from "@/lib/realtime/use-live-query";
+import { topics } from "@/lib/realtime/topics";
 import { ApiError, fetchThread, threadKey } from "./api";
 import { MessageCard } from "./message-card";
 import { ReplyBox } from "./reply-box";
@@ -55,13 +57,15 @@ export function ThreadView({
 }) {
   const queryClient = useQueryClient();
   const actions = useMailActions(orgSlug);
-  const query = useQuery({
+  const fallback = useLiveFallbackInterval();
+  const query = useLiveQuery({
     queryKey: threadKey(orgSlug, threadId),
+    topics: [topics.thread(threadId)],
     queryFn: () => fetchThread(orgSlug, threadId),
     initialData: initialThread?.id === threadId ? initialThread : undefined,
     // Bodies of new mail arrive a few seconds after the row does (fetch-inbound job).
     refetchInterval: (q) =>
-      q.state.data?.messages.some((m) => m.contentStatus === "pending") ? 3000 : false,
+      q.state.data?.messages.some((m) => m.contentStatus === "pending") ? 3000 : fallback,
     retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 1,
   });
   const thread = query.data;

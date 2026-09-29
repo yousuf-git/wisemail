@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { ArrowDownLeft, ArrowUpRight, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLiveTopics } from "@/lib/realtime/live-context";
+import { topics } from "@/lib/realtime/topics";
+import { useLiveFallbackInterval } from "@/lib/realtime/use-live-query";
 import type { ActivityRowDTO, Page } from "@/lib/dto/mail";
 import { filtersToSearch, hasActiveFilters } from "./filters";
 import { STATUS_FILTERS, statusLabel, statusState } from "./status";
@@ -154,6 +157,11 @@ export function ActivityView({
           >)
         : undefined,
     enabled: hasConnection,
+    refetchInterval: useLiveFallbackInterval(),
+  });
+  const queryClient = useQueryClient();
+  useLiveTopics([topics.emails()], () => {
+    void queryClient.invalidateQueries({ queryKey: ["activity", orgSlug] });
   });
   const rows = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
 
