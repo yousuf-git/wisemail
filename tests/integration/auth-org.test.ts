@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { startTestDb, uniqueEmail } from "./helpers";
+import { signUpVerified, startTestDb, uniqueEmail } from "./helpers";
 
 // next/headers is request-scoped; tests drive it by hand.
 const headerState = vi.hoisted(() => ({ current: new Headers() }));
@@ -38,15 +38,8 @@ afterAll(async () => {
 
 async function signUp(name: string) {
   const email = uniqueEmail(name.toLowerCase());
-  const res = await auth.api.signUpEmail({
-    body: { name, email, password: "correct horse battery" },
-    returnHeaders: true,
-  });
-  const cookie = res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  return { id: res.response.user.id, email, headers: new Headers({ cookie }) };
+  const session = await signUpVerified(auth, { name, email });
+  return { ...session, email };
 }
 
 async function createOrg(owner: { headers: Headers }, slug: string) {
@@ -212,5 +205,63 @@ describe("orgAction", () => {
     expect(run.mock.calls[0]![0]).toMatchObject({
       ctx: { org: { slug: "ora-co" }, role: "owner" },
     });
+  });
+});
+
+describe("email verification and password reset", () => {
+  const password = "correct horse battery";
+
+  it("sign-up sends a verification email, sign-in is refused until the link is used", async () => {
+    const outbox = await import("@/lib/services/system-email");
+    const email = uniqueEmail("verify");
+    const res = await auth.api.signUpEmail({ body: { name: "Vera Verify", email, password } });
+    expect(res.token).toBeNull(); // no session from sign-up
+
+    const mail = outbox.findOutbox(email, "verify-email");
+    expect(mail?.subject).toMatch(/confirm/i);
+    expect(mail?.html).toContain("Confirm email");
+    const url = new URL(mail!.link!);
+    expect(url.pathname).toBe("/api/auth/verify-email");
+
+    await expect(auth.api.signInEmail({ body: { email, password } })).rejects.toMatchObject({
+      status: "FORBIDDEN",
+    });
+
+    const verified = await auth.api.verifyEmail({
+      query: { token: url.searchParams.get("token")! },
+      returnHeaders: true,
+    });
+    // autoSignInAfterVerification: the link also starts a session.
+    expect(verified.headers.getSetCookie().join(";")).toContain("session_token");
+    await expect(auth.api.signInEmail({ body: { email, password } })).resolves.toBeTruthy();
+
+    // An invalid token verifies nothing.
+    await expect(auth.api.verifyEmail({ query: { token: "garbage" } })).rejects.toBeTruthy();
+  });
+
+  it("password reset emails a link, changes the password once and revokes sessions", async () => {
+    const outbox = await import("@/lib/services/system-email");
+    const user = await signUp("Rita");
+    await auth.api.requestPasswordReset({
+      body: { email: user.email, redirectTo: "/reset-password" },
+    });
+    const mail = outbox.findOutbox(user.email, "reset-password");
+    expect(mail?.link).toBeTruthy();
+    const token = mail!.link!.split("/reset-password/")[1]!.split("?")[0]!;
+
+    await auth.api.resetPassword({ body: { newPassword: "a brand new pass", token } });
+    await expect(
+      auth.api.signInEmail({ body: { email: user.email, password } }),
+    ).rejects.toBeTruthy();
+    await expect(
+      auth.api.signInEmail({ body: { email: user.email, password: "a brand new pass" } }),
+    ).resolves.toBeTruthy();
+    // Single use.
+    await expect(
+      auth.api.resetPassword({ body: { newPassword: "another one here", token } }),
+    ).rejects.toBeTruthy();
+    // The old session no longer works.
+    as(user);
+    expect(await dal.getSession()).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { startTestDb, uniqueEmail } from "./helpers";
+import { signUpVerified, startTestDb, uniqueEmail } from "./helpers";
 
 const headerState = vi.hoisted(() => ({ current: new Headers() }));
 vi.mock("next/headers", () => ({
@@ -21,6 +21,7 @@ let actions: typeof import("@/app/(app)/[orgSlug]/settings/members/actions");
 let refs: typeof import("@/lib/db/refs");
 let mongoose: typeof import("mongoose").default;
 let connect: typeof import("@/lib/db/connect");
+let outbox: typeof import("@/lib/services/system-email");
 
 beforeAll(async () => {
   ({ stop } = await startTestDb("members"));
@@ -34,6 +35,7 @@ beforeAll(async () => {
   projects = await import("@/lib/services/projects");
   actions = await import("@/app/(app)/[orgSlug]/settings/members/actions");
   refs = await import("@/lib/db/refs");
+  outbox = await import("@/lib/services/system-email");
   mongoose = (await import("mongoose")).default;
   await connect.connectDb();
   await models.ProjectModel.init();
@@ -50,15 +52,8 @@ type User = { id: string; email: string; name: string; headers: Headers };
 let orgCounter = 0;
 
 async function signUp(name: string, email = uniqueEmail(name.toLowerCase())): Promise<User> {
-  const res = await auth.api.signUpEmail({
-    body: { name, email, password: "correct horse battery" },
-    returnHeaders: true,
-  });
-  const cookie = res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  return { id: res.response.user.id, email, name, headers: new Headers({ cookie }) };
+  const session = await signUpVerified(auth, { name, email });
+  return { ...session, email, name };
 }
 
 async function newOrg(plan: "free" | "pro" | "team" = "team") {
@@ -346,22 +341,39 @@ describe("last-owner protection and role rules", () => {
 
 describe("invitations", () => {
   const asUser = (u: User) => ({ id: u.id, name: u.name, email: u.email, image: null });
+  const tokenOf = (inv: { link: string | null }) => inv.link!.split("/invite/")[1]!;
 
-  it("creates a copyable /invite link, lists it, and refreshes on re-invite", async () => {
+  it("creates an emailed /invite link with a random token, lists it, and rotates it on re-invite", async () => {
     const t = await newOrg("team");
     const owner = await t.ctx();
     const email = uniqueEmail("Newbie");
     const inv = await members.inviteMember(owner, { email, role: "support", projectIds: [] });
     expect(inv.email).toBe(email.toLowerCase());
-    expect(inv.link).toBe(`http://localhost:3000/invite/${inv.id}`);
+    expect(inv.link).toMatch(/^http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43}$/);
+    expect(inv.link).not.toContain(inv.id);
+    expect(inv.emailSent).toBe(true);
+    // The email carries the same link; the database keeps only the token's hash.
+    const mail = outbox.findOutbox(email, "invitation");
+    expect(mail?.link).toBe(inv.link);
+    expect(mail?.subject).toContain(owner.org.name);
+    const stored = await mongoose.connection
+      .collection("invitation")
+      .findOne({ _id: new Types.ObjectId(inv.id) });
+    expect(stored?.tokenHash).toBe(members.hashInviteToken(tokenOf(inv)));
+    expect(JSON.stringify(stored)).not.toContain(tokenOf(inv));
     // 7 days (UC-02).
     const days = (new Date(inv.expiresAt).getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(6.9);
     expect(days).toBeLessThanOrEqual(7);
 
-    expect((await members.listInvitations(owner)).map((i) => i.id)).toEqual([inv.id]);
+    const listed = await members.listInvitations(owner);
+    expect(listed.map((i) => i.id)).toEqual([inv.id]);
+    expect(listed[0]!.link).toBeNull(); // links can't be recovered from a listing
     const again = await members.inviteMember(owner, { email, role: "support", projectIds: [] });
     expect(again.id).toBe(inv.id);
+    expect(tokenOf(again)).not.toBe(tokenOf(inv));
+    expect(await members.getInvitePreview(tokenOf(inv))).toEqual({ status: "invalid" });
+    expect(await members.getInvitePreview(tokenOf(again))).toMatchObject({ status: "pending" });
     await expect(
       members.inviteMember(owner, { email, role: "viewer", projectIds: [] }),
     ).rejects.toMatchObject({ code: "conflict" });
@@ -415,15 +427,17 @@ describe("invitations", () => {
     });
 
     // Preview hides the address.
-    const preview = await members.getInvitePreview(inv.id);
+    const preview = await members.getInvitePreview(tokenOf(inv));
     expect(preview).toMatchObject({ status: "pending", role: "viewer" });
     expect((preview as { maskedEmail: string }).maskedEmail).not.toContain(email.split("@")[0]!);
     expect(await members.getInvitePreview("nope")).toEqual({ status: "invalid" });
+    // Old-style links (the invitation's ObjectId) no longer work, as preview or as accept.
+    expect(await members.getInvitePreview(inv.id)).toEqual({ status: "invalid" });
 
     const stranger = await signUp("Stranger");
     headerState.current = stranger.headers;
     await expect(
-      members.acceptInvitation(asUser(stranger), { invitationId: inv.id }),
+      members.acceptInvitation(asUser(stranger), { token: tokenOf(inv) }),
     ).rejects.toMatchObject({ code: "wrong_recipient" });
     expect(
       await mongoose.connection.collection("member").countDocuments({ organizationId: t.orgId }),
@@ -431,7 +445,7 @@ describe("invitations", () => {
 
     const guest = await signUp("Guest", email);
     headerState.current = guest.headers;
-    const joined = await members.acceptInvitation(asUser(guest), { invitationId: inv.id });
+    const joined = await members.acceptInvitation(asUser(guest), { token: tokenOf(inv) });
     expect(joined).toMatchObject({ orgSlug: t.slug, orgId: t.orgId.toHexString() });
 
     const guestCtx = await t.ctxOf(guest);
@@ -443,7 +457,7 @@ describe("invitations", () => {
 
     headerState.current = guest.headers;
     await expect(
-      members.acceptInvitation(asUser(guest), { invitationId: inv.id }),
+      members.acceptInvitation(asUser(guest), { token: tokenOf(inv) }),
     ).rejects.toMatchObject({ code: "invitation_used" });
 
     // Expired invitations can't be accepted.
@@ -462,9 +476,83 @@ describe("invitations", () => {
     const lateUser = await signUp("Late", late);
     headerState.current = lateUser.headers;
     await expect(
-      members.acceptInvitation(asUser(lateUser), { invitationId: lateInv.id }),
+      members.acceptInvitation(asUser(lateUser), { token: tokenOf(lateInv) }),
     ).rejects.toMatchObject({ code: "invitation_expired" });
-    expect(await members.getInvitePreview(lateInv.id)).toMatchObject({ status: "expired" });
+    expect(await members.getInvitePreview(tokenOf(lateInv))).toMatchObject({
+      status: "expired",
+    });
+  });
+
+  it("an unverified account can't accept, even with the right address and token", async () => {
+    const t = await newOrg("team");
+    const owner = await t.ctx();
+    const email = uniqueEmail("unverified");
+    const inv = await members.inviteMember(owner, { email, role: "viewer", projectIds: [] });
+    const user = await signUp("Unverified", email);
+    // Simulates an account whose address was never confirmed (or was changed afterwards).
+    await mongoose.connection
+      .collection("user")
+      .updateOne({ email: email.toLowerCase() }, { $set: { emailVerified: false } });
+    headerState.current = user.headers;
+    await expect(
+      members.acceptInvitation(asUser(user), { token: tokenOf(inv) }),
+    ).rejects.toMatchObject({ code: "email_not_verified" });
+    // Better Auth's own endpoint refuses too, so skipping our page doesn't help.
+    await expect(
+      auth.api.acceptInvitation({ headers: user.headers, body: { invitationId: inv.id } }),
+    ).rejects.toMatchObject({ status: "FORBIDDEN" });
+    expect(
+      await mongoose.connection.collection("member").countDocuments({ organizationId: t.orgId }),
+    ).toBe(1);
+
+    // Once verified, the same link works.
+    await mongoose.connection
+      .collection("user")
+      .updateOne({ email: email.toLowerCase() }, { $set: { emailVerified: true } });
+    await expect(
+      members.acceptInvitation(asUser(user), { token: tokenOf(inv) }),
+    ).resolves.toMatchObject({ orgSlug: t.slug });
+  });
+
+  it("refuses guessed tokens and the invitation id as a link", async () => {
+    const t = await newOrg("team");
+    const owner = await t.ctx();
+    const email = uniqueEmail("target");
+    const inv = await members.inviteMember(owner, { email, role: "viewer", projectIds: [] });
+    const user = await signUp("Target", email);
+    headerState.current = user.headers;
+    const guesses = [
+      inv.id, // old style: the ObjectId
+      inv.id.padEnd(43, "a"),
+      "A".repeat(43),
+      tokenOf(inv).slice(0, 42),
+      `${tokenOf(inv)}x`,
+    ];
+    for (const guess of guesses) {
+      expect(await members.getInvitePreview(guess)).toEqual({ status: "invalid" });
+      await expect(members.acceptInvitation(asUser(user), { token: guess })).rejects.toMatchObject({
+        code: "not_found",
+      });
+    }
+    // Two invitations never share a token.
+    const other = await members.inviteMember(await t.ctx(), {
+      email: uniqueEmail("other"),
+      role: "viewer",
+      projectIds: [],
+    });
+    expect(tokenOf(other)).not.toBe(tokenOf(inv));
+  });
+
+  it("resend issues a new link and email, and the old one stops working", async () => {
+    const t = await newOrg("team");
+    const owner = await t.ctx();
+    const email = uniqueEmail("again");
+    const inv = await members.inviteMember(owner, { email, role: "viewer", projectIds: [] });
+    const resent = await members.resendInvitation(owner, { invitationId: inv.id });
+    expect(resent.emailSent).toBe(true);
+    expect(tokenOf(resent)).not.toBe(tokenOf(inv));
+    expect(await members.getInvitePreview(tokenOf(inv))).toEqual({ status: "invalid" });
+    expect(outbox.findOutbox(email, "invitation")?.link).toBe(resent.link);
   });
 
   it("scoped invites are rejected on plans without scopes and for admin roles", async () => {
@@ -503,7 +591,7 @@ describe("invitations", () => {
     const user = await signUp("Late", email);
     headerState.current = user.headers;
     await expect(
-      members.acceptInvitation(asUser(user), { invitationId: inv.id }),
+      members.acceptInvitation(asUser(user), { token: tokenOf(inv) }),
     ).rejects.toMatchObject({
       code: "forbidden",
       message: expect.stringMatching(/membership limit/i),

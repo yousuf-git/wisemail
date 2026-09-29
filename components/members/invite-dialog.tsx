@@ -41,7 +41,7 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** Link box with a copy button. Email isn't sent yet, so the link is how invites are shared. */
+/** Link box with a copy button: the fallback when the invitation email doesn't arrive. */
 export function InviteLinkBox({ link }: { link: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -145,14 +145,25 @@ export function InviteDialog({
         {created ? (
           <div className="grid gap-4">
             <DialogHeader>
-              <DialogTitle className="text-xl">Invitation ready</DialogTitle>
+              <DialogTitle className="text-xl">
+                {created.emailSent ? "Invitation sent" : "Invitation ready"}
+              </DialogTitle>
               <DialogDescription>
-                Invitation emails aren&apos;t set up yet. Copy this link and send it to{" "}
-                <b className="font-semibold">{created.email}</b> yourself. It works for 7 days and
-                only for that address.
+                {created.emailSent ? (
+                  <>
+                    We emailed <b className="font-semibold">{created.email}</b>. The link works for
+                    7 days, once, and only for that address once they&apos;ve confirmed it.
+                  </>
+                ) : (
+                  <>
+                    We couldn&apos;t send the email, so copy this link and send it to{" "}
+                    <b className="font-semibold">{created.email}</b> yourself. It works for 7 days
+                    and only for that address.
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
-            <InviteLinkBox link={created.link} />
+            {created.link ? <InviteLinkBox link={created.link} /> : null}
             <DialogFooter>
               <Button
                 variant="outline"

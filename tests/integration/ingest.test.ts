@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { startTestDb, uniqueEmail } from "./helpers";
+import { signUpVerified, startTestDb, uniqueEmail } from "./helpers";
 
 const headerState = vi.hoisted(() => ({ current: new Headers() }));
 vi.mock("next/headers", () => ({
@@ -61,15 +61,7 @@ beforeEach(() => {
 });
 
 async function connection(team: string) {
-  const res = await auth.api.signUpEmail({
-    body: { name: "Ingest", email: uniqueEmail("ingest"), password: "correct horse battery" },
-    returnHeaders: true,
-  });
-  const cookie = res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  const headers = new Headers({ cookie });
+  const { headers } = await signUpVerified(auth, { name: "Ingest", email: uniqueEmail("ingest") });
   const slug = `ing-${team}-${Math.random().toString(36).slice(2, 8)}`;
   const org = await auth.api.createOrganization({ headers, body: { name: slug, slug } });
   headerState.current = headers;

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
+import { VerifyNotice } from "@/components/auth/verify-notice";
+import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 import { getHomePath, getSession } from "@/lib/dal";
 import { ROLE_LABELS } from "@/lib/validation/member";
@@ -85,6 +87,21 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
             <Link href={await getHomePath()}>Back to my workspace</Link>
           </Button>
         </div>
+      </AuthShell>
+    );
+  }
+
+  if (!session.user.emailVerified) {
+    return (
+      <AuthShell
+        title="Confirm your email first"
+        description={`To join ${preview.orgName} we need to know ${session.user.email} is really yours. Use the link we emailed you, then come back to this page.`}
+      >
+        <VerifyNotice
+          email={session.user.email}
+          callbackURL={`/invite/${token}`}
+          devOutbox={env.RESEND_MODE === "fake" && env.NODE_ENV !== "production"}
+        />
       </AuthShell>
     );
   }

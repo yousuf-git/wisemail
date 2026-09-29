@@ -10,6 +10,7 @@ import {
   changeMemberRole,
   inviteMember,
   removeMember,
+  resendInvitation,
 } from "@/lib/services/members";
 import {
   cancelInvitationSchema,
@@ -30,6 +31,10 @@ const invite = orgAction(
 const cancel = orgAction(
   { input: cancelInvitationSchema, permission: "invitation:cancel" },
   ({ ctx, input }) => cancelInvitation(ctx, input),
+);
+const resend = orgAction(
+  { input: cancelInvitationSchema, permission: "invitation:create" },
+  ({ ctx, input }) => resendInvitation(ctx, input),
 );
 const changeRole = orgAction(
   { input: changeMemberRoleSchema, permission: "member:update" },
@@ -56,6 +61,13 @@ export async function cancelInvitationAction(
   input: CancelInvitationInput,
 ): Promise<ActionResult<{ id: string }>> {
   return cancel(orgSlug, input);
+}
+
+export async function resendInvitationAction(
+  orgSlug: string,
+  input: CancelInvitationInput,
+): Promise<ActionResult<InvitationDTO>> {
+  return resend(orgSlug, input);
 }
 
 export async function changeMemberRoleAction(

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { FormAlert } from "@/components/auth/auth-shell";
+import { VerifyNotice } from "@/components/auth/verify-notice";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,11 +26,22 @@ import { safeNext, signInSchema, type SignInInput } from "@/lib/validation/auth"
  * requests go through the HTTP handler, so Better Auth's endpoint rate limiting applies
  * (calls to `auth.api.*` from a server action bypass it).
  */
-export function SignInForm({ next, expired }: { next?: string; expired?: boolean }) {
+export function SignInForm({
+  next,
+  expired,
+  passwordReset,
+  devOutbox,
+}: {
+  next?: string;
+  expired?: boolean;
+  passwordReset?: boolean;
+  devOutbox?: boolean;
+}) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(
     expired ? "Your session ended. Sign in again to keep going." : null,
   );
+  const [unverified, setUnverified] = useState<string | null>(null);
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
     defaultValues: { email: "", password: "" },
@@ -37,8 +49,13 @@ export function SignInForm({ next, expired }: { next?: string; expired?: boolean
 
   async function onSubmit(values: SignInInput) {
     setFormError(null);
-    const { error } = await authClient.signIn.email(values);
+    // If the address isn't confirmed yet, Better Auth emails a fresh link that lands on `next`.
+    const { error } = await authClient.signIn.email({ ...values, callbackURL: safeNext(next) });
     if (error) {
+      if (error.status === 403 || error.code === "EMAIL_NOT_VERIFIED") {
+        setUnverified(values.email);
+        return;
+      }
       setFormError(
         error.status === 429
           ? "Too many tries. Give it a minute and try again."
@@ -50,9 +67,31 @@ export function SignInForm({ next, expired }: { next?: string; expired?: boolean
     router.refresh();
   }
 
+  if (unverified) {
+    return (
+      <div className="grid gap-4">
+        <FormAlert>Confirm your email before signing in. We just sent you a new link.</FormAlert>
+        <VerifyNotice
+          email={unverified}
+          callbackURL={safeNext(next)}
+          devOutbox={devOutbox}
+          onBack={() => setUnverified(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+        {passwordReset ? (
+          <p
+            role="status"
+            className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-ink"
+          >
+            Password updated. Sign in with the new one.
+          </p>
+        ) : null}
         <FormAlert>{formError}</FormAlert>
         <FormField
           control={form.control}
@@ -72,7 +111,15 @@ export function SignInForm({ next, expired }: { next?: string; expired?: boolean
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex items-baseline justify-between gap-2">
+                <FormLabel>Password</FormLabel>
+                <Link
+                  href="/forgot-password"
+                  className="text-[0.8125rem] font-medium text-accent hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <FormControl>
                 <Input type="password" autoComplete="current-password" {...field} />
               </FormControl>

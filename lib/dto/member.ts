@@ -21,8 +21,13 @@ export type InvitationDTO = {
   expiresAt: string;
   /** Whole days left, at least 1 (computed on the server). */
   expiresInDays: number;
-  /** Absolute link to give the invitee (email delivery is not wired yet). */
-  link: string;
+  /**
+   * Absolute single-use link, present only right after it was minted (invite or resend): links
+   * are random tokens whose hash is all we keep, so a listing cannot show them again.
+   */
+  link: string | null;
+  /** Whether the invitation email went out; `null` when this DTO isn't from a send. */
+  emailSent: boolean | null;
   projectIds: string[];
 };
 
