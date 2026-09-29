@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
+import { QueryProvider } from "@/components/app/query-provider";
 import { requireOrg } from "@/lib/dal";
 import { getUsageSummary } from "@/lib/services/usage";
 
@@ -16,7 +17,7 @@ export default async function OrgLayout({ children, params }: LayoutProps<"/[org
       role={role}
       usage={usage}
     >
-      {children}
+      <QueryProvider>{children}</QueryProvider>
     </AppShell>
   );
 }

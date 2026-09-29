@@ -2,7 +2,12 @@ import "server-only";
 
 import { z } from "zod";
 
-import { connectionSyncRequested, resendEventReceived } from "@/inngest/events";
+import {
+  connectionSyncRequested,
+  inboundFetchRequested,
+  resendEventReceived,
+  sendEmailRequested,
+} from "@/inngest/events";
 import { env } from "@/lib/env";
 
 /**
@@ -21,6 +26,14 @@ export type JobEvent =
   | {
       name: typeof connectionSyncRequested.name;
       data: z.infer<NonNullable<typeof connectionSyncRequested.schema>>;
+    }
+  | {
+      name: typeof inboundFetchRequested.name;
+      data: z.infer<NonNullable<typeof inboundFetchRequested.schema>>;
+    }
+  | {
+      name: typeof sendEmailRequested.name;
+      data: z.infer<NonNullable<typeof sendEmailRequested.schema>>;
     };
 
 export const sentJobs: JobEvent[] = [];
@@ -56,3 +69,12 @@ export const enqueueConnectionSync = (data: {
   orgId: string;
   trigger: "initial" | "scheduled" | "manual";
 }) => send({ name: "connection/sync.requested", data });
+
+export const enqueueFetchInbound = (data: {
+  emailId: string;
+  orgId: string;
+  connectionId: string;
+}) => send({ name: "email/inbound.fetch.requested", data });
+
+export const enqueueSendEmail = (data: { emailId: string; orgId: string; connectionId: string }) =>
+  send({ name: "email/send.requested", data });

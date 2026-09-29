@@ -22,6 +22,7 @@ import type {
   RemoveConnectionInput,
   RenameConnectionInput,
 } from "@/lib/validation/connection";
+import { recomputeSenderStatuses } from "./senders";
 import { writeAuditLog } from "./audit";
 import { toChecklistDTO } from "./checklist";
 import { getLatestSyncStatuses, requestSync } from "./sync";
@@ -158,6 +159,8 @@ export async function registerWebhook(
         { session },
       );
     }
+    // Senders on this connection follow its status (DBD §4.3).
+    await recomputeSenderStatuses(connection.orgId, { connectionId: connection._id }, { session });
     await writeAuditLog(
       {
         orgId: connection.orgId,
@@ -438,6 +441,7 @@ export async function removeConnection(
       },
       { session },
     );
+    await recomputeSenderStatuses(connection.orgId, { connectionId: connection._id }, { session });
     await writeAuditLog(
       {
         orgId: connection.orgId,

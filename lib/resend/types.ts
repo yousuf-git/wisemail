@@ -10,6 +10,8 @@ export type ResendErrorCode =
   | "resend_not_found"
   | "resend_validation"
   | "resend_unauthorized"
+  /** A send was refused because the sending domain is unverified or unknown to the account. */
+  | "resend_domain_rejected"
   | "resend_unknown";
 
 export type PageOptions = { limit?: number; after?: string };
@@ -171,6 +173,72 @@ export type CreatedResendWebhook = {
   id: string;
   /** `whsec_…`, a Svix signing secret. Only returned on creation (and by `get`). */
   signingSecret: string;
+};
+
+/* ------------------------------------ sending / inbound ------------------------------------ */
+
+export type SendEmailInput = {
+  /** `"Name" <address>` or a bare address. */
+  from: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string[];
+  subject: string;
+  html?: string;
+  text?: string;
+  /** Custom headers, e.g. `In-Reply-To` / `References`. */
+  headers?: Record<string, string>;
+  /** Names and values: ASCII letters, digits, `_` and `-` only. */
+  tags?: { name: string; value: string }[];
+  /** `path` is a URL Resend fetches when the email is created. */
+  attachments?: { filename: string; path: string; contentType?: string; contentId?: string }[];
+  /** ISO 8601. */
+  scheduledAt?: string;
+};
+
+export type SendEmailResult = {
+  /** Resend's email id. */
+  id: string;
+  /** Present only when the provider reports the generated Message-ID at send time (the fake does). */
+  messageId?: string;
+};
+
+/** `emails.receiving.get`: metadata plus where to download the raw MIME. */
+export type ResendReceivedEmail = {
+  id: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  replyTo: string[];
+  receivedFor: string[];
+  subject: string;
+  messageId: string;
+  createdAt: string;
+  html: string | null;
+  text: string | null;
+  raw: { downloadUrl: string; expiresAt: string } | null;
+  attachments: {
+    id: string;
+    filename: string | null;
+    size: number;
+    contentType: string;
+    contentId: string | null;
+    contentDisposition: string | null;
+  }[];
+};
+
+/** `emails.receiving.attachments.*`: includes the short-lived download URL. */
+export type ResendReceivedAttachment = {
+  id: string;
+  filename: string | null;
+  size: number;
+  contentType: string;
+  contentDisposition: "inline" | "attachment" | null;
+  contentId: string | null;
+  downloadUrl: string;
+  expiresAt: string;
 };
 
 /* ---------------------------------- webhook events ---------------------------------- */
