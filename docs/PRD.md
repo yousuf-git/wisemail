@@ -1,4 +1,4 @@
-# PRD — Mailwise
+# PRD — Wisemail
 
 > **Tagline:** Wiser insights and more control over your emails.
 > **Positioning line:** The control room for every Resend account, domain, and inbox you run.
@@ -20,7 +20,7 @@ Most teams use Resend as nothing more than an API key in `.env` and a `resend.em
 
 ## 2. Solution
 
-Mailwise connects to one or more Resend accounts with a full-access API key, **auto-registers a webhook on each account** (via `POST /webhooks`), stores every event and inbound message, and turns that into:
+Wisemail connects to one or more Resend accounts with a full-access API key, **auto-registers a webhook on each account** (via `POST /webhooks`), stores every event and inbound message, and turns that into:
 
 - a unified **sender + composer** across all accounts and domains,
 - a real **inbox** with threads, attachments, and **read receipts on your replies**,
@@ -108,7 +108,7 @@ Micro-visualizations (sparklines, small multiples, compact bars) over giant char
 - **P1 Latency:** sent → delivered p50/p95; `delivery_delayed` by recipient mailbox provider.
 - **P1 Engagement:** open/click by tag, template, sender; hour × weekday heatmap; top clicked links.
 - **P1 Mailbox provider breakdown** (Gmail, Outlook, Yahoo, iCloud, other) from recipient domain.
-- **P1 Plan usage:** per connection, transactional emails this month vs. the Resend transactional quota, and contact count vs. the Resend marketing contact quota (both entered by the user; Resend's API exposes neither). Also shows this org's tracked emails (transactional, broadcast, inbound) against its Mailwise allowance.
+- **P1 Plan usage:** per connection, transactional emails this month vs. the Resend transactional quota, and contact count vs. the Resend marketing contact quota (both entered by the user; Resend's API exposes neither). Also shows this org's tracked emails (transactional, broadcast, inbound) against its Wisemail allowance.
 - Open rates are pixel-based and inflated by Apple Mail Privacy Protection and image proxies. The UI labels them as estimates.
 
 ### 5.6 Alerts & notifications (P0)
@@ -134,7 +134,7 @@ Micro-visualizations (sparklines, small multiples, compact bars) over giant char
 - **Broadcasts:** create (HTML / rich text / template), preview, send test, schedule, send; post-send analytics from events.
 - **Templates:** list, preview with sample variables, edit, duplicate across connections.
 - **Automations (P1):** view Resend automations (trigger event → steps), enable/disable, see run outcomes from events. Visual editing is P2.
-- **Deleting** contacts, segments, topics, templates, and draft or scheduled broadcasts deletes them **in Resend as well**, after confirmation. Sent broadcasts can only be removed from Mailwise (Resend does not allow deleting them).
+- **Deleting** contacts, segments, topics, templates, and draft or scheduled broadcasts deletes them **in Resend as well**, after confirmation. Sent broadcasts can only be removed from Wisemail (Resend does not allow deleting them).
 
 ### 5.10 AI assist (P0 core set)
 All AI features call an **OpenAI-compatible** endpoint configured by env (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`), so switching provider means changing env only.
@@ -179,14 +179,14 @@ Implements `PRICING.md`: tiers Free / Pro $12 / Team $39 / Agency $99.
 - P2: public API for our unified data; status page per project.
 
 ### 5.16 Delete & cleanup (P0; cleanup rules P1)
-Resend's dashboard and API offer no way to delete sent or received emails, so mailboxes fill up with notifications, tests, and noise. Mailwise lets teams clean up their own view.
+Resend's dashboard and API offer no way to delete sent or received emails, so mailboxes fill up with notifications, tests, and noise. Wisemail lets teams clean up their own view.
 - **What can be deleted:** inbox threads and single messages, sent emails in Activity (including those sent by the org's own apps), drafts, scheduled emails (canceled in Resend first), and notifications.
 - **Trash:** deleting moves items to Trash with a 5-second **Undo**. Trash is kept 30 days, then emptied automatically. Items in Trash can be restored.
-- **Delete permanently / Empty trash** (Owner and Admin): removes the email, its body, and its files from Mailwise for good.
+- **Delete permanently / Empty trash** (Owner and Admin): removes the email, its body, and its files from Wisemail for good.
 - **Deleted stays deleted:** a permanently deleted email never reappears through a later sync or a late event such as an open.
 - **Bulk:** select many, or "all matching this filter" (e.g. everything from `no-reply@github.com` older than 30 days); large selections run in the background with progress.
 - **Cleanup rules (P1):** automatic archive, trash, or delete by sender, sender domain, subject, tag, AI category, direction, and age, scoped to projects or mailboxes. Includes **Block sender**: future mail from an address or domain goes straight to Trash.
-- **Clear about Resend:** delete dialogs say "Deleted from Mailwise. Resend keeps its copy until its own retention ends", because the Resend API has no delete for emails.
+- **Clear about Resend:** delete dialogs say "Deleted from Wisemail. Resend keeps its copy until its own retention ends", because the Resend API has no delete for emails.
 - **Numbers don't change:** deleting does not alter insights, rollups, or tracked-email usage already counted.
 - **Resend objects that can be deleted in Resend** (contacts, segments, topics, templates, draft/scheduled broadcasts, domains, API keys) are deleted there too, after confirmation (§5.7–5.9).
 - Permanent deletes, bulk deletes, and rule changes are written to the audit log.

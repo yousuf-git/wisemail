@@ -1,4 +1,4 @@
-# Pricing proposal — Mailwise
+# Pricing proposal — Wisemail
 
 > **Status:** v0.3, 2026-09-29. Tier structure and the decisions in §7 are accepted; numbers will be revisited after 3 months of paid data.
 > **Related:** `PRD.md`, `DBD.md` (`org_settings.limits`, `usage_periods`, `connections.planQuota`)
@@ -53,7 +53,7 @@ Seats cost us almost nothing, and per-seat pricing punishes the support use case
   - each broadcast recipient (a broadcast to 10,000 contacts = 10,000 emails),
   - each inbound email received.
   All events for a tracked email (delivered, opened ×N, clicked ×N, bounced…) are included. Customers can compare this number directly with their Resend usage, and our cost per tracked email is stable enough to price on.
-- **One plan for both products.** A customer on Resend Transactional, Marketing, or both buys one Mailwise plan. Splitting our pricing the way Resend does would make customers who use both products pay twice, and our features (inbox, insights, alerts, audience) serve both.
+- **One plan for both products.** A customer on Resend Transactional, Marketing, or both buys one Wisemail plan. Splitting our pricing the way Resend does would make customers who use both products pay twice, and our features (inbox, insights, alerts, audience) serve both.
 - **Broadcasts count, and we say so.** The pricing page states that broadcast recipients count as tracked emails even though Resend meters marketing by contacts. The usage page shows transactional, broadcast, and inbound counts separately.
 - **Contacts are not limited per tier.** Mirroring even 150k contacts is cheap. Revisit only if data shows a need.
 - **Tier gates:** number of connected Resend accounts, retention length, team features.
