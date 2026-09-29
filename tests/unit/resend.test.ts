@@ -225,3 +225,18 @@ describe("verifyWebhook", () => {
     expect(new Set(SUPPORTED_EVENT_TYPES).size).toBe(19);
   });
 });
+
+describe("send errors (TRD §2.5)", () => {
+  it("maps a domain refusal to resend_domain_rejected, leaving other errors alone", async () => {
+    const { asDomainRejection } = await import("@/lib/resend/adapter");
+    const { ResendError } = await import("@/lib/resend/errors");
+    const domain = new ResendError("resend_validation", "The acme.com domain is not verified.", {
+      status: 403,
+    });
+    expect(asDomainRejection(domain)).toMatchObject({ code: "resend_domain_rejected" });
+    const other = new ResendError("resend_validation", "Invalid `to` field.", { status: 422 });
+    expect(asDomainRejection(other)).toBe(other);
+    const limited = new ResendError("resend_rate_limited", "domain slow down");
+    expect(asDomainRejection(limited)).toBe(limited);
+  });
+});

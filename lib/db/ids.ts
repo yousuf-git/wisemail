@@ -23,6 +23,16 @@ export const COLLECTIONS = [
   "domains",
   "emails",
   "threads",
+  "email_contents",
+  "attachments",
+  "labels",
+  "senders",
+  "drafts",
+  "deletion_tombstones",
+  "metric_rollups",
+  "projects",
+  "broadcasts",
+  "templates",
 ] as const;
 
 export type CollectionName = (typeof COLLECTIONS)[number];

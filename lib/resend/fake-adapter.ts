@@ -2,7 +2,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { mapResendError } from "./errors";
+import { buildRawMime } from "@/lib/mail/fake-mime";
+import { ResendError, mapResendError } from "./errors";
 import type { ResendAdapter } from "./adapter";
 import type {
   CreatedResendWebhook,
@@ -16,8 +17,13 @@ import type {
   ResendContactTopic,
   ResendDnsRecord,
   ResendDomain,
+  ReceivedEmailEventData,
   ResendEventType,
+  ResendReceivedAttachment,
+  ResendReceivedEmail,
   ResendSegment,
+  SendEmailInput,
+  SendEmailResult,
   ResendTemplate,
   ResendTopic,
   UpdateDomainInput,
@@ -76,17 +82,45 @@ export type FakeTeam = {
   automations: ResendAutomation[];
   /** Calls that already answered the one-off 429 (`ratelimitsync`). */
   throttled: Set<string>;
+  /** Emails accepted by `sendEmail`, oldest first (tests and scripts inspect them). */
+  sent: FakeSentEmail[];
+  /** Idempotency key -> email id, so a retried send returns the same email. */
+  idempotency: Map<string, string>;
+  /** Received (inbound) emails by Resend id. */
+  received: Map<string, FakeReceivedEmail>;
+};
+
+export type FakeSentEmail = {
+  id: string;
+  messageId: string;
+  input: SendEmailInput;
+  idempotencyKey: string;
+  createdAt: string;
+  status: "sent" | "scheduled" | "canceled";
+};
+
+export type FakeReceivedEmail = {
+  meta: Omit<ResendReceivedEmail, "raw" | "attachments"> & {
+    attachments: ResendReceivedEmail["attachments"];
+  };
+  raw: Buffer;
+  files: { meta: ResendReceivedAttachment; content: Buffer }[];
 };
 
 /** Resend Pro allows 5 webhook endpoints (PRD §5.1). */
 export const FAKE_WEBHOOK_LIMIT = 5;
 
-type Store = { teams: Map<string, FakeTeam>; counter: number };
+type Store = {
+  teams: Map<string, FakeTeam>;
+  counter: number;
+  /** Downloadable files by URL (`download_url`s handed out by the fake). */
+  files: Map<string, Buffer>;
+};
 const globalForFake = globalThis as unknown as { __wisemailFakeResend?: Store };
 
 /** Shared through `globalThis`: Next.js may load this module more than once per process. */
 export function fakeStore(): Store {
-  globalForFake.__wisemailFakeResend ??= { teams: new Map(), counter: 0 };
+  globalForFake.__wisemailFakeResend ??= { teams: new Map(), counter: 0, files: new Map() };
   return globalForFake.__wisemailFakeResend;
 }
 
@@ -385,6 +419,9 @@ function seedTeam(id: string, flags: Set<string>): FakeTeam {
       },
     ],
     throttled: new Set(),
+    sent: [],
+    idempotency: new Map(),
+    received: new Map(),
   };
 }
 
@@ -587,4 +624,255 @@ export class FakeResendAdapter implements ResendAdapter {
     if (!automation) throw fail("not_found", "Automation not found", 404);
     return { ...automation };
   }
+
+  async sendEmail(
+    input: SendEmailInput,
+    options: { idempotencyKey: string },
+  ): Promise<SendEmailResult> {
+    this.guard(false);
+    const existing = this.team.idempotency.get(options.idempotencyKey);
+    if (existing) {
+      const email = this.team.sent.find((e) => e.id === existing)!;
+      return { id: email.id, messageId: email.messageId };
+    }
+    const fromAddress = /<([^>]+)>/.exec(input.from)?.[1] ?? input.from;
+    const domainName = fromAddress.slice(fromAddress.lastIndexOf("@") + 1).toLowerCase();
+    const domain = this.team.domains.find((d) => d.name === domainName);
+    if (!domain || domain.status !== "verified") {
+      throw new ResendError(
+        "resend_domain_rejected",
+        `The ${domainName} domain is not verified. Please, add and verify your domain on https://resend.com/domains`,
+        { status: 403, resendName: "validation_error" },
+      );
+    }
+    if (input.to.length + (input.cc?.length ?? 0) + (input.bcc?.length ?? 0) > 50) {
+      throw fail("validation_error", "Too many recipients (max 50).", 422);
+    }
+    const id = `em_fake_${String(++fakeStore().counter).padStart(5, "0")}`;
+    const scheduled = input.scheduledAt && new Date(input.scheduledAt).getTime() > Date.now();
+    const email: FakeSentEmail = {
+      id,
+      messageId: `<${id}@fake.resend.test>`,
+      input,
+      idempotencyKey: options.idempotencyKey,
+      createdAt: new Date().toISOString(),
+      status: scheduled ? "scheduled" : "sent",
+    };
+    this.team.sent.push(email);
+    this.team.idempotency.set(options.idempotencyKey, id);
+    return { id, messageId: email.messageId };
+  }
+
+  private sentEmail(id: string) {
+    const email = this.team.sent.find((e) => e.id === id);
+    if (!email) throw fail("not_found", "Email not found", 404);
+    return email;
+  }
+
+  async cancelEmail(id: string) {
+    this.guard(false);
+    const email = this.sentEmail(id);
+    if (
+      email.status !== "scheduled" ||
+      new Date(email.input.scheduledAt!).getTime() <= Date.now()
+    ) {
+      throw fail("validation_error", "Only scheduled emails can be canceled.", 422);
+    }
+    email.status = "canceled";
+  }
+
+  async updateScheduledEmail(input: { id: string; scheduledAt: string }) {
+    this.guard(false);
+    const email = this.sentEmail(input.id);
+    if (
+      email.status !== "scheduled" ||
+      new Date(email.input.scheduledAt!).getTime() <= Date.now()
+    ) {
+      throw fail("validation_error", "Only scheduled emails can be rescheduled.", 422);
+    }
+    email.input = { ...email.input, scheduledAt: input.scheduledAt };
+  }
+
+  private receivedEmail(id: string) {
+    const email = this.team.received.get(id);
+    if (!email) throw fail("not_found", "Email not found", 404);
+    return email;
+  }
+
+  async getReceivedEmail(id: string): Promise<ResendReceivedEmail> {
+    this.guard();
+    const email = this.receivedEmail(id);
+    const url = `fake://raw/${this.team.id}/${id}`;
+    fakeStore().files.set(url, email.raw);
+    return {
+      ...email.meta,
+      raw: { downloadUrl: url, expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+    };
+  }
+
+  async listReceivedAttachments(emailId: string) {
+    this.guard();
+    const email = this.receivedEmail(emailId);
+    return email.files.map((f) => this.withUrl(emailId, f));
+  }
+
+  async getReceivedAttachment(emailId: string, id: string) {
+    this.guard();
+    const file = this.receivedEmail(emailId).files.find((f) => f.meta.id === id);
+    if (!file) throw fail("not_found", "Attachment not found", 404);
+    return this.withUrl(emailId, file);
+  }
+
+  private withUrl(
+    emailId: string,
+    file: FakeReceivedEmail["files"][number],
+  ): ResendReceivedAttachment {
+    const url = `fake://att/${this.team.id}/${emailId}/${file.meta.id}?n=${++fakeStore().counter}`;
+    fakeStore().files.set(url, file.content);
+    return {
+      ...file.meta,
+      downloadUrl: url,
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    };
+  }
+
+  async downloadFile(url: string) {
+    const bytes = fakeStore().files.get(url);
+    if (!bytes) throw fail("not_found", "The download link expired", 404);
+    return Buffer.from(bytes);
+  }
+}
+
+/* ------------------------------ inbound helpers (tests, scripts, dev) ------------------------------ */
+
+export type FakeInboundInput = {
+  from: string;
+  to: string[];
+  cc?: string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
+  date?: Date;
+  /** Our address(es) that received it; defaults to `to`. */
+  receivedFor?: string[];
+  attachments?: {
+    filename: string;
+    contentType: string;
+    content: Buffer | string;
+    contentId?: string;
+  }[];
+};
+
+/**
+ * Creates a received email in the fake team behind `apiKey` and returns the `email.received`
+ * webhook `data` Resend would send for it. Post that through the ingest route (or store it as a
+ * `webhook_events` document) to run `process-event` -> `fetch-inbound`.
+ */
+export function createFakeReceivedEmail(
+  apiKey: string,
+  input: FakeInboundInput,
+): { resendId: string; messageId: string; event: ReceivedEmailEventData } {
+  const { team: teamId, flags } = parseFakeKey(apiKey);
+  const team = teamFor(teamId, flags);
+  const store = fakeStore();
+  const n = ++store.counter;
+  const resendId = `rcv_fake_${String(n).padStart(5, "0")}`;
+  const messageId = input.messageId ?? `<${resendId}@sender.example>`;
+  const createdAt = (input.date ?? new Date()).toISOString();
+  const files = (input.attachments ?? []).map((a, i) => {
+    const content = Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content);
+    const meta: ResendReceivedAttachment = {
+      id: `att_fake_${String(n).padStart(5, "0")}_${i + 1}`,
+      filename: a.filename,
+      size: content.length,
+      contentType: a.contentType,
+      contentDisposition: a.contentId ? "inline" : "attachment",
+      contentId: a.contentId ?? null,
+      downloadUrl: "",
+      expiresAt: "",
+    };
+    return { meta, content };
+  });
+  const raw = buildRawMime({
+    from: input.from,
+    to: input.to,
+    cc: input.cc,
+    subject: input.subject,
+    messageId,
+    date: input.date,
+    inReplyTo: input.inReplyTo,
+    references: input.references,
+    text: input.text,
+    html: input.html,
+    attachments: files.map((f, i) => ({
+      filename: f.meta.filename ?? "file",
+      contentType: f.meta.contentType,
+      content: f.content,
+      contentId: input.attachments![i]!.contentId,
+    })),
+  });
+  const attachmentMeta = files.map((f) => ({
+    id: f.meta.id,
+    filename: f.meta.filename,
+    size: f.meta.size,
+    contentType: f.meta.contentType,
+    contentId: f.meta.contentId,
+    contentDisposition: f.meta.contentDisposition,
+  }));
+  team.received.set(resendId, {
+    meta: {
+      id: resendId,
+      from: input.from,
+      to: input.to,
+      cc: input.cc ?? [],
+      bcc: [],
+      replyTo: [],
+      receivedFor: input.receivedFor ?? input.to,
+      subject: input.subject,
+      messageId,
+      createdAt,
+      html: input.html ?? null,
+      text: input.text ?? null,
+      attachments: attachmentMeta,
+    },
+    raw,
+    files,
+  });
+  return {
+    resendId,
+    messageId,
+    event: {
+      email_id: resendId,
+      created_at: createdAt,
+      from: input.from,
+      to: input.to,
+      cc: input.cc ?? [],
+      bcc: [],
+      received_for: input.receivedFor ?? input.to,
+      message_id: messageId,
+      subject: input.subject,
+      attachments: attachmentMeta.map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        content_type: a.contentType,
+        content_disposition: a.contentDisposition,
+        content_id: a.contentId,
+      })),
+    },
+  };
+}
+
+/** Simulates Resend dropping a received email (Free plan retention): later reads answer 404. */
+export function expireFakeReceivedEmail(apiKey: string, resendId: string): void {
+  const { team: teamId, flags } = parseFakeKey(apiKey);
+  teamFor(teamId, flags).received.delete(resendId);
+}
+
+/** Emails the fake team behind `apiKey` has accepted for sending. */
+export function fakeSentEmails(apiKey: string): FakeSentEmail[] {
+  const { team: teamId, flags } = parseFakeKey(apiKey);
+  return teamFor(teamId, flags).sent;
 }

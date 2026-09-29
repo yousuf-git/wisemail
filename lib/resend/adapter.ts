@@ -21,6 +21,10 @@ import type {
   ResendDomain,
   ResendDomainDetail,
   ResendEventType,
+  ResendReceivedAttachment,
+  ResendReceivedEmail,
+  SendEmailInput,
+  SendEmailResult,
   ResendSegment,
   ResendTemplate,
   ResendTemplateSummary,
@@ -70,6 +74,28 @@ export interface ResendAdapter {
   getBroadcast(id: string): Promise<ResendBroadcast>;
   listAutomations(options?: PageOptions): Promise<Page<ResendAutomationSummary>>;
   getAutomation(id: string): Promise<ResendAutomation>;
+
+  /* --------------------------- sending and inbound (Phase 4) --------------------------- */
+  /**
+   * Sends (or schedules) one email. `idempotencyKey` makes retries safe. A refusal caused by the
+   * sending domain throws `resend_domain_rejected`.
+   */
+  sendEmail(input: SendEmailInput, options: { idempotencyKey: string }): Promise<SendEmailResult>;
+  /** Cancels a scheduled email. Throws `resend_validation` / `resend_not_found` when it already went out. */
+  cancelEmail(id: string): Promise<void>;
+  /** Reschedules a scheduled email. */
+  updateScheduledEmail(input: { id: string; scheduledAt: string }): Promise<void>;
+  /** Throws `resend_not_found` when Resend no longer has the message. */
+  getReceivedEmail(id: string): Promise<ResendReceivedEmail>;
+  /** All attachments of a received email (pages are walked here). */
+  listReceivedAttachments(emailId: string): Promise<ResendReceivedAttachment[]>;
+  /** A fresh download URL for one attachment. Throws `resend_not_found` when it is gone. */
+  getReceivedAttachment(emailId: string, id: string): Promise<ResendReceivedAttachment>;
+  /**
+   * Downloads a Resend-hosted file (raw MIME, attachment) by its `download_url`. Throws
+   * `resend_not_found` for an expired or removed file and `resend_validation` past `maxBytes`.
+   */
+  downloadFile(url: string, options?: { maxBytes?: number }): Promise<Buffer>;
 }
 
 type Envelope<T> = {
@@ -96,6 +122,47 @@ async function call<T>(fn: () => Promise<Envelope<T>>): Promise<T> {
       error instanceof Error ? error.message : "Could not reach Resend.",
     );
   }
+}
+
+/** 40 MB per email is Resend's limit; raw MIME can be slightly larger with base64 overhead. */
+export const DEFAULT_MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024;
+
+type SdkAttachment = {
+  id: string;
+  filename?: string;
+  size: number;
+  content_type: string;
+  content_disposition: "inline" | "attachment";
+  content_id?: string;
+  download_url: string;
+  expires_at: string;
+};
+
+const toReceivedAttachment = (a: SdkAttachment): ResendReceivedAttachment => ({
+  id: a.id,
+  filename: a.filename ?? null,
+  size: a.size,
+  contentType: a.content_type,
+  contentDisposition: a.content_disposition ?? null,
+  contentId: a.content_id ?? null,
+  downloadUrl: a.download_url,
+  expiresAt: a.expires_at,
+});
+
+/**
+ * A validation or permission error that names the domain becomes `resend_domain_rejected`
+ * (TRD §2.5), so the service can mark the domain and its senders unusable.
+ */
+export function asDomainRejection(error: unknown): unknown {
+  if (
+    error instanceof ResendError &&
+    (error.code === "resend_validation" || error.code === "resend_forbidden") &&
+    /domain/i.test(error.message) &&
+    /verif|not found|not allowed|invalid/i.test(error.message)
+  ) {
+    return new ResendError("resend_domain_rejected", error.message, error.details);
+  }
+  return error;
 }
 
 const pageArgs = (options: PageOptions = {}) => ({
@@ -358,5 +425,122 @@ export class LiveResendAdapter implements ResendAdapter {
       steps: a.steps.map((st) => ({ key: st.key, type: st.type, config: st.config })),
       connections: a.connections.map((c) => ({ from: c.from, to: c.to, type: c.type })),
     };
+  }
+
+  async sendEmail(input: SendEmailInput, options: { idempotencyKey: string }) {
+    try {
+      const res = await call(() =>
+        this.client.emails.send(
+          {
+            from: input.from,
+            to: input.to,
+            ...(input.cc?.length ? { cc: input.cc } : {}),
+            ...(input.bcc?.length ? { bcc: input.bcc } : {}),
+            ...(input.replyTo?.length ? { replyTo: input.replyTo } : {}),
+            subject: input.subject,
+            ...(input.html === undefined ? {} : { html: input.html }),
+            ...(input.text === undefined ? {} : { text: input.text }),
+            ...(input.headers ? { headers: input.headers } : {}),
+            ...(input.tags?.length ? { tags: input.tags } : {}),
+            ...(input.attachments?.length ? { attachments: input.attachments } : {}),
+            ...(input.scheduledAt ? { scheduledAt: input.scheduledAt } : {}),
+          } as Parameters<Resend["emails"]["send"]>[0],
+          { idempotencyKey: options.idempotencyKey },
+        ),
+      );
+      return { id: res.id };
+    } catch (error) {
+      throw asDomainRejection(error);
+    }
+  }
+
+  async cancelEmail(id: string) {
+    await call(() => this.client.emails.cancel(id));
+  }
+
+  async updateScheduledEmail(input: { id: string; scheduledAt: string }) {
+    await call(() => this.client.emails.update({ id: input.id, scheduledAt: input.scheduledAt }));
+  }
+
+  async getReceivedEmail(id: string): Promise<ResendReceivedEmail> {
+    const e = await call(() => this.client.emails.receiving.get(id, { html_format: "cid" }));
+    return {
+      id: e.id,
+      from: e.from,
+      to: e.to,
+      cc: e.cc ?? [],
+      bcc: e.bcc ?? [],
+      replyTo: e.reply_to ?? [],
+      receivedFor: e.received_for,
+      subject: e.subject,
+      messageId: e.message_id,
+      createdAt: e.created_at,
+      html: e.html,
+      text: e.text,
+      raw: e.raw ? { downloadUrl: e.raw.download_url, expiresAt: e.raw.expires_at } : null,
+      attachments: e.attachments.map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        size: a.size,
+        contentType: a.content_type,
+        contentId: a.content_id,
+        contentDisposition: a.content_disposition,
+      })),
+    };
+  }
+
+  async listReceivedAttachments(emailId: string): Promise<ResendReceivedAttachment[]> {
+    const all: ResendReceivedAttachment[] = [];
+    let after: string | undefined;
+    for (let page = 0; page < 20; page++) {
+      const res = await call(() =>
+        this.client.emails.receiving.attachments.list({
+          emailId,
+          limit: 100,
+          ...(after ? { after } : {}),
+        }),
+      );
+      all.push(...res.data.map(toReceivedAttachment));
+      const last = res.data.at(-1);
+      if (!res.has_more || !last) break;
+      after = last.id;
+    }
+    return all;
+  }
+
+  async getReceivedAttachment(emailId: string, id: string) {
+    const a = await call(() => this.client.emails.receiving.attachments.get({ emailId, id }));
+    return toReceivedAttachment(a);
+  }
+
+  async downloadFile(url: string, options: { maxBytes?: number } = {}) {
+    const maxBytes = options.maxBytes ?? DEFAULT_MAX_DOWNLOAD_BYTES;
+    let res: Response;
+    try {
+      res = await fetch(url, { redirect: "follow" });
+    } catch (error) {
+      throw new ResendError(
+        "resend_unknown",
+        error instanceof Error ? error.message : "Could not download the file.",
+      );
+    }
+    if ([403, 404, 410].includes(res.status)) {
+      throw new ResendError("resend_not_found", "Resend no longer has this file.", {
+        status: res.status,
+      });
+    }
+    if (!res.ok) {
+      throw new ResendError("resend_unknown", `Download failed (${res.status}).`, {
+        status: res.status,
+      });
+    }
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      throw new ResendError("resend_validation", "The file is too large.");
+    }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length > maxBytes)
+      throw new ResendError("resend_validation", "The file is too large.");
+    return bytes;
   }
 }
