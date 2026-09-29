@@ -15,4 +15,19 @@ export const connectionSyncRequested = eventType("connection/sync.requested", {
   }),
 });
 
-export const eventTypes = { resendEventReceived, connectionSyncRequested } as const;
+/** Fetch the full body and attachments of a received email (TRD §2.4). */
+export const inboundFetchRequested = eventType("email/inbound.fetch.requested", {
+  schema: z.object({ emailId: z.string(), orgId: z.string(), connectionId: z.string() }),
+});
+
+/** Hand a queued outbound email to Resend (TRD §2.5). */
+export const sendEmailRequested = eventType("email/send.requested", {
+  schema: z.object({ emailId: z.string(), orgId: z.string(), connectionId: z.string() }),
+});
+
+export const eventTypes = {
+  resendEventReceived,
+  connectionSyncRequested,
+  inboundFetchRequested,
+  sendEmailRequested,
+} as const;

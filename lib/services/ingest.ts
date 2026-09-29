@@ -6,7 +6,9 @@ import { parseId } from "@/lib/db/ids";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { DEFAULT_EVENT_RETENTION_DAYS, WebhookEventModel } from "@/lib/db/models/webhook-events";
 import { enqueueEventReceived } from "@/lib/jobs/send";
+import { env } from "@/lib/env";
 import { verifyWebhook } from "@/lib/resend/events";
+import { processEventInline } from "./events-processing";
 import { secretAad } from "./webhook-secret";
 
 /** TRD §3: per-connection URL, Svix signature and timestamp, body size limit. */
@@ -90,7 +92,13 @@ export async function ingestResendWebhook(input: {
   await ConnectionModel.updateOne({ _id: id }, { $set: { lastEventAt: now } });
 
   try {
-    await enqueueEventReceived(result.upsertedId.toString());
+    const delivered = await enqueueEventReceived(result.upsertedId.toString());
+    if (!delivered && env.INNGEST_DEV && env.NODE_ENV !== "production") {
+      // Development without an Inngest server: process here, after the response path.
+      void processEventInline(result.upsertedId.toString()).catch((error) =>
+        console.error("[ingest] inline processing failed", error),
+      );
+    }
   } catch (error) {
     // Un-store so Resend's retry inserts and enqueues again instead of hitting the dedupe.
     console.error("[ingest] could not enqueue event", error);

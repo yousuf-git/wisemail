@@ -131,8 +131,8 @@ describe("POST /api/ingest/resend/[connectionId]", () => {
       { name: "resend/event.received", data: { eventId: stored[0]!._id.toHexString() } },
     ]);
 
-    // The stub processor marks it processed, idempotently.
-    expect(await processEvent.processWebhookEvent(stored[0]!._id.toHexString())).toEqual({
+    // `process-event` marks it processed (and upserts the email), idempotently.
+    expect(await processEvent.processWebhookEvent(stored[0]!._id.toHexString())).toMatchObject({
       found: true,
       type: "email.delivered",
     });
