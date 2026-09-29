@@ -33,6 +33,7 @@ import { getResendAdapter } from "@/lib/resend/client-factory";
 import { isResendError, type ResendError } from "@/lib/resend/errors";
 import type { Page } from "@/lib/resend/types";
 import { writeAuditLog } from "./audit";
+import { recomputeSenderStatuses } from "./senders";
 import { recomputeChecklist } from "./checklist";
 import { ServiceError } from "./errors";
 import { keyAad } from "./webhook-secret";
@@ -235,6 +236,10 @@ const domainsStage = listStage({
       { $set: { domainId: null } },
       { session },
     );
+  },
+  // Sender status follows its domain (DBD §4.3): recompute after every complete domain pass.
+  onComplete: async (ctx, session) => {
+    await recomputeSenderStatuses(ctx.orgId, { connectionId: ctx.connectionId }, { session });
   },
 });
 
@@ -840,6 +845,7 @@ export async function syncNextPage(
         { _id: connection._id, orgId: connection.orgId, status: "active" },
         { $set: { status: "needs_attention", statusReason: "key_revoked" } },
       );
+      await recomputeSenderStatuses(connection.orgId, { connectionId: connection._id });
     }
     await failSyncRun(runId, message, stage.key);
     return { status: "failed", error: message };
