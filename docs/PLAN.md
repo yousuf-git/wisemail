@@ -33,15 +33,17 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 
 ## Phase 2 — Connections & webhook ingest
 
-- [ ] `lib/crypto/envelope.ts` AES-256-GCM envelope encryption (per-record DEK wrapped by KEK, `kekId`, rotation)
-- [ ] `lib/resend/adapter.ts` typed methods + error mapping (`resend_rate_limited|forbidden|not_found|validation`); fake client for dev/tests
-- [ ] Models: `connections`, `webhook_events`, `realtime_events`, `audit_logs`, `sync_runs`
-- [ ] Connection onboarding service (TRD §2.2): validate full-access key, reject sending-only, team fingerprint dedupe, encrypt, register webhook, store signing secret, `needs_attention` on no slot
-- [ ] Server actions: add / rename / remove connection (removal deletes our webhook in Resend), permission-checked, audited
-- [ ] Settings → Connections page (list, add dialog with slot notice, status chips, last4 only)
-- [ ] `POST /api/ingest/resend/[connectionId]`: raw body, Svix verify, dedupe `(connectionId, svixId)`, enqueue `resend/event.received`, 200
-- [ ] Inngest client + `/api/inngest` route; `process-event` + `sync-connection` stubs (local dev server / fake)
-- [ ] Tests: envelope crypto, adapter error mapping, onboarding service, ingest route (valid, bad sig, dup, unknown connection), tenant isolation
+- [x] `lib/crypto/envelope.ts` AES-256-GCM envelope encryption (per-record DEK wrapped by KEK, `kekId`, rotation; AAD-bound; `rewrap`)
+- [x] `lib/resend/adapter.ts` typed methods + error mapping (`resend_rate_limited|forbidden|not_found|validation|unauthorized|unknown`); fake client for dev/tests (methods so far: `listDomains`, `listApiKeys`, `createWebhook`, `deleteWebhook`; the rest arrive with the phases that need them)
+- [x] Models: `connections`, `webhook_events`, `realtime_events`, `audit_logs`, `sync_runs`
+- [x] Connection onboarding service (TRD §2.2): validate full-access key, reject sending-only, team fingerprint dedupe, encrypt, register webhook, store signing secret, `needs_attention` on no slot
+- [x] Server actions: add / rename / remove connection (+ retry setup) (removal deletes our webhook in Resend), permission-checked, audited
+- [x] Settings → Connections page (list, add dialog with slot notice, status chips, last4 only)
+- [x] `POST /api/ingest/resend/[connectionId]`: raw body, Svix verify, dedupe `(connectionId, svixId)`, enqueue `resend/event.received`, 200
+- [x] Inngest client + `/api/inngest` route; `process-event` + `sync-connection` stubs (local dev server / fake)
+- [x] Tests: envelope crypto, adapter error mapping, onboarding service, ingest route (valid, bad sig, dup, unknown connection), tenant isolation
+
+Phase 2 follow-ups (not blocking): synced-data deletion choice on remove, key rotation (UC-06 "Rotate"), Agency 16th-connection confirmation (Phase 7), live `useLiveQuery` refresh of the connections list (Phase 5), email verification via system email.
 
 ## Phase 3 — Sync & mirrors
 - [ ] `sync-connection` paged + checkpointed (domains → api keys → audience → templates → broadcasts → automations → emails)
@@ -82,6 +84,9 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 
 ## Log
 
+- 2026-09-29 — Phase 2 done (116 tests). Follow-ups: sidebar usage tile not wired to real data; duplicate-team error lacks link to existing connection; remove-connection data choice; live list refresh (Phase 5); live Resend "no webhook slot" wording unverified.
+
+- 2026-09-29 — Phase 2 done. Team fingerprint: HMAC of the team's oldest domain id (else oldest API key id), because Resend has no team-id endpoint. Fake Resend keys are documented in AGENTS.md. Inngest v4 uses `eventType()` + `triggers: [...]` (no `EventSchemas`). Webhook signing secrets are AAD-bound to their connection.
 - 2026-09-29 — Phase 1 done. Auth via Better Auth client (rate limits apply only through /api/auth); org_settings provisioned in `afterCreateOrganization` + self-heal. Follow-ups: `/sign-out` route, email verification (needs system email, Phase 2), move render-time writes in `getOrgContext` out of render, invite page.
 
 - 2026-09-29 — Phase 1 scaffold landed: Node 24 LTS, Next 16.3, React 19.2, TS 5.9, Tailwind 4.3, Vitest 5. `lib/env.ts` is `server-only`; pure parser in `lib/env-schema.ts`. nextjs.org / ui.shadcn.com blocked → Next docs read from `node_modules/next/dist/docs`, shadcn sources pulled from GitHub.

@@ -42,3 +42,26 @@ External services run against in-memory fakes unless switched on (default fake i
 
 - Dev/test binary: `/opt/mongo/mongod` (mongod 8.3). `mongodb-memory-server` cannot download binaries here; Vitest sets `MONGOMS_SYSTEM_BINARY=/opt/mongo/mongod` in `vitest.config.mts`.
 - Transactions need a replica set: use `pnpm db:dev` for the dev database.
+
+## Connections, ingest and jobs (Phase 2)
+
+- Secrets: `lib/crypto/envelope.ts` (AES-256-GCM, per-record DEK wrapped by `ENCRYPTION_KEK_CURRENT`, `kekId` stored). During rotation set `ENCRYPTION_KEK_PREVIOUS` + `ENCRYPTION_KEK_PREVIOUS_ID`; `rewrap()` moves records to the current KEK. Ciphertexts carry AAD `connections:<id>:<field>`, so use `keyAad`/`secretAad` from `lib/services/webhook-secret.ts`. Never return ciphertext to the client; DTOs carry `last4` only.
+- Resend goes through `lib/resend/adapter.ts` (`getResendAdapter(key)` from `client-factory.ts`); errors are `ResendError` with `resend_*` codes. Team fingerprint = HMAC of the team's oldest domain (else oldest API key) id, see `lib/resend/fingerprint.ts`.
+- Ingest is `POST /api/ingest/resend/[connectionId]` (raw body, Svix verify, dedupe `(connectionId, svixId)`, enqueue). Jobs are enqueued only via `lib/jobs/send.ts` (in tests recorded in `sentJobs`; in dev a missing Inngest dev server only logs a warning). Run the dev server with `npx inngest-cli@latest dev` to process them.
+- `pnpm webhook:test <connectionId> [--type email.opened]` posts a signed sample event to a connection's ingest URL.
+
+### Fake Resend keys (`RESEND_MODE=fake`)
+
+Key format `re_<team>[_<flag>...]`. Same `<team>` = same Resend account (duplicate-connect check); flags:
+
+| Key example | Behaviour |
+|---|---|
+| `re_acme_full` (any key without a flag) | Healthy full-access key; webhook registered, connection `active` |
+| `re_acme_sending` | Sending-only key: rejected ("This key can only send email...") |
+| `re_acme_invalid` | Resend rejects the key ("Resend rejected this key...") |
+| `re_acme_ratelimit` | Every call answers 429 ("Resend is asking us to slow down") |
+| `re_acme_slotfull` | No free webhook slot: connection saved as `needs_attention` / `webhook_slot_unavailable`, Retry keeps failing |
+| `re_acme_nodomains` | Team without domains (identity comes from its API keys) |
+| a 6th webhook on one team | Also "no slot" (fake limit is 5, like Resend Pro); deleting one and pressing Retry succeeds |
+
+The fake store lives in memory (per server process): restarting the dev server forgets fake webhooks, but stored connections and their signing secrets stay valid.
