@@ -9,9 +9,7 @@ export default function Home() {
         <span className="grid size-14 place-items-center rounded-lg bg-accent text-accent-ink shadow-glow">
           <Mail className="size-7" aria-hidden />
         </span>
-        <h1 className="text-[1.75rem] leading-[2.125rem] font-bold tracking-[-0.02em]">
-          Wisemail
-        </h1>
+        <h1 className="text-[1.75rem] leading-[2.125rem] font-bold tracking-[-0.02em]">Wisemail</h1>
         <p className="max-w-[34ch] text-ink-muted">
           Wiser insights and more control over your emails.
         </p>

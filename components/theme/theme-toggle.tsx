@@ -43,9 +43,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             onClick={() => setTheme(value)}
             className={cn(
               "inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-medium transition-colors duration-150 ease-soft",
-              selected
-                ? "bg-surface text-ink shadow-sm"
-                : "text-ink-muted hover:text-ink",
+              selected ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink",
             )}
           >
             <Icon className="size-3.5" aria-hidden />
