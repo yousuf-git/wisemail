@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: false
+  mongodb-memory-server: false
+  protobufjs: false
+  sharp: false
+  unrs-resolver: false
