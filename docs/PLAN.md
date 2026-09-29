@@ -65,9 +65,12 @@ Backend (services, jobs, storage; no UI yet):
 - [x] `GET /api/files/[attachmentId]` (session + org + role + project scope, 302 to a 5-minute presigned URL, small Free-plan files streamed)
 - [x] Tests (threading, sanitizing, ranking, idempotency, tombstones, fetch-inbound end to end, sending, files route, project scope) and `pnpm mail:check`
 UI (next agent):
-- [ ] Composer (TipTap rich, CodeMirror HTML, template mode, sandboxed preview, scheduling, attachments via presigned upload)
-- [ ] Inbox (threads, read state, replies, read receipts), Activity log + email timeline, Scheduled, Sent
-- [ ] Senders management UI
+- [x] Composer (`components/composer`, `/[org]/compose`): TipTap rich, CodeMirror HTML (lazy), sandboxed preview (`allow-popups` only, CSP meta, no-referrer, desktop/mobile + light/dark), address pills with validation, sender picker with inactive reasons, schedule in org timezone with quick picks, presigned attachment uploads with progress and drag-drop, debounced autosave with conflict reload, Ctrl/Cmd+Enter, Undo for scheduled sends; Template mode disabled ("coming soon": `sendEmailInput` has no template support yet)
+- [x] Inbox (`components/inbox`, `/[org]/inbox/[[...threadId]]`): folders Inbox/Sent/Trash (Scheduled links to its page), debounced search, unread filter, infinite scroll (TanStack `useInfiniteQuery` over `/api/v1/threads`, first page from the Server Component), two panes with single-pane mobile, thread view with collapsed older messages, sanitized HTML in an `allow-popups`-only iframe (fixed height estimated from the HTML with internal scroll and an Expand toggle, since a script-less cross-origin frame cannot report its height), plain-text fallback, attachment chips and image thumbnails with lightbox, receipt steps (Sent · Delivered · Opened Xm ago) from the timeline, mark read on open / unread, Trash with 5 s Undo, inline reply through `Composer variant="inline"`, keys j/k/e/#/r/u/`/`
+- [x] Activity (`/[org]/activity`, `/[org]/activity/[emailId]`): filters (status, direction, connection, domain, date range, search; an address is a recipient lookup) kept in the URL, status chips, email detail with header facts, ordered timeline (relative + absolute times) and raw payloads
+- [x] Scheduled (`/[org]/scheduled`): list with time and countdown, reschedule and cancel through the sending service (disabled once the send time has passed)
+- [x] `/api/v1/threads`, `/api/v1/threads/[id]`, `/api/v1/activity`, `/api/v1/activity/[id]`: session-authenticated (`?orgSlug=` resolved through the DAL: 401 no session, 404 non-member), Zod-validated query, keyset cursor, `Cache-Control: private, no-store`
+- [x] Senders management UI (`components/senders`, `/[org]/settings/senders`): grouped by domain, status chips + reasons, create/edit/default/turn off/delete, empty state pointing to Connections
 
 ## Phase 5 — Live, insights, alerts
 - [ ] Realtime: `realtime_events` change stream → SSE `/api/stream` → `useLiveQuery`
@@ -93,6 +96,8 @@ UI (next agent):
 ---
 
 ## Log
+
+- 2026-09-29 — Phase 4 done (404 tests). Follow-ups: breadcrumb shows raw thread/email id; thread rows show sender address instead of display name; template mode and "send test to me" not built; trashed threads can't be previewed; email backfill stage in sync still empty; attachments limited by size only; lists poll until Phase 5 realtime.
 
 - 2026-09-29 — Phase 4 backend landed (mail core services, no UI). Decisions: emails get an `mw_email` tag so webhooks find app-sent emails before Resend's id is stored (an id-less stub is folded into our document if an event still wins the race); Message-ID of our own sends comes from Resend (the `email.sent` event's `message_id`, the fake reports it at send) since we do not send our own `Message-ID` header; scheduled sends use Resend's native `scheduled_at` (the `send-email` job runs at once), so the sendability re-check runs when the job runs, not at fire time; `process-event` is exactly-once because the claim, upsert, rollups and realtime event share one transaction; `processedAt` claim + `ignoredReason` on webhook events; rollups keep `hour` and `day` buckets for `dimension all` and `stream`; `replied` is counted when an inbound message threads by Message-ID into a conversation with an outbound reply; storage mode follows the plan (Free: files stay at Resend; Pro and up and trial: R2). Follow-ups: sync backfill of sent/received emails (emails stage hook in `sync.ts`), permanent delete + `deletion_tombstones` writes + `purge-trash`/`retention` jobs (Phase 7), notifications and alert rules in `process-event` (Phase 5), metering into `usage_periods` (Phase 7), labels/assignee/star/archive actions, block_sender rules, `backfill-storage` on upgrade, R2 presign verified only offline (needs a live bucket check).
 
