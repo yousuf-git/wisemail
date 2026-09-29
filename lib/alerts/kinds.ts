@@ -77,7 +77,8 @@ export const ALERT_KIND_INFO: Record<AlertKind, KindInfo> = {
   },
   domain_status: {
     label: "Domain verification failed",
-    blurb: "Resend reports a domain as failed or temporarily failing.",
+    blurb:
+      "A domain failed verification in Resend, or its SPF or DKIM records disappeared from DNS.",
     scopes: ["connections", "domains", "projects"],
     defaults: { threshold: 0, windowMinutes: 0, minVolume: 0 },
     unit: null,

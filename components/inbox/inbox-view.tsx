@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { EmptyState } from "@/components/app/empty-state";
 import type { SenderOptionDTO } from "@/components/composer/composer";
 import { Button } from "@/components/ui/button";
@@ -208,10 +209,14 @@ export function InboxView({
   );
 
   const showThread = !!selectedId && folder !== "trash";
+  const selectedRow = selectedId ? rows.find((r) => r.threadId === selectedId) : undefined;
 
   return (
     <div className="flex flex-col gap-3.5">
       <h1 className="sr-only">Inbox</h1>
+      {selectedId && selectedRow ? (
+        <BreadcrumbLabel segment={selectedId} label={selectedRow.subject || "(no subject)"} />
+      ) : null}
       <div className="flex h-[calc(100dvh-7.75rem)] min-h-[520px] overflow-hidden rounded-xl bg-surface shadow-md">
         <div
           className={cn(

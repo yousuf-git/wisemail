@@ -316,27 +316,52 @@ async function evaluateConnectionStatus(rule: RuleLike): Promise<Finding[]> {
   }));
 }
 
+/** DNS check verdicts that count as drift (`unknown` never does: a failed lookup is not evidence). */
+const BROKEN_DNS = ["fail", "missing"] as const;
+
 async function evaluateDomainStatus(rule: RuleLike): Promise<Finding[]> {
   const s = rule.scope ?? {};
-  const domains = await DomainModel.find({
+  const scope = {
     orgId: rule.orgId,
-    status: { $in: [...FAILING_DOMAIN_STATUSES] },
     ...(s.domainIds?.length ? { _id: { $in: s.domainIds } } : {}),
     ...(s.connectionIds?.length ? { connectionId: { $in: s.connectionIds } } : {}),
     ...(s.projectIds?.length ? { projectId: { $in: s.projectIds } } : {}),
+  };
+  // Verification failed in Resend, or DNS drift: Resend still says verified but our own DNS
+  // check (Phase 6) no longer finds the SPF or DKIM records.
+  const domains = await DomainModel.find({
+    ...scope,
+    $or: [
+      { status: { $in: [...FAILING_DOMAIN_STATUSES] } },
+      {
+        status: { $in: ["verified", "partially_verified"] },
+        $or: [
+          { "dnsCheck.spf": { $in: [...BROKEN_DNS] } },
+          { "dnsCheck.dkim": { $in: [...BROKEN_DNS] } },
+        ],
+      },
+    ],
   }).lean();
-  return domains.map((d) => ({
-    subject: `domain:${d._id}`,
-    title: `${d.name} failed verification`,
-    summary: `Resend reports ${d.name} as ${d.status.replace(/_/g, " ")}. Check its DNS records so email keeps flowing.`,
-    observed: 1,
-    projectId: d.projectId ?? null,
-    context: {
-      connectionId: String(d.connectionId),
-      domainId: String(d._id),
-      domainName: d.name,
-    },
-  }));
+  return domains.map((d) => {
+    const failed = (FAILING_DOMAIN_STATUSES as readonly string[]).includes(d.status);
+    const broken = (["spf", "dkim"] as const)
+      .filter((k) => (BROKEN_DNS as readonly string[]).includes(d.dnsCheck?.[k] ?? ""))
+      .map((k) => k.toUpperCase());
+    return {
+      subject: `domain:${d._id}`,
+      title: failed ? `${d.name} failed verification` : `${d.name} lost DNS records`,
+      summary: failed
+        ? `Resend reports ${d.name} as ${d.status.replace(/_/g, " ")}. Check its DNS records so email keeps flowing.`
+        : `${broken.join(" and ")} for ${d.name} ${broken.length > 1 ? "are" : "is"} no longer found in DNS, although Resend still shows the domain as verified. Restore the records so email keeps flowing.`,
+      observed: 1,
+      projectId: d.projectId ?? null,
+      context: {
+        connectionId: String(d.connectionId),
+        domainId: String(d._id),
+        domainName: d.name,
+      },
+    };
+  });
 }
 
 export async function evaluateRule(rule: RuleLike, now: Date): Promise<Finding[]> {

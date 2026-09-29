@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MailOpen, Reply } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { TrashIcon } from "@/components/icons/animated";
 import type { SenderOptionDTO } from "@/components/composer/composer";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,7 @@ export function ThreadView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="thread-view">
+      <BreadcrumbLabel segment={threadId} label={thread.subject || "(no subject)"} />
       <div className="grid gap-2 border-b border-line px-4 py-3">
         {toolbar}
         <h2 className="text-base font-bold tracking-[-0.01em] [text-wrap:balance]">

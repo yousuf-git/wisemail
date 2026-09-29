@@ -49,6 +49,29 @@ export type StreamOptions = {
 
 const encoder = new TextEncoder();
 
+/**
+ * True for the errors a client hanging up produces ("The destination stream closed early",
+ * Node's premature close, aborted fetches, reset sockets). They are routine for a long-lived
+ * stream (tab closed, navigation, network change) and must never reach the error log.
+ */
+export function isClientDisconnect(error: unknown): boolean {
+  if (!error) return false;
+  const e = error as { name?: string; code?: string; message?: string };
+  if (e.name === "AbortError" || e.name === "ResponseAborted") return true;
+  if (
+    e.code === "ERR_STREAM_PREMATURE_CLOSE" ||
+    e.code === "ECONNRESET" ||
+    e.code === "ERR_STREAM_DESTROYED" ||
+    e.code === "ERR_INVALID_STATE" ||
+    e.code === "EPIPE"
+  ) {
+    return true;
+  }
+  return /closed early|premature close|stream (is )?(closed|destroyed)|aborted|socket hang up|invalid state/i.test(
+    e.message ?? "",
+  );
+}
+
 export function frame(event: HubEvent): string {
   const data = JSON.stringify({ topics: event.topics, patch: event.patch });
   return `id: ${event.id}\nevent: invalidate\ndata: ${data}\n\n`;
@@ -147,7 +170,9 @@ export async function openEventStream(options: StreamOptions): Promise<ReadableS
         try {
           unsubscribe = await hub.subscribe(sub);
         } catch (error) {
-          console.error("[realtime] hub unavailable", error);
+          if (!closed && !isClientDisconnect(error)) {
+            console.error("[realtime] hub unavailable", error);
+          }
           write(simple("resync"));
           return cleanup();
         }
@@ -190,7 +215,9 @@ export async function openEventStream(options: StreamOptions): Promise<ReadableS
             ),
           );
         } catch (error) {
-          console.error("[realtime] replay failed", error);
+          // A client that left mid-replay is not a failure: nobody is waiting for the frames.
+          if (!closed && !isClientDisconnect(error))
+            console.error("[realtime] replay failed", error);
           write(simple("resync"));
         }
 
@@ -202,7 +229,8 @@ export async function openEventStream(options: StreamOptions): Promise<ReadableS
         // Spread reconnects so a deploy does not make every client return at the same second.
         deadline = setTimeout(cleanup, maxDurationMs - Math.floor(Math.random() * 10_000));
       },
-      cancel: cleanup,
+      // The reader went away (client disconnect, with whatever reason the platform gives): quiet.
+      cancel: () => cleanup(),
     },
     { highWaterMark: 32 },
   );

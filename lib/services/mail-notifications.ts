@@ -148,7 +148,7 @@ export async function notifyDomainChanged(
       body: failing
         ? "Resend flagged a problem. Check the domain's DNS records so email keeps flowing."
         : "",
-      link: `/${slug}/settings/connections/${input.connectionId}`,
+      link: input.status === "deleted" ? `/${slug}/domains` : `/${slug}/domains/${input.domainId}`,
       refs: { connectionId: input.connectionId, domainId: input.domainId },
       projectId: input.projectId,
       audience: { permission: "domain:update" },

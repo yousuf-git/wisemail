@@ -304,6 +304,93 @@ describe("event stream", () => {
   });
 });
 
+describe("client disconnect", () => {
+  it("treats the platform's disconnect errors as routine", () => {
+    const is = streamMod.isClientDisconnect;
+    expect(is(new Error("The destination stream closed early."))).toBe(true);
+    expect(is(new Error("Premature close"))).toBe(true);
+    expect(is(Object.assign(new Error("x"), { code: "ECONNRESET" }))).toBe(true);
+    expect(is(Object.assign(new Error("x"), { name: "AbortError" }))).toBe(true);
+    expect(is(new Error("Invalid state: Controller is already closed"))).toBe(true);
+    expect(is(new Error("connect ECONNREFUSED mongodb"))).toBe(false);
+    expect(is(null)).toBe(false);
+  });
+
+  it("cancelling the reader with a 'closed early' reason unsubscribes without logging", async () => {
+    const hub = new hubMod.RealtimeHub({ mode: "poll", pollMs: 50, idleCloseMs: 0 });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const body = await streamMod.openEventStream({
+        orgId: hex(id()),
+        userId: hex(id()),
+        projectScope: null,
+        hub,
+      });
+      expect(hub.size).toBe(1);
+      const reader = body.getReader();
+      await reader.read();
+      await reader.cancel(new Error("The destination stream closed early."));
+      await eventually(() => expect(hub.size).toBe(0));
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+      await hub.stop();
+    }
+  });
+
+  it("a client that leaves while events are still being published causes no error output", async () => {
+    const hub = new hubMod.RealtimeHub({ mode: "poll", pollMs: 20, idleCloseMs: 0 });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const org = id();
+      const controller = new AbortController();
+      const body = await streamMod.openEventStream({
+        orgId: hex(org),
+        userId: hex(id()),
+        projectScope: null,
+        signal: controller.signal,
+        heartbeatMs: 10,
+        hub,
+      });
+      const reader = body.getReader();
+      await reader.read();
+      for (let i = 0; i < 5; i++) await publishMod.publish({ orgId: org, topics: [`t${i}`] });
+      controller.abort();
+      await reader.cancel(new Error("The destination stream closed early.")).catch(() => undefined);
+      for (let i = 0; i < 5; i++) await publishMod.publish({ orgId: org, topics: [`late${i}`] });
+      await new Promise((r) => setTimeout(r, 150));
+      expect(hub.size).toBe(0);
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+      await hub.stop();
+    }
+  });
+
+  it("the route answers an already-aborted request with an empty 499 and no log", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      dal.resolve = () => ({
+        status: "ok",
+        ctx: {
+          user: { id: hex(id()), name: "A", email: "a@x.com", image: null },
+          org: { id: hex(id()), name: "Org", slug: "acme" },
+          projectScope: null,
+        },
+      });
+      const controller = new AbortController();
+      controller.abort();
+      const response = await route.GET(
+        new Request("http://localhost/api/stream?orgSlug=acme", { signal: controller.signal }),
+      );
+      expect(response.status).toBe(499);
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+    }
+  });
+});
+
 describe("GET /api/stream", () => {
   const request = (query: string, headers: Record<string, string> = {}) =>
     new Request(`http://localhost/api/stream${query}`, { headers });

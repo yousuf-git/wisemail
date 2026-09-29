@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { ConnectionDetailView } from "@/components/connections/connection-detail-view";
 import { requireOrg } from "@/lib/dal";
 import { getConnectionDetail } from "@/lib/services/connection-detail";
@@ -20,13 +21,16 @@ export default async function ConnectionPage({
   if (!connection) notFound();
 
   return (
-    <ConnectionDetailView
-      orgSlug={orgSlug}
-      connection={connection}
-      can={{
-        update: ctx.can("connection:update"),
-        domainUpdate: ctx.can("domain:update"),
-      }}
-    />
+    <>
+      <BreadcrumbLabel segment={connectionId} label={connection.name} />
+      <ConnectionDetailView
+        orgSlug={orgSlug}
+        connection={connection}
+        can={{
+          update: ctx.can("connection:update"),
+          domainUpdate: ctx.can("domain:update"),
+        }}
+      />
+    </>
   );
 }

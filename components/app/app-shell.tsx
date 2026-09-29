@@ -1,3 +1,4 @@
+import { BreadcrumbProvider } from "./breadcrumb-label";
 import { Dock } from "./dock";
 import { MotionProvider } from "./motion-provider";
 import { Topbar } from "./topbar";
@@ -31,6 +32,7 @@ export function AppShell({
   const dockProps = { org, orgs, user, role, usage };
   return (
     <MotionProvider>
+      <BreadcrumbProvider>
       <div className="min-h-dvh bg-canvas">
         <a
           href="#main"
@@ -63,6 +65,7 @@ export function AppShell({
           </div>
         </div>
       </div>
+      </BreadcrumbProvider>
     </MotionProvider>
   );
 }
