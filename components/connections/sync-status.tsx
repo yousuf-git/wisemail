@@ -2,16 +2,18 @@
 
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useTransition } from "react";
+import { startTransition, useEffect, useTransition } from "react";
 import { toast } from "sonner";
 
 import { syncNowAction } from "@/app/(app)/[orgSlug]/settings/connections/actions";
 import { Button } from "@/components/ui/button";
 import type { SyncStatusDTO } from "@/lib/dto/sync";
+import { useLiveStatus, useLiveTopics } from "@/lib/realtime/live-context";
+import { topics } from "@/lib/realtime/topics";
 import { timeAgo } from "./status";
 
-/** How often the page re-reads a running sync until live updates arrive (Phase 5). */
-const POLL_MS = 2500;
+/** Re-read of a running sync while the live stream is down; live events do the rest. */
+const POLL_MS = 3000;
 
 export function SyncStatus({
   orgSlug,
@@ -31,11 +33,14 @@ export function SyncStatus({
   const running = sync?.state === "running";
   const failed = sync?.state === "failed";
 
+  useLiveTopics([topics.connection(connectionId)], () => startTransition(() => router.refresh()));
+  const live = useLiveStatus() === "live";
   useEffect(() => {
     if (!running) return;
-    const id = setInterval(() => router.refresh(), POLL_MS);
+    // Slow safety net while live (a missed event heals), faster poll when the stream is down.
+    const id = setInterval(() => router.refresh(), live ? 15_000 : POLL_MS);
     return () => clearInterval(id);
-  }, [running, router]);
+  }, [running, live, router]);
 
   function requestSync() {
     start(async () => {

@@ -1,12 +1,13 @@
 "use client";
 
-import { Clock, Copy, FolderKanban, MoreHorizontal, X } from "lucide-react";
+import { Clock, FolderKanban, MoreHorizontal, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
   cancelInvitationAction,
+  resendInvitationAction,
   changeMemberRoleAction,
 } from "@/app/(app)/[orgSlug]/settings/members/actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -99,7 +100,8 @@ export function MembersView({
             Pending invitations
           </h2>
           <p className="text-[0.8125rem] text-ink-muted">
-            Invitation emails aren&apos;t sent yet. Copy the link and share it with the invitee.
+            Invitees get an email with a single-use link. Links can&apos;t be shown again, so use
+            Resend to send a new one.
           </p>
           <ul className="grid gap-2.5" aria-label="Pending invitations">
             {invitations.map((invite) => (
@@ -304,12 +306,20 @@ function InvitationRow({
       <Button
         variant="outline"
         size="sm"
-        onClick={async () => {
-          if (await copyText(invite.link)) toast.success("Invite link copied");
-          else toast.error("Couldn't copy the link.");
-        }}
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await resendInvitationAction(orgSlug, { invitationId: invite.id });
+            if (!result.ok) toast.error(result.error.message);
+            else if (result.data.emailSent) toast.success(`Invitation sent to ${invite.email}`);
+            else if (result.data.link && (await copyText(result.data.link))) {
+              toast.warning("We couldn't send the email. The new link is copied.");
+            } else toast.error("We couldn't send the email.");
+            router.refresh();
+          })
+        }
       >
-        <Copy aria-hidden /> Copy link
+        <Send aria-hidden /> Resend
       </Button>
       <Button
         variant="ghost"

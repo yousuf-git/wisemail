@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { OverviewContent } from "@/components/app/overview";
 import { wiziMoods } from "@/components/mascot/moods";
 import { Wizi } from "@/components/mascot/wizi";
-import type { Overview } from "@/components/app/overview-data";
+import type { Overview } from "@/components/app/overview-model";
 
 /** Dev-only visual harness for the app shell with mock data. Not available in production. */
 
@@ -12,6 +12,7 @@ const demo: Overview = {
   hasConnection: true,
   hasData: true,
   periodLabel: "Last 7 days",
+  summary: "In the last 7 days: 12,480 emails sent, 98.6% delivered. Nothing needs your attention.",
   kpis: [
     {
       key: "sent",
@@ -52,6 +53,7 @@ const empty: Overview = {
   hasConnection: false,
   hasData: false,
   periodLabel: "Last 7 days",
+  summary: "Nothing to report yet. Let's connect your first Resend account and I'll keep watch.",
   kpis: demo.kpis.map((k) => ({ ...k, value: 0, delta: null, series: [] })),
 };
 

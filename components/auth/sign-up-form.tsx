@@ -2,11 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { FormAlert } from "@/components/auth/auth-shell";
+import { VerifyNotice } from "@/components/auth/verify-notice";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,9 +21,9 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
 import { safeNext, signUpSchema, type SignUpInput } from "@/lib/validation/auth";
 
-export function SignUpForm({ next }: { next?: string }) {
-  const router = useRouter();
+export function SignUpForm({ next, devOutbox }: { next?: string; devOutbox?: boolean }) {
   const [formError, setFormError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const form = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
     defaultValues: { name: "", email: "", password: "" },
@@ -31,7 +31,8 @@ export function SignUpForm({ next }: { next?: string }) {
 
   async function onSubmit(values: SignUpInput) {
     setFormError(null);
-    const { error } = await authClient.signUp.email(values);
+    // The confirmation link signs the person in and lands on `callbackURL`.
+    const { error } = await authClient.signUp.email({ ...values, callbackURL: safeNext(next) });
     if (error) {
       if (error.status === 429) {
         setFormError("Too many tries. Give it a minute and try again.");
@@ -42,8 +43,19 @@ export function SignUpForm({ next }: { next?: string }) {
       }
       return;
     }
-    router.replace(safeNext(next));
-    router.refresh();
+    // Same screen whether or not the address already had an account (no account enumeration).
+    setSentTo(values.email);
+  }
+
+  if (sentTo) {
+    return (
+      <VerifyNotice
+        email={sentTo}
+        callbackURL={safeNext(next)}
+        devOutbox={devOutbox}
+        onBack={() => setSentTo(null)}
+      />
+    );
   }
 
   return (

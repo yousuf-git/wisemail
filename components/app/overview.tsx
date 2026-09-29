@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Greeting } from "./greeting";
 import { KpiCard, type KpiTone } from "./kpi-card";
-import type { Overview } from "./overview-data";
+import type { Overview } from "./overview-model";
 
 const tones: Record<string, KpiTone> = {
   sent: "accent",
@@ -39,11 +39,7 @@ export function OverviewContent({
 }) {
   return (
     <>
-      <Greeting name={userName}>
-        {overview.hasConnection
-          ? "Here is how your email is doing."
-          : "Nothing to report yet. Let's connect your first Resend account and I'll keep watch."}
-      </Greeting>
+      <Greeting name={userName}>{overview.summary}</Greeting>
 
       <section aria-label={`Email health, ${overview.periodLabel.toLowerCase()}`}>
         <ul className="grid grid-cols-2 gap-3 min-[1000px]:grid-cols-4">

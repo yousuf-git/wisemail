@@ -3,6 +3,8 @@
 import { Plug } from "lucide-react";
 
 import { EmptyState } from "@/components/app/empty-state";
+import { LiveRefresh } from "@/components/app/live-refresh";
+import { topics } from "@/lib/realtime/topics";
 import type { ConnectionDTO, ConnectionQuota } from "@/lib/dto/connection";
 import { AddConnectionDialog } from "./add-connection-dialog";
 import { ConnectionCard } from "./connection-card";
@@ -33,6 +35,7 @@ export function ConnectionsView({
 
   return (
     <div className="grid gap-4">
+      <LiveRefresh topics={[topics.connections()]} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted" data-testid="connection-quota">
           {quota.used} of {quota.limit} Resend {quota.limit === 1 ? "account" : "accounts"} on{" "}

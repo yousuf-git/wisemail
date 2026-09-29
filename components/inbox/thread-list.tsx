@@ -2,7 +2,7 @@
 
 import { Search, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,46 @@ import type { MailFolder, MailListRowDTO } from "@/lib/dto/mail";
 import { cn } from "@/lib/utils";
 import { FOLDERS, inboxHref } from "./routes";
 import { ThreadRow } from "./thread-row";
+
+const ARRIVAL_MS = 1300;
+/** More than this many changed rows at once is a bulk refresh (resync), not an arrival. */
+const MAX_ARRIVALS = 5;
+
+const stamp = (row: MailListRowDTO) => `${row.kind}-${row.id}:${row.lastMessageAt}`;
+
+/**
+ * Keys of rows that just arrived or moved to the top after a live refetch. Rows present on
+ * first render, rows appended by pagination and folder/search changes never count.
+ */
+function useArrivals(rows: MailListRowDTO[], scope: string, loading: boolean): Set<string> {
+  const previous = useRef<{ scope: string; stamps: string[] } | null>(null);
+  const [arrived, setArrived] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (loading) {
+      previous.current = null; // a fresh load (folder or search change) is not an arrival
+      return;
+    }
+    const before = previous.current;
+    const stamps = rows.map(stamp);
+    previous.current = { scope, stamps };
+    if (!before || before.scope !== scope) return;
+    const known = new Set(before.stamps);
+    // New or bumped rows sit above every row we already knew; appended pages sit below.
+    const firstKnown = stamps.findIndex((st) => known.has(st));
+    const limit = firstKnown === -1 ? (before.stamps.length === 0 ? rows.length : 0) : firstKnown;
+    const fresh = rows.slice(0, limit);
+    if (fresh.length === 0 || fresh.length > MAX_ARRIVALS) return;
+    const keys = fresh.map((row) => `${row.kind}-${row.id}`);
+    setArrived((current) => new Set([...current, ...keys]));
+    setTimeout(
+      () => setArrived((current) => new Set([...current].filter((k) => !keys.includes(k)))),
+      ARRIVAL_MS,
+    );
+  }, [rows, scope, loading]);
+
+  return arrived;
+}
 
 export function ThreadList({
   orgSlug,
@@ -51,6 +91,7 @@ export function ThreadList({
   empty: React.ReactNode;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
+  const arrivals = useArrivals(rows, `${folder}|${query}|${unreadOnly}`, loading);
 
   // Infinite scroll: load the next page when the sentinel nears the bottom of the list.
   useEffect(() => {
@@ -161,6 +202,7 @@ export function ThreadList({
                   selected={!!row.threadId && row.threadId === selectedId}
                   onSelect={onSelect}
                   onRestore={onRestore}
+                  arrived={arrivals.has(`${row.kind}-${row.id}`)}
                 />
               ))}
             </ul>

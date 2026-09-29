@@ -444,10 +444,10 @@ Unique: (`orgId`, `granularity`, `bucketStart`, `connectionId`, `domainId`, `dim
 | Field | Type | Notes |
 |---|---|---|
 | name | string | R |
-| kind | enum `bounce_rate \| complaint_rate \| complaint_any \| delivery_delay_rate \| volume_drop \| connection_silent \| domain_status \| custom_metric` | R |
+| kind | enum `bounce_rate \| complaint_rate \| complaint_any \| delivery_delay_rate \| connection_silent \| domain_status \| connection_status` (`volume_drop`, `custom_metric` are planned) | R |
 | scope | `{ connectionIds?: ObjectId[], projectIds?: ObjectId[], domainIds?: ObjectId[] }` | Empty = whole org |
 | condition | `{ metric?: string, operator: 'gt' \| 'lt', threshold: number, windowMinutes: number, minVolume?: number }` | `minVolume` avoids firing on tiny samples |
-| channels | `{ inApp: boolean, email: string[], slackWebhook?: EncryptedValue, discordWebhook?: EncryptedValue }` | |
+| channels | `{ inApp: boolean, emailMembers: boolean, email: string[], slackWebhook?: EncryptedValue, discordWebhook?: EncryptedValue }` | `emailMembers`: email teammates per their own preferences; `email`: extra addresses (Slack/Discord Pro+, planned) |
 | enabled | boolean | R |
 | createdBy | ObjectId → `user` | |
 
@@ -456,7 +456,7 @@ Unique: (`orgId`, `granularity`, `bucketStart`, `connectionId`, `domainId`, `dim
 | Field | Type | Notes |
 |---|---|---|
 | ruleId | ObjectId → `alert_rules` | R |
-| dedupKey | string | R, U (`orgId`, `dedupKey`) for open incidents |
+| dedupKey | string | R, U (`orgId`, `dedupKey`) for active incidents (`active: true`, a partial unique index): `<ruleId>:<subject>` |
 | status | enum `open \| resolved \| acknowledged` | R, I |
 | openedAt, resolvedAt, acknowledgedAt | Date | |
 | acknowledgedBy | ObjectId → `user` | |
@@ -474,6 +474,7 @@ Unique: (`orgId`, `granularity`, `bucketStart`, `connectionId`, `domainId`, `dim
 | body | string | |
 | link | string | R, in-app path |
 | refs | `{ emailId?, threadId?, incidentId?, connectionId?, domainId? }` (ObjectIds) | |
+| dedupKey, inApp, emailPending, emailedAt, emailSkipped | | Fan-out idempotency; the email channel outbox (`inApp: false` rows are email-only and hidden from the feed) |
 | readAt | Date \| null | |
 | expireAt | Date | TTL 90 days |
 

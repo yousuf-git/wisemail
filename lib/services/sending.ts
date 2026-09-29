@@ -37,6 +37,7 @@ import { markDomainRejected, recomputeSenderStatuses } from "./senders";
 import { requestSync, shouldRunInline } from "./sync";
 import { attachMessageToThread, recomputeThreadCache } from "./threads";
 import { keyAad } from "./webhook-secret";
+import { notifyConnectionAttention } from "./mail-notifications";
 
 /**
  * Sending (TRD §2.5). `sendEmail` validates and authorizes, creates the `emails` document
@@ -496,10 +497,18 @@ export async function deliverEmail(
         );
       }
       case "resend_unauthorized": {
-        await ConnectionModel.updateOne(
+        const flipped = await ConnectionModel.updateOne(
           { _id: connection._id, orgId, status: "active" },
           { $set: { status: "needs_attention", statusReason: "key_revoked" } },
         );
+        if (flipped.modifiedCount > 0) {
+          await notifyConnectionAttention({
+            orgId,
+            connectionId: connection._id,
+            name: connection.name,
+            reason: "key_revoked",
+          });
+        }
         await recomputeSenderStatuses(orgId, { connectionId: connection._id });
         await markFailed(email, "connection_inactive", error.message);
         throw new ServiceError("connection_inactive", "Resend rejected this connection's API key.");

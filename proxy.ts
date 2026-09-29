@@ -5,7 +5,14 @@ import { NextResponse, type NextRequest } from "next/server";
  * Optimistic redirects only: this checks that a session cookie *exists*, never that it is valid
  * (no database access). Real checks happen in the Data Access Layer (`lib/dal.ts`).
  */
-const PUBLIC_EXACT = new Set(["/", "/pricing", "/sign-out"]);
+const PUBLIC_EXACT = new Set([
+  "/",
+  "/pricing",
+  "/sign-out",
+  "/forgot-password",
+  "/reset-password",
+  "/dev/outbox", // 404s in production
+]);
 const PUBLIC_PREFIXES = ["/invite/"];
 const AUTH_PAGES = new Set(["/sign-in", "/sign-up"]);
 

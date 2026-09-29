@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import {
+  alertsEvaluateRequested,
   connectionSyncRequested,
   inboundFetchRequested,
   resendEventReceived,
@@ -34,6 +35,10 @@ export type JobEvent =
   | {
       name: typeof sendEmailRequested.name;
       data: z.infer<NonNullable<typeof sendEmailRequested.schema>>;
+    }
+  | {
+      name: typeof alertsEvaluateRequested.name;
+      data: z.infer<NonNullable<typeof alertsEvaluateRequested.schema>>;
     };
 
 export const sentJobs: JobEvent[] = [];
@@ -78,3 +83,7 @@ export const enqueueFetchInbound = (data: {
 
 export const enqueueSendEmail = (data: { emailId: string; orgId: string; connectionId: string }) =>
   send({ name: "email/send.requested", data });
+
+/** Ask for an alert evaluation of one org; the job is debounced per org. */
+export const enqueueAlertEvaluation = (data: { orgId: string }) =>
+  send({ name: "alerts/evaluate.requested", data });

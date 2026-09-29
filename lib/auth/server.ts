@@ -15,9 +15,19 @@ import { provisionOrganization } from "@/lib/services/org-settings";
 import { applyInvitationScope, clearMemberScope } from "@/lib/services/project-scope";
 import { getPlanLimits } from "@/lib/billing/plans";
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/system-email";
 import { ac, roles } from "./permissions";
 
 const client = getMongoClient();
+
+/** A failed system email must not fail sign-up or sign-in; the person can ask for a new one. */
+async function mailSafely(what: string, send: () => Promise<void>) {
+  try {
+    await send();
+  } catch (error) {
+    console.error(`[auth] could not send the ${what} email`, error);
+  }
+}
 
 export const auth = betterAuth({
   appName: "Wisemail",
@@ -28,9 +38,27 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    // TODO(phase 2): turn on once system email (invites, verification) is wired.
-    requireEmailVerification: false,
-    autoSignIn: true,
+    // Sign-in is refused until the address is confirmed, and sign-up does not create a session.
+    // Invitations rely on this: a verified email is the proof of who may accept one.
+    requireEmailVerification: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await mailSafely("password reset", () =>
+        sendPasswordResetEmail(user.email, { name: user.name, url }),
+      );
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60,
+    sendVerificationEmail: async ({ user, url }) => {
+      await mailSafely("verification", () =>
+        sendVerificationEmail(user.email, { name: user.name, url }),
+      );
+    },
   },
   // Endpoint rate limiting is only on for requests through /api/auth (not `auth.api` calls).
   rateLimit: { storage: "database" },
@@ -39,6 +67,9 @@ export const auth = betterAuth({
       ac,
       roles,
       creatorRole: "owner",
+      // Accepting, rejecting or reading an invitation by id needs a verified session email, even
+      // when the request skips our invite page and calls Better Auth's HTTP endpoints directly.
+      requireEmailVerificationOnInvitation: true,
       // UCD UC-02: invitations expire after 7 days.
       invitationExpiresIn: 7 * 24 * 60 * 60,
       // Plan member limit (PRICING §3), enforced when an invitation is accepted, whichever way

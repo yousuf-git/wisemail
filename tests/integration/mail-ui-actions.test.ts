@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { startTestDb, uniqueEmail } from "./helpers";
+import { signUpVerified, startTestDb, uniqueEmail } from "./helpers";
 import { loadMail, type Mail } from "./mail-helpers";
 
 const headerState = vi.hoisted(() => ({ current: new Headers() }));
@@ -39,15 +39,7 @@ type User = { id: string; headers: Headers };
 let counter = 0;
 
 async function signUp(name: string): Promise<User> {
-  const res = await auth.api.signUpEmail({
-    body: { name, email: uniqueEmail(name.toLowerCase()), password: "correct horse battery" },
-    returnHeaders: true,
-  });
-  const cookie = res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  return { id: res.response.user.id, headers: new Headers({ cookie }) };
+  return signUpVerified(auth, { name, email: uniqueEmail(name.toLowerCase()) });
 }
 
 /** A real Better Auth org with one member per role, an active connection and a verified domain. */

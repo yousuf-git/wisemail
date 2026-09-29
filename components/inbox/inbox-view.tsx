@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Inbox as InboxGlyph } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,9 @@ import { EmptyState } from "@/components/app/empty-state";
 import type { SenderOptionDTO } from "@/components/composer/composer";
 import { Button } from "@/components/ui/button";
 import type { MailFolder, MailListRowDTO, Page, ThreadDetailDTO } from "@/lib/dto/mail";
+import { useLiveTopics } from "@/lib/realtime/live-context";
+import { useLiveFallbackInterval } from "@/lib/realtime/use-live-query";
+import { topics } from "@/lib/realtime/topics";
 import { cn } from "@/lib/utils";
 import { fetchThreadList, threadListKey, type ThreadListParams } from "./api";
 import { inboxHref, parseInboxSegments } from "./routes";
@@ -107,7 +110,11 @@ export function InboxView({
           string | null
         >)
       : undefined,
-    refetchInterval: 30_000,
+    refetchInterval: useLiveFallbackInterval(),
+  });
+  const queryClient = useQueryClient();
+  useLiveTopics([topics.threads()], () => {
+    void queryClient.invalidateQueries({ queryKey: ["threads", orgSlug] });
   });
   const rows = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
 

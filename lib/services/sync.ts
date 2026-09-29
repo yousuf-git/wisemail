@@ -37,6 +37,7 @@ import { recomputeSenderStatuses } from "./senders";
 import { recomputeChecklist } from "./checklist";
 import { ServiceError } from "./errors";
 import { keyAad } from "./webhook-secret";
+import { notifyConnectionAttention } from "./mail-notifications";
 
 /**
  * `sync-connection` (TRD §2.2 step 4, §2.3). One sync is a `sync_runs` document with a checkpoint
@@ -841,10 +842,18 @@ export async function syncNextPage(
     if (error.code === "resend_unknown") throw error; // 5xx or network: retry
     const message = plainError(error, stage.key);
     if (error.code === "resend_unauthorized") {
-      await ConnectionModel.updateOne(
+      const flipped = await ConnectionModel.updateOne(
         { _id: connection._id, orgId: connection.orgId, status: "active" },
         { $set: { status: "needs_attention", statusReason: "key_revoked" } },
       );
+      if (flipped.modifiedCount > 0) {
+        await notifyConnectionAttention({
+          orgId: connection.orgId,
+          connectionId: connection._id,
+          name: connection.name,
+          reason: "key_revoked",
+        });
+      }
       await recomputeSenderStatuses(connection.orgId, { connectionId: connection._id });
     }
     await failSyncRun(runId, message, stage.key);

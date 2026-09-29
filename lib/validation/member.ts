@@ -21,7 +21,8 @@ export type RemoveMemberInput = z.infer<typeof removeMemberSchema>;
 export const cancelInvitationSchema = z.object({ invitationId: idSchema });
 export type CancelInvitationInput = z.infer<typeof cancelInvitationSchema>;
 
-export const acceptInvitationSchema = z.object({ invitationId: idSchema });
+/** The random token from the `/invite/<token>` link (not an invitation id). */
+export const acceptInvitationSchema = z.object({ token: z.string().min(1).max(200) });
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
 
 export const ROLE_LABELS: Record<(typeof ROLES)[number], string> = {

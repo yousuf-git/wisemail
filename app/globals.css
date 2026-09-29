@@ -289,3 +289,31 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Live arrival (FED §9): a new row slides in 8px and its background fades from accent-soft. */
+@keyframes live-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes live-highlight {
+  from {
+    background-color: var(--accent-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.live-arrive {
+  border-radius: 14px;
+  animation:
+    live-slide 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    live-highlight 1.2s ease-out;
+}
