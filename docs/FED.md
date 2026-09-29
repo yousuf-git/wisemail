@@ -162,6 +162,13 @@ Headings use `text-wrap: balance`; reading text is capped at 68ch (thread view, 
 - **Toasts:** bottom-center, surface, short verb-first copy ("Email scheduled for 9:00").
 - **Dialogs:** destructive confirmations require typing the resource name for connections and domains.
 - **Code/DNS values:** mono on `--canvas-sunken`, copy button on hover.
+- **Message body:** embedded images render in place at their natural size, capped to the message width; while loading they hold their space with a warm skeleton so text doesn't jump. A missing embedded image shows a small "Image unavailable" placeholder.
+- **Attachment chips:** below each message, a wrapping row of `lg`-radius chips: file-type icon (PDF, doc, sheet, archive, image, other), the **exact original filename** (middle-truncated with the full name in a tooltip, e.g. `Quarterly-rep…final.pdf`), and size in muted text. Hover lifts the chip and animates the download arrow down (§9.3). Click downloads in place: the chip shows a brief progress ring, then a check; the thread does not move. Unavailable files show the chip dimmed with "No longer available". A "Download all" link appears for 3+ files.
+- **Image attachments** (not embedded): 96 px rounded thumbnails in the same row; click opens a lightbox with the image, filename, and a Download button.
+- **Bulk selection bar:** when rows are selected, a floating `surface` bar (shadow `lg`, `xl` radius) rises from the bottom: "12 selected · Select all 4,812 matching", then Archive, Move to Trash, and (Owner/Admin in Trash) Delete permanently. Long jobs show a progress ring in the bar and can run while the user keeps working.
+- **Trash:** a mailbox at the bottom of the Inbox and Activity lists, with a muted trash icon and item count. Rows show "Deletes permanently in 12 days" in `--ink-faint`. Header actions: Restore, Delete permanently, Empty trash. Empty state: Wizi (Inbox zero pose) "Trash is empty".
+- **Delete feedback:** trashed rows collapse (height and opacity, 200 ms) and a toast "Moved to Trash · Undo" stays 5 seconds with a shrinking progress line. Restored rows slide back in with the arrival highlight.
+- **Permanent delete dialog:** `danger` icon, plain text "Deleted from Mailwise for good. Resend keeps its copy until its own retention ends.", count of items and files; bulk permanent delete asks the user to type the count. The primary button is `danger` solid ("Delete 4,812 emails").
 - **Usage meter:** horizontal bar split into three segments (transactional `accent`, broadcast `engaged`, inbound `success`) against the allowance; a dashed marker for the projected month-end total. Bar turns `warning` from 80% and `danger` past 100%, with the label "Over by 12,400 · est. $2 overage".
 - **Plan banners:** full-width, below the top bar, one at a time by priority: payment failed (`danger` soft) → over allowance (`warning` soft) → trial ending (`accent` soft). Each has one action (Update payment, View usage, Choose a plan) and can be dismissed for 24 h, except payment failed.
 - **Locked feature:** the control stays visible at normal size with a small lock icon and `--ink-faint` label; hover or click opens a popover naming the plan that includes it ("Assignment is on Pro and above") with a "See plans" button for Owners, or "Ask your Owner" for others. Never hide a gated feature entirely.
@@ -237,6 +244,9 @@ The app should feel live, the way Resend's and Groq's interfaces do: icons react
 | Settings gear | Settings | Rotates 90° |
 | Sparkles | AI actions | Sparkles twinkle |
 | Copy | Copy buttons | Two sheets separate; morphs to a check on success |
+| Download | Attachment chips | Arrow drops into the tray; morphs to a check when the download starts |
+| Trash | Delete buttons, Trash mailbox | Lid lifts and settles |
+| Undo | Undo toast | Arrow curls back |
 | Refresh | "Check again", sync | Spins one turn; keeps spinning while pending |
 | Chevron | Expanders | Rotates to open state |
 
@@ -280,9 +290,9 @@ Guided tours for new users, built with NextStepjs (see `TRD.md`) and styled to t
 
 - WCAG 2.2 AA contrast for all text in both themes (muted text checked on `--canvas` and `--surface`).
 - State is never color-only: chips carry text labels and icons.
-- Full keyboard support: inbox shortcuts (`j/k` navigate, `r` reply, `e` archive, `c` compose, `/` search, `⌘K` palette), visible 2 px accent focus ring offset from the element.
+- Full keyboard support: inbox shortcuts (`j/k` navigate, `r` reply, `e` archive, `#` move to Trash, `z` undo, `x` select, `c` compose, `/` search, `⌘K` palette), visible 2 px accent focus ring offset from the element.
 - Charts have accessible summaries ("Bounce rate 1.2%, down 0.4 points from last week").
-- Email content iframe gets a title; "Load images" and dark preview toggles are buttons with labels.
+- Email content iframe gets a title; the dark preview toggle is a labeled button. Attachment chips are buttons with accessible names ("Download Quarterly-report-final.pdf, 2.4 MB").
 
 ## 11. Tailwind v4 token sketch
 

@@ -77,15 +77,20 @@ Priority: **P0** = MVP, **P1** = v1.0, **P2** = later.
 
 ### 5.3 Inbox (P0)
 - Requires receiving enabled on the domain; the checklist guides MX setup.
-- On `email.received`, metadata is stored at once; a background job fetches the full message (raw MIME via `download_url`) and attachments, and stores them in our storage.
+- On `email.received`, metadata is stored at once; a background job fetches the full message and attachment details. **Paid plans** copy the message and its files into our storage for the plan's retention. **Free** keeps only the text and file details and serves files from Resend while Resend still has them (30 days on Resend's free plan).
 - Mail-client UI: mailboxes by project / connection / address, unread, starred, archived, labels, full-text search.
-- Sanitized HTML in a sandboxed iframe, plain-text fallback, inline (CID) images, attachment preview/download.
+- Sanitized HTML in a sandboxed iframe, plain-text fallback.
+- **Images embedded in the email body show when the message opens**, in place, not as links.
+- **Remote images load automatically.** Senders can therefore see when a message was opened; this is a deliberate product choice.
+- **Documents and other files** appear as attachment chips with the **exact original filename**, size, and file-type icon. Clicking downloads the file directly in the current tab, under its original name, without opening a new tab or leaving the thread. Images attached but not placed in the body show as thumbnails with a download button.
+- On Free, files larger than 4 MB are downloaded from Resend's servers, so the saved filename can differ; files no longer kept by Resend show "No longer available".
 - **Threads** grouped by `Message-ID` / `In-Reply-To` / `References`, with subject fallback.
 - **Reply / reply-all / forward** from any sender, with correct threading headers.
 - **Read receipts ("Seen")** on outbound messages in a thread: *Sent → Delivered → Opened (first time, count) → Clicked*, from `email.opened` / `email.clicked`. Notification: "Jane opened your reply".
 - Local read/unread state for inbound mail, per member.
 - Assignment of a thread to a member; internal notes on threads (P1).
 - Routing rules (P1): auto-label, auto-assign, auto-reply, forward to address, based on to/from/subject match.
+- **Delete:** move a thread or a single message to **Trash**, one at a time or in bulk (see §5.16).
 
 ### 5.4 Activity log (P0)
 - Every sent email with its timeline: `scheduled → sent → delivered | delivery_delayed | bounced | failed | suppressed → opened → clicked | complained`.
@@ -93,6 +98,7 @@ Priority: **P0** = MVP, **P1** = v1.0, **P2** = later.
 - **Recipient lookup:** everything sent to or received from `jane@x.com` across all accounts.
 - Raw payload viewer.
 - History outlives Resend's retention window (retention per plan; see `PRICING.md`).
+- **Delete:** remove sent emails (including those sent by the org's own apps) from the log, individually, in bulk, or by filter (see §5.16).
 
 ### 5.5 Insights (P0 core, P1 advanced)
 Micro-visualizations (sparklines, small multiples, compact bars) over giant charts.
@@ -128,6 +134,7 @@ Micro-visualizations (sparklines, small multiples, compact bars) over giant char
 - **Broadcasts:** create (HTML / rich text / template), preview, send test, schedule, send; post-send analytics from events.
 - **Templates:** list, preview with sample variables, edit, duplicate across connections.
 - **Automations (P1):** view Resend automations (trigger event → steps), enable/disable, see run outcomes from events. Visual editing is P2.
+- **Deleting** contacts, segments, topics, templates, and draft or scheduled broadcasts deletes them **in Resend as well**, after confirmation. Sent broadcasts can only be removed from Mailwise (Resend does not allow deleting them).
 
 ### 5.10 AI assist (P0 core set)
 All AI features call an **OpenAI-compatible** endpoint configured by env (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`), so switching provider means changing env only.
@@ -171,6 +178,19 @@ Implements `PRICING.md`: tiers Free / Pro $12 / Team $39 / Agency $99.
 - Saved views and filters.
 - P2: public API for our unified data; status page per project.
 
+### 5.16 Delete & cleanup (P0; cleanup rules P1)
+Resend's dashboard and API offer no way to delete sent or received emails, so mailboxes fill up with notifications, tests, and noise. Mailwise lets teams clean up their own view.
+- **What can be deleted:** inbox threads and single messages, sent emails in Activity (including those sent by the org's own apps), drafts, scheduled emails (canceled in Resend first), and notifications.
+- **Trash:** deleting moves items to Trash with a 5-second **Undo**. Trash is kept 30 days, then emptied automatically. Items in Trash can be restored.
+- **Delete permanently / Empty trash** (Owner and Admin): removes the email, its body, and its files from Mailwise for good.
+- **Deleted stays deleted:** a permanently deleted email never reappears through a later sync or a late event such as an open.
+- **Bulk:** select many, or "all matching this filter" (e.g. everything from `no-reply@github.com` older than 30 days); large selections run in the background with progress.
+- **Cleanup rules (P1):** automatic archive, trash, or delete by sender, sender domain, subject, tag, AI category, direction, and age, scoped to projects or mailboxes. Includes **Block sender**: future mail from an address or domain goes straight to Trash.
+- **Clear about Resend:** delete dialogs say "Deleted from Mailwise. Resend keeps its copy until its own retention ends", because the Resend API has no delete for emails.
+- **Numbers don't change:** deleting does not alter insights, rollups, or tracked-email usage already counted.
+- **Resend objects that can be deleted in Resend** (contacts, segments, topics, templates, draft/scheduled broadcasts, domains, API keys) are deleted there too, after confirmation (§5.7–5.9).
+- Permanent deletes, bulk deletes, and rule changes are written to the audit log.
+
 ## 6. Success metrics
 
 | Metric | Target (6 months after launch) |
@@ -191,7 +211,7 @@ Implements `PRICING.md`: tiers Free / Pro $12 / Team $39 / Agency $99.
 ## 7. Scope
 
 ### MVP (P0)
-Auth, organizations, roles, projects; connections with auto-webhook and sync; setup checklist; senders; composer with HTML preview and scheduling; inbox with threads, replies, and read receipts; activity log; core insights; alerts and notifications; domains view with tracking toggles; contacts, segments, topics, broadcasts, templates; AI triage, drafts, compose helpers, anomaly explanation; audit log; plan limits, feature gates, usage metering and usage page; product tours; micro-animations. Stripe billing (checkout, portal, overage, credit packs, trial) ships with public launch; during beta all orgs run on plan limits without payment.
+Auth, organizations, roles, projects; connections with auto-webhook and sync; setup checklist; senders; composer with HTML preview and scheduling; inbox with threads, replies, and read receipts; activity log; core insights; alerts and notifications; domains view with tracking toggles; contacts, segments, topics, broadcasts, templates; AI triage, drafts, compose helpers, anomaly explanation; audit log; plan limits, feature gates, usage metering and usage page; product tours; micro-animations; Trash, permanent delete, and bulk delete. Stripe billing (checkout, portal, overage, credit packs, trial) ships with public launch; during beta all orgs run on plan limits without payment.
 
 ### Not planned
 - **Webhook relay / forwarding to downstream endpoints.** Resend already supports multiple endpoints per account with retries; the remaining benefit (per-domain filtering, replay) is too niche to justify.

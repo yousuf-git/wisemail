@@ -25,7 +25,7 @@
 | Database | **MongoDB Atlas** (replica set) + **Mongoose** | Referenced relationships (ObjectId refs, branded ID types), multi-document transactions, change streams for realtime. Convex was evaluated; see §2.12 for how we match its strengths. |
 | Background jobs | **Inngest** (Vercel integration) | Durable steps, retries, cron, and **per-key throttling** (keyed by `connectionId`) to respect Resend's rate limit. |
 | Realtime | **Server-Sent Events** + one MongoDB change stream per server instance on `realtime_events`, consumed by a `useLiveQuery` hook over TanStack Query | Every view live by default, replay on reconnect; see §2.6. |
-| File storage | **Vercel Blob (private)** | Inbound attachments, raw MIME, outbound attachment uploads. |
+| Object storage | **Cloudflare R2** (private bucket) via the S3 API: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` | Raw inbound MIME, inbound and outbound attachments. No egress fees; presigned URLs let browsers upload and download directly, bypassing Vercel's 4.5 MB request/response body limit. See §2.13. |
 | Resend | Official **`resend`** Node SDK, wrapped in one adapter module | Isolates API changes. |
 | MIME / HTML | **mailparser** (parse raw inbound), **isomorphic-dompurify** (sanitize) | |
 | AI | **`openai`** SDK against any OpenAI-compatible endpoint (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`) | Provider switch is an env change. |
@@ -41,7 +41,8 @@ MONGODB_URI
 BETTER_AUTH_SECRET, BETTER_AUTH_URL
 ENCRYPTION_KEK_CURRENT, ENCRYPTION_KEK_ID, ENCRYPTION_KEK_PREVIOUS (optional, rotation)
 INNGEST_EVENT_KEY, INNGEST_SIGNING_KEY
-BLOB_READ_WRITE_TOKEN
+R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+(endpoint derived as https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com)
 AI_BASE_URL, AI_API_KEY, AI_MODEL, AI_MODEL_FAST (optional, triage)
 SYSTEM_RESEND_API_KEY, SYSTEM_FROM_EMAIL
 APP_URL (public base URL used when registering webhooks)
@@ -71,6 +72,7 @@ SENTRY_DSN
   ```
 - Webhook signing secrets (`whsec_…`) and price ids carry no mode prefix, so `check-env` also calls `stripe.prices.retrieve` for each `STRIPE_PRICE_*` at build time: a price from the other mode returns "No such price", which fails the build with the variable name.
 - The same schema validates everything else (required variables present, `APP_URL` is https in production, KEK length), with one combined error list.
+- **R2 check:** `check-env` calls `HeadBucket` on `R2_BUCKET` with the configured credentials; missing bucket or rejected credentials fail the build with the variable names. At server start only the presence and format of the R2 variables are checked (no network call).
 
 ## 2. Architecture
 
@@ -86,13 +88,15 @@ SENTRY_DSN
                                                                    ▼         │
                                                  Inngest events ──▶ /api/inngest (functions)
                                                    • process-event (timeline, rollups, notifications, alerts)
-                                                   • fetch-inbound (raw MIME → Blob, parse, thread)
+                                                   • fetch-inbound (raw MIME → R2, parse, thread)
                                                    • sync-connection (paged backfill)
                                                    • send-email / send-broadcast
                                                    • ai-triage, ai-draft
-                                                   • cron: dns-check, silence-check, digest, retention, integrity-check
+                                                   • cron: dns-check, silence-check, digest, retention, integrity-check,
+                                                     purge-trash, cleanup-rules
+                                                   • bulk-delete (chunked, background)
                                                    • billing: usage-thresholds, report-usage, trial-end,
-                                                     apply-plan-change, retention-rewrite
+                                                     apply-plan-change, retention-rewrite, backfill-storage
                  └──────────────────────────────────────────────────────────┘
  All outbound Resend calls ──▶ lib/resend/adapter (per-connection client, throttled via Inngest)
  AI calls ──▶ lib/ai/client (OpenAI SDK, base URL from env)
@@ -103,7 +107,7 @@ SENTRY_DSN
 2. Verify Svix signature (`resend.webhooks.verify` with `svix-id`, `svix-timestamp`, `svix-signature`). Reject on failure (400), unknown connection (404).
 3. Insert into `webhook_events` with unique index `(connectionId, svixId)`; duplicate key means already received, return 200.
 4. Send Inngest event `resend/event.received` with the event id; return 200. Target under 300 ms; no Resend API calls on the hot path.
-5. Inngest `process-event` does the rest idempotently: upsert the `emails` document status and timeline, increment `metric_rollups`, create notifications, evaluate alert rules, and for `email.received` enqueue `fetch-inbound`.
+5. Inngest `process-event` does the rest idempotently: upsert the `emails` document status and timeline, increment `metric_rollups`, create notifications, evaluate alert rules, and for `email.received` enqueue `fetch-inbound`. If the email's Resend id has a `deletion_tombstones` record, rollups are still incremented (insights stay accurate) but the email is not recreated, no notification is sent, metering is skipped, and the event is marked `ignoredReason: deleted`.
 
 Out-of-order events (e.g. `opened` before `delivered`) are handled by keeping `status` as the highest-ranked state and timeline entries sorted by `occurredAt`.
 
@@ -111,7 +115,7 @@ Out-of-order events (e.g. `opened` before `delivered`) are handled by keeping `s
 1. Validate key with a cheap full-access call (`GET /domains`). If it returns a permission error, reject the key as sending-only.
 2. Encrypt and save key; create connection (`status: provisioning`).
 3. `POST /webhooks` with `${APP_URL}/api/ingest/resend/${connectionId}` and all supported event types; store `webhookId` and encrypted `signing_secret`. If the account has no free webhook slot, surface the Resend error and keep the connection in `needs_attention`.
-4. Enqueue `sync-connection` (domains → API keys → segments/topics/properties → templates → contacts → broadcasts → automations → sent emails → received emails), each resource paginated with cursor, checkpointed in `sync_runs` so a timeout resumes.
+4. Enqueue `sync-connection` (domains → API keys → segments/topics/properties → templates → contacts → broadcasts → automations → sent emails → received emails), each resource paginated with cursor, checkpointed in `sync_runs` so a timeout resumes. Email backfill skips anything with a tombstone and anything older than the org's retention window.
 5. Mark connection `active`; compute setup checklist.
 
 ### 2.3 Rate limiting against Resend
@@ -121,9 +125,11 @@ Out-of-order events (e.g. `opened` before `delivered`) are handled by keeping `s
 
 ### 2.4 Inbound processing (`fetch-inbound`)
 1. `emails.receiving.get(emailId)` → metadata + `raw.download_url`.
-2. Download raw MIME, store in Blob (`inbound/{orgId}/{emailId}.eml`).
-3. Parse with mailparser: text, html, headers, attachments (store each in Blob; CID mapped).
-4. Sanitize HTML (DOMPurify, strip scripts/forms/event handlers, keep inline styles); remote images proxied only on user click ("Load images").
+2. Download the raw MIME and parse it with mailparser for text, html, and headers. **Paid plans and trial:** also store the raw MIME in R2 (`orgs/{orgId}/inbound/{emailId}/raw.eml`). **Free:** the raw MIME is parsed in memory and not stored.
+3. `emails.receiving.attachments.list(emailId)` → one `attachments` document per file with Resend's attachment id, **exact original filename**, size, content type, `content_disposition`, and `content_id`. Attachment metadata always comes from this call, so both storage modes share the same records.
+   - **Paid / trial (`storageMode: r2`):** each file is downloaded from its `download_url` and stored in R2 (`orgs/{orgId}/inbound/{emailId}/att/{attachmentId}`).
+   - **Free (`storageMode: resend`):** no file is copied; the `download_url` and its `expires_at` are cached on the document (§2.13, "Serving files").
+4. Sanitize HTML (DOMPurify: strip scripts, forms, event handlers, `<base>`, and `javascript:` URLs; keep inline styles). Embedded (CID) images are mapped to their attachment documents; remote `https` images are kept and load automatically; `http` images are upgraded to `https` or dropped (mixed content).
 5. Thread: match `In-Reply-To` / `References` to existing `emails.messageId` in the org; else same normalized subject + participant within 14 days; else new thread.
 6. Update thread counters, notify members, enqueue `ai-triage` if AI enabled.
 
@@ -133,7 +139,7 @@ Out-of-order events (e.g. `opened` before `delivered`) are handled by keeping `s
 - **Sender status job** (`recompute-sender-status`): runs on `domain.updated` / `domain.deleted` events, after domain syncs and DNS checks, and on connection status changes. Recomputes each affected sender's status; on a change to unusable, finds pending emails (`queued` / `scheduled`) and draft or scheduled broadcasts using that sender, notifies their authors and Admins, and lists them under "Needs attention". Scheduled sends re-run the sendability check when they fire.
 - Scheduled or with attachments: Inngest `send-email`; immediate without attachments: inline.
 - Resend call includes `idempotency_key` (our `emails._id`), tags `mw_org`, `mw_project`, and for replies `In-Reply-To` / `References` headers.
-- Attachments: Vercel Functions accept at most 4.5 MB request bodies, so the browser uploads attachments directly to private Blob (client upload with a server-issued token); the send job reads them from Blob and passes their content to Resend (private Blob URLs are not publicly fetchable, so `path` is not used). Resend's limit is 40 MB per email including attachments.
+- Attachments: Vercel Functions accept at most 4.5 MB request bodies, so the browser uploads attachments directly to R2 with a presigned PUT URL (§2.13). At send time the job moves them under the email's key and passes Resend a presigned GET URL (1 hour) as the attachment `path`, so the file never passes through our function. To verify during implementation: that Resend fetches `path` when the request is made; if not, the job reads the object and sends its content instead. Resend's limit is 40 MB per email including attachments.
 - Our `emails` document is created **before** the call (`status: queued`) so webhook events always find it; the Resend id is stored on success.
 
 ### 2.6 Realtime ("live by default")
@@ -235,7 +241,7 @@ Convex was considered (`2026-09-29`) and MongoDB kept for predictable storage co
 | Typed document references | Branded ID types and reference checks (see below). |
 | Scheduler, cron, durable workflows | Inngest: durable steps, retries, `step.sleepUntil` for scheduled sends, cron, per-connection throttling (§2.3). |
 | Transactional rate limiting | Inngest throttle for jobs; MongoDB token bucket updated atomically for interactive calls (§2.3). |
-| Built-in file storage | Vercel Blob (private) with an authorized download route. |
+| Built-in file storage | Cloudflare R2 (private) with presigned uploads and an authorized download route (§2.13). |
 | Built-in search | MongoDB text indexes, Atlas Search later (§7). |
 | Aggregates / counters | `metric_rollups` with `$inc` upserts at ingest (§2.7). |
 | End-to-end types | Shared Zod schemas for inputs, typed server-action results, `InferSchemaType` models, typed list endpoints (response schemas checked in development). |
@@ -255,14 +261,79 @@ Convex was considered (`2026-09-29`) and MongoDB kept for predictable storage co
 - delete behavior per relationship (restrict, cascade, or set null) is defined in `DBD.md` §5 and implemented in the owning service;
 - a nightly `integrity-check` job reports dangling references to Sentry.
 
+### 2.13 Object storage (Cloudflare R2) and file serving
+- **Storage mode by plan:**
+
+  | Plan | Inbound raw MIME and attachments | Outbound attachments |
+  |---|---|---|
+  | Pro, Team, Agency, trial | Copied to R2 on receipt (`storageMode: r2`); kept for the plan's retention | Stored in R2 under the email; kept for the plan's retention |
+  | Free | Not copied; served from Resend's short-lived `download_url` (`storageMode: resend`). Available as long as Resend keeps the email (30 days on Resend's free plan, matching our Free retention) | Uploaded to R2 only to send; deleted after Resend accepts the email. Sent view shows filename and size without download |
+
+  - **Upgrade from Free:** `backfill-storage` job copies files of inbound emails still available at Resend into R2 and switches them to `storageMode: r2`.
+  - **Downgrade to Free:** new mail uses `resend` mode; files already in R2 stay until their (shortened) retention ends.
+- **Bucket:** one private bucket per environment (`mailwise-dev`, `mailwise-prod`). Public access and the `r2.dev` URL stay disabled. The API token is an R2 token scoped to that bucket with Object Read & Write only.
+- **Client:** `lib/storage/r2.ts` creates an `S3Client` with `region: "auto"` and the account endpoint; `lib/storage/keys.ts` builds every key so no code concatenates paths by hand.
+- **Key layout** (org id first, so an org can be purged by prefix):
+
+  | Object | Key |
+  |---|---|
+  | Raw inbound message | `orgs/{orgId}/inbound/{emailId}/raw.eml` |
+  | Inbound attachment | `orgs/{orgId}/inbound/{emailId}/att/{attachmentId}` |
+  | Outbound attachment (after send) | `orgs/{orgId}/outbound/{emailId}/att/{attachmentId}` |
+  | Draft upload (before send) | `drafts/{orgId}/{draftId}/{attachmentId}` |
+
+- **Uploads (browser → R2):** server action `createUploadUrl({ draftId, filename, size, contentType })` checks permission, per-file and per-email size (40 MB total), and returns a presigned PUT URL valid 5 minutes with `Content-Length` and `Content-Type` signed. The browser uploads directly; then `confirmUpload` runs `HeadObject` to check size and type before creating the `attachments` document. Bucket CORS allows `PUT` only from `APP_URL` origins.
+- **Serving files.** `lib/storage/file-url.ts` returns a URL for an attachment in one of two purposes, handling both storage modes:
+
+  | Purpose | `storageMode: r2` | `storageMode: resend` |
+  |---|---|---|
+  | `inline` (embedded image) | Presigned R2 GET, 15 min, `Content-Disposition: inline` | Cached Resend `download_url` if more than 2 minutes from `expires_at`; otherwise `emails.receiving.attachments.get` (throttled per connection) and re-cache |
+  | `download` (document or any file) | Presigned R2 GET, 5 min, `Content-Disposition: attachment; filename="<ASCII fallback>"; filename*=UTF-8''<percent-encoded original name>` and the original content type | Files ≤ 4 MB: streamed through our route with the same `Content-Disposition` header (same origin, so the exact name is guaranteed). Larger files: Resend `download_url`; the name and in-tab behavior then depend on Resend's download server and are not guaranteed |
+
+- **Embedded images show on open.** When the thread view renders a message, the server replaces every `cid:` reference in the sanitized HTML with the `inline` URL of the matching attachment, already signed. The email iframe is sandboxed without same-origin, so it cannot send our session cookie; pre-signed URLs load without it. Inline images that the HTML never references are listed with the attachments instead, as thumbnails.
+- **Documents download in the current tab.** Attachment chips link to `GET /api/files/[attachmentId]` (same origin, so the session cookie authorizes the member: org, role, project scope). The route responds with the file (Free, ≤ 4 MB) or a 302 to the `download` URL. Because the final response carries `Content-Disposition: attachment`, the browser saves the file under its original name and the page stays where it is: no new tab, no navigation. Filenames are taken as decoded by Resend/mailparser (RFC 2231 and encoded-word names included) and only stripped of path separators and control characters.
+- **Expired at Resend (Free):** if Resend returns 404 for the email or attachment, the chip shows "No longer available at Resend" and the document is marked `unavailable`.
+- **Sending:** draft uploads are copied (`CopyObject`) to the outbound key when the email is sent, then the draft object is deleted (Free: the outbound object is deleted once Resend accepts the email); Resend receives a presigned GET URL as the attachment `path` (§2.5).
+- **Retention and deletion:** MongoDB TTL can delete documents but not R2 objects, so `attachments` and `email_contents` have `expireAt` without a TTL index. The daily `retention` job finds expired documents, deletes their objects with `DeleteObjects` (up to 1,000 keys per call), then deletes the documents. Connection history deletion and org purge delete by prefix (`ListObjectsV2` + `DeleteObjects`).
+- **Backstop lifecycle rules** on the bucket: objects under `drafts/` expire after 30 days (abandoned uploads); objects under `orgs/` expire after 800 days (longest plan retention of 2 years, plus margin).
+- **Cost:** R2 bills storage and operations, with no egress fees, so attachment downloads and Resend fetching `path` URLs cost nothing extra.
+
+### 2.14 Delete, Trash & cleanup
+Resend's API has no delete for sent or received emails (only cancel for scheduled emails), so deleting an email removes Mailwise's copy only. Resend objects that do have a delete endpoint are deleted in Resend too.
+
+| Item | In Mailwise | In Resend |
+|---|---|---|
+| Inbox thread / message | Trash → permanent | Not possible; Resend keeps its copy until its retention ends |
+| Sent email (Activity) | Trash → permanent | Not possible |
+| Scheduled email | Delete | `POST /emails/:id/cancel` first; delete here only after Resend confirms |
+| Draft | Delete immediately (with Undo) | — (drafts are ours) |
+| Notification | Delete / clear all | — |
+| Broadcast: draft or scheduled | Delete | `DELETE /broadcasts/:id` (also cancels a scheduled one) |
+| Broadcast: sent | Remove from Mailwise | Not possible |
+| Contact, segment, topic, template, domain, API key | Delete | Deleted through the matching Resend endpoint first; mirror removed after success |
+
+**Trash.** `trash(items)` sets `trashedAt`, `trashedBy`, `purgeAt = now + 30 days` on the emails (and thread when the whole thread is chosen) in one transaction, recomputes thread counters, and publishes realtime events. All list queries filter `trashedAt: null`; the Trash view shows the rest. `restore(items)` clears the fields. The UI shows a 5-second Undo toast that calls `restore`.
+
+**Permanent delete** (Owner/Admin; also the `purge-trash` job and `delete` cleanup rules). Per email, in a transaction: write a `deletion_tombstones` record (Resend id, hashed Message-ID), delete `email_contents`, `attachments`, `webhook_events` for that email, the email itself, and an emptied thread; after commit, delete its R2 objects (`DeleteObjects`, retried by the job if it fails). `metric_rollups` and `usage_periods` are not touched.
+
+**Keeping deleted emails deleted.** Tombstones are checked by the webhook processor (§2.1), the sync backfill (§2.2), and threading (a new message whose `In-Reply-To` matches a deleted Message-ID starts a new thread).
+
+**Bulk and filtered deletes.** Selections up to 100 items run inline. Larger selections, and "all matching this filter", start the `bulk-delete` Inngest job with the filter snapshot and a cap time (items that arrive later are not included); it works in batches of 500 with one transaction each, reports progress over realtime, and writes one audit entry with the count. Bulk permanent delete requires typing the number of items to confirm.
+
+**Jobs.**
+- `purge-trash` (daily): permanently deletes items whose `purgeAt` has passed.
+- `cleanup-rules` (hourly, P1): applies enabled rules with `olderThanDays`; `block_sender` rules run on arrival inside `process-event` / `fetch-inbound`, putting matching inbound mail straight into Trash without a notification.
+
+**Permissions.** Moving to Trash and restoring follow the member's existing inbox/activity access (Support and Developer included; Viewer cannot). Permanent delete, Empty trash, bulk permanent delete, and cleanup rules with the `delete` action: Owner and Admin only. Deleting Resend objects follows the existing permissions for those objects.
+
 ## 3. Security
 
 - **Tenant isolation:** every tenant collection has `orgId`; repositories take `orgId` from the session (never from input) and add it to every filter. Compound indexes start with `orgId`. Project-scoped members get an additional `projectId ∈ allowed` filter. Integration tests assert cross-tenant reads fail.
 - **Secrets:** Resend API keys and webhook signing secrets are encrypted with AES-256-GCM using a per-record data key wrapped by a KEK from env (`kekId` stored for rotation). Decryption happens only in server code; secrets are never serialized to the client; only `last4` is shown.
 - **AuthZ:** Better Auth access control with permissions per resource (`connection:create`, `email:send`, `broadcast:send`, `apiKey:delete`, …) checked in each server action.
 - **Webhooks:** Svix signature and timestamp tolerance verified; per-connection URL; body size limit.
-- **Email rendering:** sanitized HTML inside `<iframe sandbox>` (no scripts, no same-origin), strict CSP, remote images blocked until opted in.
-- **Attachments:** served from private Blob through an authorized route handler with `Content-Disposition: attachment` for non-image types.
+- **Email rendering:** sanitized HTML inside `<iframe sandbox>` (no scripts, no same-origin, no forms, no top navigation; links open in a new tab via `allow-popups` with `rel="noopener noreferrer"`), strict CSP (`img-src https: data:`, no `script-src`). Remote images load automatically by product decision; this lets senders see when a message is opened and reveals the viewer's IP to them. The iframe uses `referrerpolicy="no-referrer"` so our URLs don't leak.
+- **Attachments:** stored in a private R2 bucket; access only through an authorized route that issues 5-minute presigned URLs, with `Content-Disposition: attachment` for non-image types. Upload URLs are single-purpose (signed size and type, 5 minutes).
 - **Audit log** for sensitive actions; **rate limiting** on auth and send endpoints.
 - **Data deletion:** removing a connection deletes our webhook in Resend, the encrypted key, and (after confirmation) its synced data.
 
@@ -295,7 +366,7 @@ mailwise/
 │     ├─ inngest/route.ts
 │     ├─ billing/stripe-webhook/route.ts  # credit packs, invoice events
 │     ├─ stream/route.ts           # SSE
-│     └─ files/[...path]/route.ts  # authorized Blob proxy
+│     └─ files/[attachmentId]/route.ts  # authorize, redirect to presigned R2 URL
 ├─ components/{ui,app,charts,editor,inbox,mascot,tour}/
 │  └─ icons/animated/              # lucide-animated icons (shadcn registry) + our own in the same pattern
 ├─ lib/
@@ -307,7 +378,9 @@ mailwise/
 │  ├─ ai/{client,prompts/*,credits}.ts
 │  ├─ billing/{plans,entitlements,metering,stripe}.ts
 │  ├─ env.ts                       # Zod-validated env, Stripe mode check
+│  ├─ storage/{r2,keys,presign,file-url}.ts # R2 client, key builders, presigned URLs, per-mode file URLs
 │  ├─ tours/*.ts                   # product tour definitions
+│  ├─ deletion/{trash,purge,tombstones,rules}.ts # Trash, permanent delete, tombstone checks, cleanup rules
 │  ├─ crypto/envelope.ts
 │  ├─ mail/{parse,sanitize,thread}.ts
 │  ├─ validation/*.ts              # Zod schemas

@@ -12,10 +12,10 @@
 2. **References over embedding.** Relationships are stored as `ObjectId` refs (foreign keys) and resolved with a second query or `$lookup`. Embedding is allowed only for data that is bounded, owned exclusively by the parent, and always read with it (e.g. DNS records inside a domain, variables inside a template).
 3. **Allowed denormalization** is limited to cached display values that are cheap to recompute, marked *(cache)* in the field tables — e.g. a thread's `lastMessageAt` and `snippet`. The source of truth is always the referenced document.
 4. **Mirrors of Resend objects** (domains, API keys, contacts, segments, topics, templates, broadcasts, automations, emails) store `resendId` (string, Resend's UUID) and `connectionId`. Unique key: `(connectionId, resendId)`.
-5. **Heavy payloads are split out.** List-view documents stay small; bodies, raw MIME, and raw webhook payloads live in separate collections or Blob storage.
+5. **Heavy payloads are split out.** List-view documents stay small; bodies, raw MIME, and raw webhook payloads live in separate collections or in Cloudflare R2 (documents store only the object key; `TRD.md` §2.13).
 6. **Timestamps.** All collections use Mongoose `timestamps: true` (`createdAt`, `updatedAt`) unless noted. Times are UTC.
-7. **Soft delete** only where history matters (`connections`, `projects`, `senders`): `deletedAt: Date | null`. Everything else is hard-deleted.
-8. **Retention** via `expireAt: Date` with a TTL index (`expireAfterSeconds: 0`), set per document from the org's plan.
+7. **Soft delete** only where history matters (`connections`, `projects`, `senders`): `deletedAt: Date | null`. **Trash** for mail (`emails`, `threads`): `trashedAt` + `purgeAt` (30 days), restorable until purged. Everything else is hard-deleted. Permanently deleted Resend emails leave a `deletion_tombstones` record so sync and late webhooks never recreate them.
+8. **Retention** via `expireAt: Date` with a TTL index (`expireAfterSeconds: 0`), set per document from the org's plan. Exception: documents that own R2 objects (`attachments`, `email_contents`) have `expireAt` but **no TTL index**, because a TTL deletion would leave the objects behind; the `retention` job deletes the objects first, then the documents.
 9. **Secrets** are stored as an `EncryptedValue` sub-document: `{ ciphertext: string, iv: string, tag: string, wrappedDek: string, kekId: string }`, plus a plain `last4` for display.
 10. **Typed references.** In code every reference uses a branded type (`Id<"domains">`, `Id<"threads">`, …) so the compiler rejects an id of the wrong collection. MongoDB has no foreign keys: services check that a referenced document exists in the same org before writing (`assertRefs`), delete behavior follows §5, and a nightly job reports dangling references.
 11. **Transactions.** Atlas runs as a replica set; any write touching more than one document runs in a multi-document transaction (`TRD.md` §2.12). User-edited documents (drafts, alert rules, templates, senders, projects) carry a Mongoose version key with optimistic concurrency.
@@ -42,6 +42,7 @@
 | AI | `ai_usage` | App | Token and credit metering |
 | Ops | `sync_runs`, `audit_logs`, `usage_periods` | Jobs + App | Sync checkpoints, audit trail, billing usage |
 | Onboarding | `tour_progress` | App | Product tour completion per user |
+| Cleanup | `deletion_tombstones`, `cleanup_rules` | App + jobs | Keep deleted emails deleted; automatic cleanup |
 | Realtime | `realtime_events` | App + jobs | Short-lived change notifications for live UI |
 | Billing (Better Auth Stripe plugin) | `subscription` | Better Auth | Stripe subscription state per organization |
 
@@ -80,6 +81,8 @@ erDiagram
   organization ||--o{ notifications : receives
   organization ||--o{ audit_logs : records
   user ||--o{ tour_progress : "progresses through"
+  connections ||--o{ deletion_tombstones : "remembers deletes"
+  organization ||--o{ cleanup_rules : "cleans with"
 ```
 
 ## 4. Field definitions
@@ -280,6 +283,10 @@ Sender status is recomputed whenever its domain or connection changes (`domain.u
 | sendError | `{ code: string, message: string }` | Outbound failures before Resend accepted |
 | meteredAt | Date \| null | Set once when the email is counted toward `usage_periods`; conditional update makes metering idempotent |
 | overAllowance | boolean | Counted after a Free org exceeded its allowance and grace; gets 7-day retention |
+| trashedAt | Date \| null | In Trash since; excluded from all lists except Trash. I (`orgId`, `trashedAt`) |
+| trashedBy | ObjectId → `user` \| null | Null when trashed by a cleanup rule |
+| trashedByRuleId | ObjectId → `cleanup_rules` \| null | |
+| purgeAt | Date \| null | `trashedAt + 30 days`; the `purge-trash` job deletes permanently after this. I |
 | expireAt | Date \| null | Plan retention TTL |
 
 **`email_contents`** — 1:1 with `emails`, loaded only in detail views
@@ -290,9 +297,10 @@ Sender status is recomputed whenever its domain or connection changes (`domain.u
 | html | string | Sanitized HTML |
 | text | string | |
 | headers | `{ name: string, value: string }[]` | |
-| rawBlobPath | string | Raw MIME in Blob (inbound) |
+| rawStorageKey | string \| null | R2 key of the raw MIME (inbound, paid plans), e.g. `orgs/{orgId}/inbound/{emailId}/raw.eml`; null on Free, where the raw message is parsed but not stored |
+| html | — | Stored with `cid:` references intact; they are replaced with signed URLs at render time, never persisted |
 | aiSummary | `{ summary: string, category: string, model: string, generatedAt: Date }` | Inbound triage |
-| expireAt | Date \| null | TTL, same as parent |
+| expireAt | Date \| null | Same as parent; **no TTL index** — deleted by the `retention` job together with the R2 object. Index (`expireAt`) for that job |
 
 **`attachments`**
 
@@ -300,14 +308,20 @@ Sender status is recomputed whenever its domain or connection changes (`domain.u
 |---|---|---|
 | emailId | ObjectId → `emails` \| null | Null while attached to a draft |
 | draftId | ObjectId → `drafts` \| null | |
-| resendAttachmentId | string | Inbound |
-| filename | string | R |
+| direction | enum `inbound \| outbound` | R |
+| resendAttachmentId | string | Inbound; used to refresh Resend download URLs |
+| filename | string | R; exact original name as decoded from the message (only path separators and control characters removed) |
 | contentType | string | R |
 | size | number | Bytes |
-| contentId | string | For inline CID images |
+| contentId | string | For embedded (CID) images |
 | disposition | enum `inline \| attachment` | |
-| blobPath | string | R once stored |
-| expireAt | Date \| null | TTL |
+| embedded | boolean | True when the sanitized HTML references this `contentId`; embedded images render in the body, others appear in the attachment list |
+| storageMode | enum `r2 \| resend \| none` | R. `r2`: file in our bucket; `resend`: served from Resend (Free inbound); `none`: not kept (Free outbound after send) |
+| storageKey | string \| null | R2 object key when `storageMode: r2` (`TRD.md` §2.13) |
+| resendDownload | `{ url: string, expiresAt: Date } \| null` | Cached short-lived Resend URL when `storageMode: resend`; refreshed when within 2 minutes of expiry |
+| availability | enum `available \| unavailable` | `unavailable` once Resend no longer has the file (Free) |
+| uploadStatus | enum `pending \| stored \| failed` | Draft uploads are `pending` until `confirmUpload` verifies the object |
+| expireAt | Date \| null | **No TTL index** — deleted by the `retention` job together with the R2 object. Index (`expireAt`) for that job |
 
 **`threads`**
 
@@ -328,6 +342,7 @@ Sender status is recomputed whenever its domain or connection changes (`domain.u
 | starred | boolean | Shared team state |
 | archived | boolean | Shared team state |
 | aiCategory | string | *(cache)* from latest triage |
+| trashedAt, trashedBy, purgeAt | Date \| null, ObjectId \| null, Date \| null | Whole thread in Trash; its emails get the same values. Trashing a single message sets the fields on that email only and recomputes the thread's cached counters |
 | expireAt | Date \| null | TTL |
 
 **`thread_member_states`** — per-member read state
@@ -486,6 +501,35 @@ Index: (`orgId`, `userId`, `readAt`, `createdAt` desc).
 
 A tracked email is counted once, on its first `email.sent` (`broadcast` when the payload has `broadcast_id`, otherwise `transactional`) or `email.received` (`inbound`), guarded by `emails.meteredAt`. See `PRICING.md` and `TRD.md` §2.10.
 
+**`deletion_tombstones`** — permanent deletes of Resend-backed emails (no `updatedAt`)
+
+| Field | Type | Notes |
+|---|---|---|
+| connectionId | ObjectId | R |
+| kind | enum `sent_email \| received_email` | R |
+| resendId | string | R; U (`connectionId`, `kind`, `resendId`) |
+| messageIdHash | string | SHA-256 of the Message-ID, so threading never re-links to the deleted email |
+| deletedAt | Date | R |
+| deletedBy | ObjectId → `user` \| null | Null for rules and trash purge |
+| reason | enum `user \| bulk \| rule \| trash_purge` | R |
+| expireAt | Date | TTL; `deletedAt + 800 days` (longer than any Resend or Mailwise retention) |
+
+Sync upserts and `process-event` check this collection before creating or updating an email; a match means the record is skipped and the webhook event is marked `ignoredReason: deleted`. No subject, addresses, or content are kept.
+
+**`cleanup_rules`** (P1)
+
+| Field | Type | Notes |
+|---|---|---|
+| name | string | R |
+| enabled | boolean | R |
+| scope | `{ connectionIds?: ObjectId[], projectIds?: ObjectId[], mailboxAddresses?: string[] }` | Empty = whole org |
+| match | `{ direction?: 'inbound' \| 'outbound', fromAddress?: string, fromDomain?: string, subjectContains?: string, tag?: { name: string, value?: string }, aiCategory?: string, olderThanDays?: number }` | All set conditions must match |
+| action | enum `archive \| trash \| delete` | `delete` = permanent, Owner/Admin only |
+| kind | enum `rule \| block_sender` | `block_sender` applies on arrival (`olderThanDays` unset) |
+| lastRunAt | Date | |
+| lastRunCount | number | Items affected in the last run |
+| createdBy | ObjectId → `user` | R |
+
 **`realtime_events`** — append-only, short-lived (no `updatedAt`)
 
 | Field | Type | Notes |
@@ -540,8 +584,10 @@ MongoDB does not enforce references, so the owning service applies these rules i
 | Domain (removed in Resend, mirror deleted) | Senders | Set `status: domain_unverified` (sender kept) |
 | Domain | Emails, threads | Kept (`domainId` still points to history) |
 | Sender (soft delete) | Emails, drafts, broadcasts | Emails keep the reference; drafts and unsent broadcasts must pick another sender |
-| Email | Email contents, attachments | Cascade |
-| Thread | Emails | Restrict (threads are never deleted while they have emails; they expire together by TTL) |
+| Email (permanent delete: user, bulk, rule, or trash purge) | Email contents, attachments (and their R2 objects), webhook events, thread member states for a now-empty thread | Cascade; tombstone written; thread counters recomputed; rollups and `usage_periods` unchanged |
+| Email (retention expiry) | Email contents, attachments | Cascade via the `retention` job; no tombstone needed, because sync never imports emails older than the org's retention window |
+| Thread (permanent delete) | Emails | Cascade to all its emails (each as above) |
+| Thread (retention expiry) | Emails | Expire together by TTL |
 | Label | Threads | Remove the id from `labelIds` |
 | Segment | Contacts, broadcasts | Remove from `segmentIds`; draft broadcasts targeting it become invalid and are flagged |
 | Topic | Contacts, broadcasts | Remove from `topicSubscriptions`; broadcasts set `topicId` null |
@@ -560,11 +606,13 @@ MongoDB does not enforce references, so the owning service applies these rules i
 | `emails` | `{ orgId: 1, messageId: 1 }` | Threading |
 | `emails` | `{ orgId: 1, status: 1, scheduledAt: 1 }` | Scheduled queue |
 | `emails` | text index on `subject`, `snippet`, `from.address` | Search (MVP) |
+| `emails`, `threads` | `{ orgId: 1, trashedAt: -1 }` partial (`trashedAt` exists); `{ purgeAt: 1 }` partial | Trash view, `purge-trash` job; all other list queries filter `trashedAt: null` |
 | `threads` | `{ orgId: 1, archived: 1, lastMessageAt: -1 }`, `{ orgId: 1, assigneeId: 1, lastMessageAt: -1 }`, `{ orgId: 1, projectId: 1, lastMessageAt: -1 }` | Inbox lists |
 | `webhook_events` | `{ connectionId: 1, svixId: 1 }` unique; `{ emailId: 1, occurredAt: 1 }`; `{ orgId: 1, type: 1, occurredAt: -1 }` | Dedup, timeline, event stream |
 | `metric_rollups` | unique bucket key (see 4.7); `{ orgId: 1, granularity: 1, bucketStart: 1 }` | Dashboards |
 | `contacts` | `{ orgId: 1, email: 1 }`; `{ orgId: 1, segmentIds: 1 }` | Lookup, segment membership |
 | TTL collections | `{ expireAt: 1 }`, `expireAfterSeconds: 0` | Retention |
+| `attachments`, `email_contents` | `{ expireAt: 1 }` (plain index, not TTL) | `retention` job deletes R2 objects, then documents |
 
 ## 7. Example documents
 

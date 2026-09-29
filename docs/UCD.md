@@ -45,6 +45,9 @@ Any member except Owner can be **project-scoped**: they see only data belonging 
 | AI settings | ✓ | ✓ | | | |
 | AI features (use) | ✓ | ✓ | ✓ | ✓ | |
 | Audit log | ✓ | ✓ | | | |
+| Move to Trash / restore (inbox, activity) | ✓ | ✓ | ✓ | ✓ (inbox; activity they can see) | |
+| Delete permanently, empty Trash, bulk permanent delete | ✓ | ✓ | | | |
+| Cleanup rules (archive/trash) · with `delete` action | ✓ · ✓ | ✓ · ✓ | ✓ · | | |
 
 ## 2. Use cases
 
@@ -119,9 +122,14 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 
 **UC-11 — Read inbound mail** · Owner/Admin/Developer/Support/Viewer
 - Pre: receiving enabled on at least one domain.
-- Main: Inbox → mailbox list (All, Unassigned, Mine, per project, per address) → thread list with AI summary and category chip → open thread → messages in order, inbound rendered safely, outbound replies with receipt chips.
+- Main: Inbox → mailbox list (All, Unassigned, Mine, per project, per address) → thread list with AI summary and category chip → open thread → messages in order, inbound rendered safely with embedded images and remote images shown in place, attachment chips below each message, outbound replies with receipt chips.
 - Alt: body still being fetched → skeleton with "Fetching message…", fills in live.
-- Alt: remote images blocked → "Load images" (per message or always for this sender).
+
+**UC-11b — Download an attachment** · Any member who can read the thread
+- Main: click an attachment chip → the file downloads under its exact original name → the thread stays open in the same tab.
+- Alt A: image attached but not embedded → thumbnail; click opens a lightbox preview with a Download button.
+- Alt B (Free, file over 4 MB) → downloaded from Resend's servers; the browser may use a different name.
+- Alt C (Free, Resend no longer has the file) → chip shows "No longer available at Resend"; upgrading keeps files for new mail.
 
 **UC-12 — Reply to a thread** · Sender roles
 - Main: Reply / Reply all / Forward → sender defaults to the address that received the message → optional AI draft ("Draft reply") → edit → send.
@@ -234,6 +242,34 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 **UC-35 — Replay a tour** · Any member
 - Main: Help menu ("?") → Tours → list with completion checks → Replay → tour starts from step 1.
 
+### Delete & cleanup
+
+**UC-36 — Move to Trash and restore** · Owner/Admin/Developer/Support (within their access)
+- Main: in Inbox or Activity, select a thread, a single message, or several rows → Delete (or `#` key) → items leave the list → toast "Moved to Trash · Undo" for 5 seconds.
+- Alt A: Undo → items return exactly where they were.
+- Alt B: Trash view → select → Restore.
+- Result: items stay in Trash 30 days, then are deleted permanently by the system.
+
+**UC-37 — Delete permanently / Empty trash** · Owner/Admin
+- Main: Trash → select → "Delete permanently" (or "Empty trash") → dialog: "Deleted from Mailwise for good. Resend keeps its copy until its own retention ends." → confirm.
+- Result: emails, bodies, and files removed; they never reappear through sync or late events; insights and usage unchanged; audit log entry.
+
+**UC-38 — Bulk delete by filter** · Owner/Admin (permanent) or members who can trash (to Trash)
+- Main: in Inbox or Activity, apply a filter (e.g. from `no-reply@github.com`, older than 30 days) → "Select all 4,812 matching" → Move to Trash (or Delete permanently, confirmed by typing the count) → progress bar; the page stays usable.
+- Alt: new mail arriving during the job is not included.
+
+**UC-39 — Cleanup rules and block sender (P1)** · Owner/Admin/Developer (`delete` action: Owner/Admin)
+- Main: Settings → Cleanup → New rule → conditions (sender, sender domain, subject, tag, AI category, direction, age) and scope (projects, mailboxes) → action (archive, trash, delete) → preview shows how many existing items match → save.
+- Alt: from a thread → "Block sender" → future mail from that address or domain goes straight to Trash, without notifications.
+- Result: hourly runs; each rule shows last run and items affected.
+
+**UC-40 — Cancel and delete a scheduled email** · Sender roles
+- Main: Scheduled → Delete → Mailwise cancels it in Resend → on success it is removed; if Resend has already sent it, the dialog says so and nothing is deleted.
+
+**UC-41 — Delete Resend objects** · Roles allowed for each object
+- Main: delete a contact, segment, topic, template, draft or scheduled broadcast, domain, or API key → dialog states it will also be deleted in Resend → confirm → deleted in Resend, then here.
+- Alt: sent broadcast → only "Remove from Mailwise" is offered.
+
 ## 3. Pages & routes (derived)
 
 | Route | Purpose | Use cases |
@@ -242,6 +278,8 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 | `/sign-in`, `/sign-up`, `/invite/[token]` | Auth | UC-01, UC-02 |
 | `/[org]` | Overview: greeting, KPIs, checklist progress, recent activity, open incidents | UC-17 |
 | `/[org]/inbox`, `/[org]/inbox/[threadId]` | Inbox and thread view | UC-11–14 |
+| `/[org]/inbox/trash`, `/[org]/activity/trash` | Trash for inbox and activity | UC-36–38 |
+| `/[org]/settings/cleanup` | Cleanup rules and blocked senders (P1) | UC-39 |
 | `/[org]/compose` (also opened as a sheet from anywhere) | Composer | UC-09 |
 | `/[org]/scheduled` | Scheduled emails | UC-10 |
 | `/[org]/activity`, `/[org]/activity/[emailId]` | Activity log, email detail | UC-15 |
@@ -281,7 +319,12 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 | API key revoked in Resend | Any 401 flips connection to *Needs attention*, pauses jobs, notifies Admins. |
 | Resend 429 | Throttled jobs back off using `retry-after`; interactive sends queue with toast "Sending shortly". |
 | Inbound raw MIME too large or fetch fails | Retry with backoff (5 attempts); thread shows metadata with "Content unavailable, retry". |
-| Malicious inbound HTML | Sanitized + sandboxed iframe; remote images blocked by default. |
+| Malicious inbound HTML | Sanitized + sandboxed iframe (no scripts, no same-origin, no forms). Remote images load automatically (product decision), so senders can detect opens. |
+| Embedded image referenced by `cid:` but its attachment is missing | Image slot shows a small "Image unavailable" placeholder; the rest of the message renders. |
+| Filename with non-Latin characters, quotes, or slashes | Original name kept (UTF-8 via `filename*`); only path separators and control characters removed. |
+| Two attachments with the same filename | Both kept with the same name; downloads are separate by attachment id. |
+| Org upgrades from Free | `backfill-storage` copies files of emails Resend still has into our storage; older ones stay unavailable. |
+| Org downgrades to Free | Files already stored stay until the shortened retention ends; new mail is served from Resend. |
 | Reply to a thread whose domain has no sender | Composer asks to pick or create a sender on that domain. |
 | Sender's domain deleted or unverified in Resend | Sender status → `domain_unverified`; composer blocks it; pending scheduled emails and broadcasts flagged; authors and Admins notified (UC-08b). |
 | Our domain data is stale at send time | Server action checks sender status first; if Resend still rejects the domain, mark it, trigger a domain sync, show the reason. |
@@ -302,6 +345,14 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 | Tour target missing (layout changed, element not rendered) | NextStepjs retries the selector; then the step is skipped and a warning goes to Sentry. |
 | Member's role changes mid-tour | Next step re-checks access; inaccessible steps are skipped. |
 | Tour started on mobile | Card docks as a bottom sheet; spotlight still shown. |
+| Open or click event arrives for a permanently deleted email | Counted in insights; email not recreated; no notification. |
+| Reply arrives to a permanently deleted message | Starts a new thread (the old Message-ID is remembered only as a hash). |
+| Manual re-sync after deletes | Tombstoned emails are skipped. |
+| Scheduled email already sent when deleting | Resend refuses the cancel; nothing is deleted and the user is told it was sent. |
+| Resend delete fails for a contact/template/etc. | Nothing is removed in Mailwise; error shown with Resend's message. |
+| Two members trash and restore the same thread at once | Last action wins; both see the result live. |
+| Permanent delete while R2 deletion fails | Records are gone; the job retries the R2 deletion; the bucket's lifecycle rule is the final backstop. |
+| Thread partly trashed (one message) | Thread stays in the inbox without that message; the message appears in Trash with its thread subject. |
 | Stripe usage report fails | `report-usage` retries with the same idempotency key; `usage_periods.overage.reportedToStripe` prevents double billing. |
 | Prompt injection in inbound mail | Content passed as quoted data; AI output is only a suggestion; no tool access. |
 | Very high volume org | Rollups keep dashboards constant-time; raw events expire per plan retention (TTL). |

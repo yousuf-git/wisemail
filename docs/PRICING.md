@@ -39,7 +39,7 @@ Implications:
 |---|---|---|
 | Emails tracked | Each email produces roughly 3–5 webhook events (sent, delivered, opened, clicked…); broadcasts usually have tracking on, so they sit at the high end | Transactional sends + broadcast recipients + inbound |
 | Retention | Storage of events, inbound bodies, attachments | Days kept × volume |
-| Inbound mail | Raw MIME + attachments in Blob | Received volume |
+| Inbound mail | Raw MIME + attachments in Cloudflare R2 for paid plans (storage and operations billed; no egress fees). Free stores no files | Received volume on paid plans |
 | AI | Tokens per triage/draft/explanation | Usage, not volume |
 | Connections | Sync jobs, DNS checks, silence checks | Number of Resend accounts |
 | Contacts | Mirrored contact records | Small; negligible next to emails |
@@ -72,6 +72,7 @@ Seats cost us almost nothing, and per-seat pricing punishes the support use case
 | Emails tracked / month | 5k (≈ Resend Free 3k transactional + a few broadcasts to 1k contacts) | 75k (≈ Resend Pro 50k + regular broadcasts) | 500k | 2M |
 | Overage | — (retention cap) | $1 per extra 10k | $0.75 per extra 10k | $0.50 per extra 10k |
 | History retention | 30 days | 180 days | 1 year | 2 years |
+| Email files (attachments, embedded images) | Served from Resend while Resend keeps them; not stored by us | Stored by us for the retention period | Stored | Stored |
 | Members | 2 | 5 | 20 | Unlimited |
 | Inbox & read receipts | ✓ | ✓ | ✓ | ✓ |
 | Audience & broadcasts | ✓ | ✓ | ✓ | ✓ |
