@@ -7,6 +7,7 @@ import { cache } from "react";
 import { auth } from "@/lib/auth/server";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import { provisionOrganization } from "@/lib/services/org-settings";
+import { loadProjectScope } from "@/lib/services/project-scope";
 import {
   listUserOrgs,
   resolveOrgAccess,
@@ -29,6 +30,13 @@ export type OrgContext = {
   org: OrgRef;
   role: Role;
   orgs: OrgRef[];
+  /** The member's id (Better Auth `member._id`) in this org. */
+  memberId: string;
+  /**
+   * Projects this member is restricted to, or `null` when unrestricted (owners, admins and
+   * members without a scope). Feed it to `projectFilter(ctx)` when reading project-tagged data.
+   */
+  projectScope: string[] | null;
   can: (permission: Permission) => boolean;
 };
 
@@ -69,12 +77,19 @@ export async function getHomePath(): Promise<string> {
   return target ? `/${target.slug}` : "/onboarding";
 }
 
-export function buildOrgContext(user: UserDTO, access: OrgAccess, orgs: OrgRef[]): OrgContext {
+export function buildOrgContext(
+  user: UserDTO,
+  access: OrgAccess,
+  orgs: OrgRef[],
+  projectScope: string[] | null = null,
+): OrgContext {
   return {
     user,
     org: access.org,
     role: access.role,
     orgs,
+    memberId: access.memberId,
+    projectScope,
     can: (permission) => roleHasPermission(access.role, permission),
   };
 }
@@ -128,7 +143,12 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
 
   const { id, name, email, image } = session.user;
   const user: UserDTO = { id, name, email, image: image ?? null };
-  return { status: "ok", ctx: buildOrgContext(user, access, orgs) };
+  const projectScope = await loadProjectScope({
+    orgId: access.org.id,
+    memberId: access.memberId,
+    role: access.role,
+  });
+  return { status: "ok", ctx: buildOrgContext(user, access, orgs, projectScope) };
 });
 
 /** For pages and layouts: sign-in redirect for visitors, 404 for non-members. */
