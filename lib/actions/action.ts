@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getOrgContext, getSession, type OrgContext, type UserDTO } from "@/lib/dal";
 import { roleHasPermission, type Permission } from "@/lib/auth/permissions";
 import { RefError } from "@/lib/db/refs";
+import { ServiceError } from "@/lib/services/errors";
 import { fail, ok, type ActionResult } from "./result";
 
 /**
@@ -86,6 +87,7 @@ async function guarded<R>(fn: () => Promise<ActionResult<R>>): Promise<ActionRes
   } catch (error) {
     unstable_rethrow(error); // redirect() / notFound() inside `run` must keep working
     if (error instanceof ActionFailure) return fail(error.code, error.message, error.fieldErrors);
+    if (error instanceof ServiceError) return fail(error.code, error.message, error.fieldErrors);
     if (error instanceof RefError) return fail("not_found", error.message);
     console.error("[action] unexpected error", error);
     return fail("internal", "Something went wrong on our side. Try again in a moment.");

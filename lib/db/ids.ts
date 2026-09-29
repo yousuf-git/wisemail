@@ -18,6 +18,8 @@ export const COLLECTIONS = [
   "audit_logs",
   "realtime_events",
   "connections",
+  "webhook_events",
+  "sync_runs",
   "domains",
   "emails",
   "threads",
