@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { IncidentDetail } from "@/components/alerts/incident-detail";
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { requireOrg } from "@/lib/dal";
 import { topics } from "@/lib/realtime/topics";
@@ -19,6 +20,7 @@ export default async function IncidentPage({
   if (!incident) notFound();
   return (
     <>
+      <BreadcrumbLabel segment={incidentId} label={incident.title} />
       <LiveRefresh topics={[topics.incidents(ctx.org.id)]} />
       <IncidentDetail
         orgSlug={orgSlug}

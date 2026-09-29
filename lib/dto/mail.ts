@@ -128,6 +128,8 @@ export type MailListRowDTO = {
   snippet: string;
   /** Other party: participants (threads) or recipients (sent). */
   people: string[];
+  /** Display name per entry of `people` (the address when no name is known). */
+  peopleLabels?: string[];
   lastMessageAt: string;
   messageCount: number;
   unread: boolean;

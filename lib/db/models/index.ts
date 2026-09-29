@@ -31,3 +31,4 @@ export * from "./alert-rules";
 export * from "./alert-incidents";
 export * from "./notifications";
 export * from "./notification-preferences";
+export * from "./contact-imports";

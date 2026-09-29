@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import {
   alertsEvaluateRequested,
+  broadcastSendRequested,
+  contactImportRequested,
   connectionSyncRequested,
+  domainDnsCheckRequested,
   inboundFetchRequested,
   resendEventReceived,
   sendEmailRequested,
@@ -39,6 +42,18 @@ export type JobEvent =
   | {
       name: typeof alertsEvaluateRequested.name;
       data: z.infer<NonNullable<typeof alertsEvaluateRequested.schema>>;
+    }
+  | {
+      name: typeof contactImportRequested.name;
+      data: z.infer<NonNullable<typeof contactImportRequested.schema>>;
+    }
+  | {
+      name: typeof broadcastSendRequested.name;
+      data: z.infer<NonNullable<typeof broadcastSendRequested.schema>>;
+    }
+  | {
+      name: typeof domainDnsCheckRequested.name;
+      data: z.infer<NonNullable<typeof domainDnsCheckRequested.schema>>;
     };
 
 export const sentJobs: JobEvent[] = [];
@@ -87,3 +102,24 @@ export const enqueueSendEmail = (data: { emailId: string; orgId: string; connect
 /** Ask for an alert evaluation of one org; the job is debounced per org. */
 export const enqueueAlertEvaluation = (data: { orgId: string }) =>
   send({ name: "alerts/evaluate.requested", data });
+
+/** Ask for a DNS check of one domain or connection (or every domain of the org). */
+export const enqueueDnsCheck = (data: {
+  orgId: string;
+  connectionId?: string;
+  domainId?: string;
+}) => send({ name: "domain/dns-check.requested", data });
+
+/** Hand an uploaded CSV import to the throttled `import-contacts` job. */
+export const enqueueContactImport = (data: {
+  importId: string;
+  orgId: string;
+  connectionId: string;
+}) => send({ name: "audience/contacts.import.requested", data });
+
+/** Follow a sent or scheduled broadcast until it has a final status. */
+export const enqueueBroadcastSend = (data: {
+  broadcastId: string;
+  orgId: string;
+  connectionId: string;
+}) => send({ name: "broadcast/send.requested", data });

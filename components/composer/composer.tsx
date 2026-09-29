@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TemplateOptionDTO } from "@/lib/dto/audience";
 import type { DraftDTO, SenderDTO } from "@/lib/dto/mail";
+import { missingVariables, renderTemplate } from "@/lib/mail/template-vars";
 import { cn } from "@/lib/utils";
 import { AddressField } from "./address-field";
 import { AttachButton, AttachmentList } from "./attachment-list";
@@ -27,6 +29,7 @@ import { PreviewFrame } from "./preview-frame";
 import { SchedulePicker } from "./schedule-picker";
 import { formatScheduled, isValidTimeZone } from "./schedule";
 import { SenderSelect } from "./sender-select";
+import { TemplatePanel } from "./template-panel";
 import { useAttachments } from "./use-attachments";
 import { draftToFields, fieldsKey, useDraftAutosave, type DraftFields } from "./use-draft-autosave";
 
@@ -54,6 +57,10 @@ export type ComposerProps = {
   onSent?: (emailId: string) => void;
   /** IANA timezone of the org, used for scheduling. Defaults to the browser's. */
   timezone?: string;
+  /** Published templates for Template mode (only those on the sender's connection are offered). */
+  templates?: TemplateOptionDTO[];
+  /** Connection id per sender id, to match templates to the sender. */
+  senderConnections?: Record<string, string>;
 };
 
 type Mode = "rich" | "html" | "template";
@@ -77,6 +84,8 @@ export function Composer({
   variant = "page",
   onSent,
   timezone,
+  templates = [],
+  senderConnections = {},
 }: ComposerProps) {
   const router = useRouter();
   const zone = isValidTimeZone(timezone)
@@ -99,9 +108,11 @@ export function Composer({
       cc: draft?.cc ?? reply?.cc ?? [],
       bcc: draft?.bcc ?? [],
       subject: draft?.subject ?? reply?.subject ?? "",
-      mode: draft ? (draft.mode === "template" ? "html" : draft.mode) : "rich",
+      mode: draft ? draft.mode : "rich",
       bodyHtml: draft?.bodyHtml ?? auto,
       scheduledAt: scheduled && scheduled.getTime() > Date.now() ? scheduled.toISOString() : null,
+      templateId: draft?.templateId ?? null,
+      templateVariables: draft ? draftToFields(draft).templateVariables : {},
     };
     return { fields, auto, baselineKey: fieldsKey(fields) };
   });
@@ -118,6 +129,11 @@ export function Composer({
   const [scheduledAt, setScheduledAt] = useState<Date | null>(
     initial.fields.scheduledAt ? new Date(initial.fields.scheduledAt) : null,
   );
+  const [templateId, setTemplateId] = useState<string | null>(initial.fields.templateId);
+  const [templateValues, setTemplateValues] = useState<Record<string, string>>(
+    initial.fields.templateVariables,
+  );
+  const [templateErrors, setTemplateErrors] = useState<Record<string, string>>({});
   const [editorKey, setEditorKey] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [previewWidth, setPreviewWidth] = useState<"desktop" | "mobile">("desktop");
@@ -140,6 +156,29 @@ export function Composer({
   const senderInactive = !!sender && sender.status !== "active";
   const editable = canSend && !sending && !finished;
 
+  // Template mode offers the published templates on the sender's own connection.
+  const senderConnection = senderId ? senderConnections[senderId] : undefined;
+  const availableTemplates = useMemo(
+    () => templates.filter((t) => !senderConnection || t.connectionId === senderConnection),
+    [templates, senderConnection],
+  );
+  const template = availableTemplates.find((t) => t.id === templateId) ?? null;
+  const templateDefs = useMemo(
+    () =>
+      (template?.variables ?? []).map((v) => ({ key: v.key, type: v.type, fallback: v.fallback })),
+    [template],
+  );
+  const renderedTemplate = useMemo(
+    () =>
+      template ? renderTemplate(template.html, templateValues, templateDefs, { escape: true }) : "",
+    [template, templateValues, templateDefs],
+  );
+
+  const renderedSubject = useMemo(
+    () => (template ? renderTemplate(subject, templateValues, templateDefs) : subject),
+    [template, subject, templateValues, templateDefs],
+  );
+
   const fields = useMemo<DraftFields>(
     () => ({
       senderId,
@@ -152,8 +191,22 @@ export function Composer({
       mode,
       bodyHtml,
       scheduledAt: scheduledAt ? scheduledAt.toISOString() : null,
+      templateId,
+      templateVariables: templateValues,
     }),
-    [senderId, threadLink, to, cc, bcc, subject, mode, bodyHtml, scheduledAt],
+    [
+      senderId,
+      threadLink,
+      to,
+      cc,
+      bcc,
+      subject,
+      mode,
+      bodyHtml,
+      scheduledAt,
+      templateId,
+      templateValues,
+    ],
   );
 
   const autosave = useDraftAutosave({
@@ -191,8 +244,10 @@ export function Composer({
     setShowCc(f.cc.length > 0);
     setShowBcc(f.bcc.length > 0);
     setSubject(f.subject);
-    setMode(f.mode === "template" ? "html" : f.mode);
+    setMode(f.mode);
     setBodyHtml(f.bodyHtml);
+    setTemplateId(f.templateId);
+    setTemplateValues(f.templateVariables);
     setScheduledAt(next.scheduledAt ? new Date(next.scheduledAt) : null);
     setThreadLink({ threadId: f.threadId, inReplyToEmailId: f.inReplyToEmailId });
     autoBody.current = "";
@@ -227,9 +282,24 @@ export function Composer({
     }
   }
 
+  function chooseTemplate(id: string) {
+    const chosen = availableTemplates.find((t) => t.id === id);
+    setTemplateId(id);
+    setTemplateValues({});
+    setTemplateErrors({});
+    setErrors((e) => ({ ...e, html: "" }));
+    // The subject starts as the template's; anything already typed stays.
+    if (chosen && !subject.trim()) setSubject(chosen.subject);
+  }
+
   function changeMode(next: string) {
     const target = next as Mode;
-    if (target === mode || target === "template") return;
+    if (target === mode) return;
+    if (target === "template") {
+      if (availableTemplates.length === 0) return;
+      setMode("template");
+      return;
+    }
     if (
       target === "rich" &&
       isLossyForRich(bodyHtml) &&
@@ -251,6 +321,7 @@ export function Composer({
   async function submit() {
     if (!canSend || sending || finished) return;
     setBanner(null);
+    const inTemplate = mode === "template";
     const checks = validateCompose({
       senderId,
       senderActive: !!sender && !senderInactive,
@@ -259,12 +330,32 @@ export function Composer({
       cc,
       bcc,
       subject,
-      bodyHtml,
+      bodyHtml: inTemplate ? renderedTemplate || "<p></p>" : bodyHtml,
       scheduledAt,
       uploading: attachments.uploading,
     });
     // A body that is only the auto-inserted signature is still an empty message.
-    if (autoBody.current && bodyHtml === autoBody.current) checks.html = "Write a message.";
+    if (!inTemplate && autoBody.current && bodyHtml === autoBody.current) {
+      checks.html = "Write a message.";
+    }
+    const variableProblems: Record<string, string> = {};
+    if (inTemplate) {
+      delete checks.html;
+      if (!template) variableProblems._template = "Choose a template.";
+      else {
+        for (const key of missingVariables(templateDefs, templateValues)) {
+          variableProblems[key] = "Fill this in: it has no default value.";
+        }
+        for (const def of templateDefs) {
+          const typed = templateValues[def.key]?.trim();
+          if (def.type === "number" && typed && !Number.isFinite(Number(typed))) {
+            variableProblems[def.key] = "This must be a number.";
+          }
+        }
+      }
+    }
+    setTemplateErrors(variableProblems);
+    if (Object.keys(variableProblems).length) checks.html = "Fix the template fields.";
     setErrors(checks);
     if (Object.keys(checks).length) {
       setBanner("Fix the highlighted fields, then send again.");
@@ -279,7 +370,19 @@ export function Composer({
         cc,
         bcc,
         subject: subject.trim(),
-        html: bodyHtml,
+        ...(inTemplate
+          ? {
+              templateId: template!.id,
+              templateVariables: Object.fromEntries(
+                Object.entries(templateValues)
+                  .filter(
+                    ([key, value]) =>
+                      templateDefs.some((d) => d.key === key) && value.trim() !== "",
+                  )
+                  .map(([key, value]) => [key, value.trim()]),
+              ),
+            }
+          : { html: bodyHtml }),
         inReplyToEmailId: threadLink.inReplyToEmailId ?? undefined,
         draftId: draftId ?? undefined,
         scheduledAt: scheduledAt ? scheduledAt.toISOString() : undefined,
@@ -396,7 +499,7 @@ export function Composer({
     );
   }
 
-  const previewVisible = mode === "html" || showPreview;
+  const previewVisible = mode === "html" || mode === "template" || showPreview;
   const saveText =
     autosave.state === "saving"
       ? "Saving…"
@@ -562,6 +665,9 @@ export function Composer({
               {errors.subject}
             </p>
           ) : null}
+          {mode === "template" && template && renderedSubject !== subject ? (
+            <p className="pl-[3.25rem] text-xs text-ink-muted">Goes out as: {renderedSubject}</p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
@@ -573,8 +679,18 @@ export function Composer({
               <TabsTrigger value="html" disabled={!editable}>
                 HTML
               </TabsTrigger>
-              <span title="Templates are coming soon" className="inline-flex flex-1">
-                <TabsTrigger value="template" disabled>
+              <span
+                title={
+                  availableTemplates.length === 0
+                    ? "No published templates for this sender's Resend account yet"
+                    : undefined
+                }
+                className="inline-flex flex-1"
+              >
+                <TabsTrigger
+                  value="template"
+                  disabled={!editable || availableTemplates.length === 0}
+                >
                   Template
                 </TabsTrigger>
               </span>
@@ -638,8 +754,23 @@ export function Composer({
           )}
         >
           <div className="min-w-0">
+            {mode === "template" ? (
+              <TemplatePanel
+                templates={availableTemplates}
+                templateId={template?.id ?? null}
+                onTemplate={chooseTemplate}
+                values={templateValues}
+                onValues={(values) => {
+                  setTemplateValues(values);
+                  setTemplateErrors({});
+                  setErrors((e) => (e.html ? { ...e, html: "" } : e));
+                }}
+                errors={templateErrors}
+                disabled={!editable}
+              />
+            ) : null}
             <Suspense fallback={editorFallback}>
-              {mode === "rich" ? (
+              {mode === "template" ? null : mode === "rich" ? (
                 <RichEditor
                   key={`rich-${editorKey}`}
                   initialHtml={bodyHtml}
@@ -656,7 +787,7 @@ export function Composer({
                 />
               )}
             </Suspense>
-            {errors.html ? (
+            {errors.html && mode !== "template" ? (
               <p role="alert" className="mt-2 text-xs text-danger-ink">
                 {errors.html}
               </p>
@@ -664,7 +795,7 @@ export function Composer({
           </div>
           {previewVisible ? (
             <PreviewFrame
-              html={isBodyBlank(bodyHtml) ? "" : bodyHtml}
+              html={mode === "template" ? renderedTemplate : isBodyBlank(bodyHtml) ? "" : bodyHtml}
               dark={previewDark}
               width={previewWidth}
               className="max-h-[32rem] min-h-64"

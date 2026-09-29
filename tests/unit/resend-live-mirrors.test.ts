@@ -295,3 +295,83 @@ describe("LiveResendAdapter mirror reads (SDK mocked)", () => {
     });
   });
 });
+
+describe("LiveResendAdapter domain and API key management (SDK mocked)", () => {
+  afterEach(() => vi.resetModules());
+
+  it("createDomain sends name and region and returns the records", async () => {
+    const create = vi.fn(async () =>
+      ok({
+        id: "d9",
+        name: "new.example.org",
+        status: "not_started",
+        region: "eu-west-1",
+        created_at: "t",
+        open_tracking: false,
+        click_tracking: false,
+        capabilities: { sending: "enabled", receiving: "disabled" },
+        records: [
+          {
+            record: "DKIM",
+            type: "TXT",
+            name: "resend._domainkey",
+            value: "p=abc",
+            ttl: "Auto",
+            status: "not_started",
+          },
+          {
+            record: "SPF",
+            type: "MX",
+            name: "send",
+            value: "feedback.example",
+            ttl: "Auto",
+            status: "not_started",
+            priority: 10,
+          },
+        ],
+      }),
+    );
+    const adapter = await adapterWith({ domains: { create } });
+    const domain = await adapter.createDomain({ name: "new.example.org", region: "eu-west-1" });
+    expect(create).toHaveBeenCalledWith({ name: "new.example.org", region: "eu-west-1" });
+    expect(domain).toMatchObject({ id: "d9", region: "eu-west-1", status: "not_started" });
+    expect(domain.records).toHaveLength(2);
+    expect(domain.records[1]).toMatchObject({ priority: 10, type: "MX" });
+    expect(domain.capabilities).toEqual({ sending: true, receiving: false });
+  });
+
+  it("verifyDomain and removeDomain call the SDK and surface errors as ResendError", async () => {
+    const verify = vi.fn(async () => ok({ id: "d1", object: "domain" }));
+    const remove = vi.fn(async () => ({
+      data: null,
+      error: { name: "not_found", message: "Domain not found", statusCode: 404 },
+      headers: {},
+    }));
+    const adapter = await adapterWith({ domains: { verify, remove } });
+    await adapter.verifyDomain("d1");
+    expect(verify).toHaveBeenCalledWith("d1");
+    await expect(adapter.removeDomain("d1")).rejects.toMatchObject({ code: "resend_not_found" });
+  });
+
+  it("createApiKey maps permission and domain and returns the token; removeApiKey deletes", async () => {
+    const create = vi.fn(async () => ok({ id: "k1", token: "re_secret_token" }));
+    const remove = vi.fn(async () => ok({}));
+    const adapter = await adapterWith({ apiKeys: { create, remove } });
+    const key = await adapter.createApiKey({
+      name: "App",
+      permission: "sending_access",
+      domainId: "d1",
+    });
+    expect(create).toHaveBeenCalledWith({
+      name: "App",
+      permission: "sending_access",
+      domain_id: "d1",
+    });
+    expect(key).toEqual({ id: "k1", token: "re_secret_token" });
+    await adapter.createApiKey({ name: "Ops", permission: "full_access" });
+    expect(create).toHaveBeenLastCalledWith({ name: "Ops", permission: "full_access" });
+    await adapter.removeApiKey("k1");
+    expect(remove).toHaveBeenCalledWith("k1");
+    expect(adapter.ownApiKeyId()).toBeNull();
+  });
+});

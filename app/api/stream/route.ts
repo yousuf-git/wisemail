@@ -1,5 +1,5 @@
 import { getOrgContext } from "@/lib/dal";
-import { openEventStream } from "@/lib/realtime/stream";
+import { isClientDisconnect, openEventStream } from "@/lib/realtime/stream";
 import { loadProjectScope, roleIsScopable } from "@/lib/services/project-scope";
 import { resolveOrgAccess } from "@/lib/services/tenancy";
 
@@ -31,25 +31,35 @@ export async function GET(request: Request) {
   }
   const { ctx } = result;
 
-  const body = await openEventStream({
-    orgId: ctx.org.id,
-    userId: ctx.user.id,
-    projectScope: ctx.projectScope,
-    lastEventId: request.headers.get("last-event-id") ?? url.searchParams.get("lastEventId"),
-    signal: request.signal,
-    reauthorize: async () => {
-      const access = await resolveOrgAccess(ctx.user.id, orgSlug);
-      if (!access || access.org.id !== ctx.org.id) return null;
-      const projectScope = roleIsScopable(access.role)
-        ? await loadProjectScope({
-            orgId: access.org.id,
-            memberId: access.memberId,
-            role: access.role,
-          })
-        : null;
-      return { projectScope };
-    },
-  });
+  // Empty reply for a client that already hung up (nobody reads it, and nothing is logged).
+  const gone = () => new Response(null, { status: 499 });
+  if (request.signal.aborted) return gone();
+
+  let body: ReadableStream<Uint8Array>;
+  try {
+    body = await openEventStream({
+      orgId: ctx.org.id,
+      userId: ctx.user.id,
+      projectScope: ctx.projectScope,
+      lastEventId: request.headers.get("last-event-id") ?? url.searchParams.get("lastEventId"),
+      signal: request.signal,
+      reauthorize: async () => {
+        const access = await resolveOrgAccess(ctx.user.id, orgSlug);
+        if (!access || access.org.id !== ctx.org.id) return null;
+        const projectScope = roleIsScopable(access.role)
+          ? await loadProjectScope({
+              orgId: access.org.id,
+              memberId: access.memberId,
+              role: access.role,
+            })
+          : null;
+        return { projectScope };
+      },
+    });
+  } catch (error) {
+    if (request.signal.aborted || isClientDisconnect(error)) return gone();
+    throw error;
+  }
 
   return new Response(body, {
     headers: {

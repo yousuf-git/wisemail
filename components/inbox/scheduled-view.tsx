@@ -230,7 +230,7 @@ export function ScheduledView({
                     {inFlight ? "Sending" : statusLabel(row.status ?? "scheduled")}
                   </StatusChip>
                 </div>
-                <p className="truncate text-sm text-ink-muted">To {row.people.join(", ")}</p>
+                <p className="truncate text-sm text-ink-muted">To {(row.peopleLabels ?? row.people).join(", ")}</p>
                 {row.scheduledAt ? (
                   <p className="flex items-center gap-1.5 text-sm text-ink-secondary">
                     <CalendarClock aria-hidden className="size-4 text-ink-faint" />

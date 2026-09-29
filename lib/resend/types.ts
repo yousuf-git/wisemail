@@ -58,12 +58,26 @@ export type UpdateDomainInput = {
   clickTracking?: boolean;
 };
 
+export const RESEND_REGIONS = ["us-east-1", "eu-west-1", "sa-east-1", "ap-northeast-1"] as const;
+export type ResendRegion = (typeof RESEND_REGIONS)[number];
+
+export type CreateDomainInput = { name: string; region?: ResendRegion };
+
 export type ResendApiKey = {
   id: string;
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
 };
+
+export type CreateApiKeyInput = {
+  name: string;
+  permission: "full_access" | "sending_access";
+  /** Only with `sending_access`: limits the key to one Resend domain id. */
+  domainId?: string;
+};
+/** The secret `token` is returned by Resend exactly once; callers must not persist it. */
+export type CreatedResendApiKey = { id: string; token: string };
 // Resend's list endpoint does not return an API key's permission or restricted domain.
 
 export type ResendSegment = { id: string; name: string; createdAt: string };
@@ -195,6 +209,8 @@ export type SendEmailInput = {
   attachments?: { filename: string; path: string; contentType?: string; contentId?: string }[];
   /** ISO 8601. */
   scheduledAt?: string;
+  /** Sends a published Resend template; `html` and `text` must then be absent. */
+  template?: { id: string; variables?: Record<string, string | number> };
 };
 
 export type SendEmailResult = {
@@ -239,6 +255,73 @@ export type ResendReceivedAttachment = {
   contentId: string | null;
   downloadUrl: string;
   expiresAt: string;
+};
+
+/* ------------------------- audience, templates, broadcasts (writes) ------------------------- */
+
+export type ContactTopicSubscription = { id: string; subscription: "opt_in" | "opt_out" };
+
+export type CreateContactInput = {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  unsubscribed?: boolean;
+  properties?: Record<string, string | number>;
+  /** Resend segment ids. */
+  segmentIds?: string[];
+  topics?: ContactTopicSubscription[];
+};
+
+export type UpdateContactInput = {
+  id: string;
+  /** `null` clears the value. */
+  firstName?: string | null;
+  lastName?: string | null;
+  unsubscribed?: boolean;
+  /** `null` clears a property. */
+  properties?: Record<string, string | number | null>;
+};
+
+export type CreateTopicInput = {
+  name: string;
+  description?: string;
+  defaultSubscription: "opt_in" | "opt_out";
+};
+
+export type UpdateTopicInput = { id: string; name?: string; description?: string };
+
+export type CreateContactPropertyInput = {
+  key: string;
+  type: "string" | "number";
+  fallbackValue?: string | number | null;
+};
+
+export type TemplateWriteInput = {
+  name?: string;
+  alias?: string;
+  subject?: string;
+  from?: string;
+  replyTo?: string[];
+  html?: string;
+  text?: string;
+  variables?: ResendTemplateVariable[];
+};
+
+export type CreateBroadcastInput = {
+  name?: string;
+  segmentId: string;
+  /** `"Name" <address>` */
+  from: string;
+  subject: string;
+  previewText?: string;
+  replyTo?: string[];
+  topicId?: string | null;
+  html?: string;
+  text?: string;
+};
+
+export type UpdateBroadcastInput = Partial<Omit<CreateBroadcastInput, "topicId">> & {
+  topicId?: string | null;
 };
 
 /* ---------------------------------- webhook events ---------------------------------- */

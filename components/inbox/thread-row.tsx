@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { avatarColor, initials, listTime, useNow } from "./format";
 
 function people(row: MailListRowDTO, folder: MailFolder): string {
-  const [first, ...rest] = row.people;
+  const [first, ...rest] = row.peopleLabels?.length ? row.peopleLabels : row.people;
   if (!first) return "(no recipients)";
   const label = row.kind === "email" && folder !== "trash" ? `To: ${first}` : first;
   return rest.length ? `${label} +${rest.length}` : label;
@@ -61,7 +61,7 @@ export function ThreadRow({
         className="grid size-8 place-items-center rounded-full text-xs font-bold text-white"
         style={{ backgroundColor: avatarColor(seed) }}
       >
-        {initials(row.people[0]?.split("@")[0] ?? "?")}
+        {initials((row.peopleLabels?.[0] ?? row.people[0])?.split("@")[0] ?? "?")}
       </span>
       <span className="grid min-w-0 gap-0.5">
         <span className="flex min-w-0 items-center gap-2 text-[13.5px] font-semibold">

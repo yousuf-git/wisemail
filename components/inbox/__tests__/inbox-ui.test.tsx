@@ -285,6 +285,36 @@ describe("ThreadRow", () => {
     purgeAt: null,
   };
 
+  it("shows the sender's display name, and the address when there is no name", () => {
+    const { rerender } = render(
+      <ul>
+        <ThreadRow
+          row={{ ...row, people: ["jane@northwind.io"], peopleLabels: ["Jane Doe"] }}
+          folder="inbox"
+          href="/acme/inbox/t1"
+          selected={false}
+          onSelect={vi.fn()}
+        />
+      </ul>,
+    );
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+    expect(screen.queryByText("jane@northwind.io")).not.toBeInTheDocument();
+    expect(screen.getByText("JD")).toBeInTheDocument();
+
+    rerender(
+      <ul>
+        <ThreadRow
+          row={{ ...row, people: ["jane@northwind.io"], peopleLabels: ["jane@northwind.io"] }}
+          folder="inbox"
+          href="/acme/inbox/t1"
+          selected={false}
+          onSelect={vi.fn()}
+        />
+      </ul>,
+    );
+    expect(screen.getByText("jane@northwind.io")).toBeInTheDocument();
+  });
+
   it("shows sender, subject, snippet, unread dot and attachment icon; keeps the AI slot hidden", () => {
     const onSelect = vi.fn();
     const { container } = render(

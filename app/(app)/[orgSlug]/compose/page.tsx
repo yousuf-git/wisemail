@@ -13,6 +13,8 @@ import { getDraft } from "@/lib/services/drafts";
 import { ServiceError } from "@/lib/services/errors";
 import { getOrgSettings } from "@/lib/services/org-settings";
 import { listSenders } from "@/lib/services/senders";
+import { listTemplateOptions } from "@/lib/services/templates";
+import { DomainModel } from "@/lib/db/models/domains";
 
 export const metadata: Metadata = { title: "Compose" };
 
@@ -39,6 +41,26 @@ export default async function ComposePage({
     } catch (error) {
       if (error instanceof ServiceError) notFound();
       throw error;
+    }
+  }
+
+  // Template mode: published templates, matched to senders through their domain's connection.
+  const templates = ctx.can("template:read") ? await listTemplateOptions(ctx) : [];
+  const senderConnections: Record<string, string> = {};
+  if (templates.length > 0 && senders.length > 0) {
+    const domains = await DomainModel.find(
+      {
+        orgId: new Types.ObjectId(ctx.org.id),
+        _id: { $in: senders.map((s) => new Types.ObjectId(s.domainId)) },
+      },
+      { connectionId: 1 },
+    ).lean();
+    const byDomain = new Map(
+      domains.map((d) => [d._id.toHexString(), d.connectionId.toHexString()]),
+    );
+    for (const sender of senders) {
+      const connectionId = byDomain.get(sender.domainId);
+      if (connectionId) senderConnections[sender.id] = connectionId;
     }
   }
 
@@ -82,6 +104,8 @@ export default async function ComposePage({
         draft={draft}
         variant="page"
         timezone={settings?.timezone}
+        templates={templates}
+        senderConnections={senderConnections}
       />
     </div>
   );

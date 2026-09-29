@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { EmailDetail } from "@/components/activity/email-detail";
 import { getMailFilterOptions } from "@/components/inbox/data";
 import { requireOrg } from "@/lib/dal";
@@ -26,14 +27,17 @@ export default async function EmailDetailPage({
     : undefined;
 
   return (
-    <EmailDetail
-      orgSlug={orgSlug}
-      timeline={timeline}
-      connectionName={
-        options.connections.find((c) => c.id === timeline.email.connectionId)?.name ?? null
-      }
-      domainName={domain?.name ?? null}
-      canOpenThread={ctx.can("thread:read")}
-    />
+    <>
+      <BreadcrumbLabel segment={emailId} label={timeline.email.subject || "(no subject)"} />
+      <EmailDetail
+        orgSlug={orgSlug}
+        timeline={timeline}
+        connectionName={
+          options.connections.find((c) => c.id === timeline.email.connectionId)?.name ?? null
+        }
+        domainName={domain?.name ?? null}
+        canOpenThread={ctx.can("thread:read")}
+      />
+    </>
   );
 }

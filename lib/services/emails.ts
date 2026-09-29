@@ -108,6 +108,10 @@ type ThreadLean = {
   unread?: boolean;
 };
 
+/** Display name when the message carried one, else the address. */
+export const displayLabel = (a: { address: string; name?: string | null }) =>
+  a.name?.trim() || a.address;
+
 const threadRow = (t: ThreadLean): MailListRowDTO => ({
   kind: "thread",
   id: t._id.toHexString(),
@@ -115,6 +119,7 @@ const threadRow = (t: ThreadLean): MailListRowDTO => ({
   subject: t.subject,
   snippet: t.snippet,
   people: t.participants,
+  peopleLabels: t.participants,
   lastMessageAt: t.lastMessageAt.toISOString(),
   messageCount: t.messageCount,
   unread: !!t.unread,
@@ -155,6 +160,7 @@ const emailRow = (e: EmailLean): MailListRowDTO => ({
   subject: e.subject,
   snippet: e.snippet,
   people: e.direction === "outbound" ? e.to.map((a) => a.address) : [e.from.address],
+  peopleLabels: (e.direction === "outbound" ? e.to : [e.from]).map(displayLabel),
   lastMessageAt: (e.receivedAt ?? e.sentAt ?? e.createdAt).toISOString(),
   messageCount: 1,
   unread: false,
@@ -166,6 +172,43 @@ const emailRow = (e: EmailLean): MailListRowDTO => ({
   trashedAt: e.trashedAt?.toISOString() ?? null,
   purgeAt: e.purgeAt?.toISOString() ?? null,
 });
+
+/**
+ * Threads only store participant addresses; the display names live on their emails. Looks up the
+ * newest name seen for each address in these threads (one query per page) so list rows can show
+ * "Jane Doe" instead of "jane@northwind.io"; an address without a known name stays as it is.
+ */
+async function withPeopleLabels(
+  orgId: Types.ObjectId,
+  rows: MailListRowDTO[],
+): Promise<MailListRowDTO[]> {
+  const threadIds = rows.filter((r) => r.kind === "thread" && r.threadId).map((r) => r.threadId!);
+  if (threadIds.length === 0) return rows;
+  const emails = await EmailModel.find(
+    { orgId, threadId: { $in: threadIds.map((id) => new Types.ObjectId(id)) } },
+    { threadId: 1, from: 1, to: 1 },
+  )
+    .sort({ createdAt: -1 })
+    .limit(threadIds.length * 12)
+    .lean();
+  const names = new Map<string, Map<string, string>>();
+  for (const email of emails) {
+    const key = email.threadId!.toHexString();
+    const byAddress = names.get(key) ?? new Map<string, string>();
+    for (const a of [email.from, ...(email.to ?? [])]) {
+      const name = a?.name?.trim();
+      const address = a?.address?.toLowerCase();
+      if (name && address && !byAddress.has(address)) byAddress.set(address, name);
+    }
+    names.set(key, byAddress);
+  }
+  return rows.map((row) => {
+    if (row.kind !== "thread" || !row.threadId) return row;
+    const known = names.get(row.threadId);
+    if (!known) return row;
+    return { ...row, peopleLabels: row.people.map((p) => known.get(p.toLowerCase()) ?? p) };
+  });
+}
 
 async function matchingThreadIds(ctx: OrgContext, q: string): Promise<Types.ObjectId[]> {
   const emails = await EmailModel.find(
@@ -282,7 +325,7 @@ export async function listThreads(
     const more = threads.length > limit;
     const page = threads.slice(0, limit);
     return {
-      items: page.map(threadRow),
+      items: await withPeopleLabels(orgId, page.map(threadRow)),
       nextCursor: more ? encodeCursor(page.at(-1)!.lastMessageAt, page.at(-1)!._id) : null,
     };
   }
@@ -349,7 +392,10 @@ export async function listThreads(
   const page = merged.slice(0, limit);
   const more = merged.length > limit;
   return {
-    items: page.map((m) => m.row),
+    items: await withPeopleLabels(
+      orgId,
+      page.map((m) => m.row),
+    ),
     nextCursor: more ? encodeCursor(page.at(-1)!.at, page.at(-1)!.id) : null,
   };
 }
