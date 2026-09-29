@@ -49,9 +49,14 @@ function Sparkline({ series, tone }: { series: number[]; tone: KpiTone }) {
   }
   const data = series.map((v, i) => ({ i, v }));
   return (
-    <div aria-hidden className="h-8 w-full">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <AreaChart data={data} margin={{ top: 3, right: 3, bottom: 2, left: 0 }}>
+    <div aria-hidden className="h-8 w-full min-w-0">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        initialDimension={{ width: 160, height: 32 }}
+      >
+        <AreaChart data={data} margin={{ top: 3, right: 3, bottom: 2, left: 3 }}>
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Area
             type="monotone"

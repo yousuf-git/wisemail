@@ -31,7 +31,7 @@ export function Greeting({ name, children }: { name?: string; children?: React.R
       <div className="min-w-0 flex-1 basis-56">
         <h1
           id="greeting-title"
-          className="text-[1.375rem] leading-tight font-bold tracking-[-0.025em] min-[560px]:text-[1.75rem] lg:text-4xl lg:leading-10"
+          className="text-[clamp(18px,2.4vw,24px)] leading-tight font-bold tracking-[-0.02em]"
         >
           {timeOfDay(hour)}
           {first ? `, ${first}` : ""}. What are we sending today?
