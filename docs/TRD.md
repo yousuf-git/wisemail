@@ -1,4 +1,4 @@
-# TRD — Mailwise
+# TRD — Wisemail
 
 > **Status:** Draft v0.1, 2026-09-29
 > **Related:** `PRD.md`, `UCD.md`, `DBD.md`, `FED.md`
@@ -271,7 +271,7 @@ Convex was considered (`2026-09-29`) and MongoDB kept for predictable storage co
 
   - **Upgrade from Free:** `backfill-storage` job copies files of inbound emails still available at Resend into R2 and switches them to `storageMode: r2`.
   - **Downgrade to Free:** new mail uses `resend` mode; files already in R2 stay until their (shortened) retention ends.
-- **Bucket:** one private bucket per environment (`mailwise-dev`, `mailwise-prod`). Public access and the `r2.dev` URL stay disabled. The API token is an R2 token scoped to that bucket with Object Read & Write only.
+- **Bucket:** one private bucket per environment (`wisemail-dev`, `wisemail-prod`). Public access and the `r2.dev` URL stay disabled. The API token is an R2 token scoped to that bucket with Object Read & Write only.
 - **Client:** `lib/storage/r2.ts` creates an `S3Client` with `region: "auto"` and the account endpoint; `lib/storage/keys.ts` builds every key so no code concatenates paths by hand.
 - **Key layout** (org id first, so an org can be purged by prefix):
 
@@ -299,9 +299,9 @@ Convex was considered (`2026-09-29`) and MongoDB kept for predictable storage co
 - **Cost:** R2 bills storage and operations, with no egress fees, so attachment downloads and Resend fetching `path` URLs cost nothing extra.
 
 ### 2.14 Delete, Trash & cleanup
-Resend's API has no delete for sent or received emails (only cancel for scheduled emails), so deleting an email removes Mailwise's copy only. Resend objects that do have a delete endpoint are deleted in Resend too.
+Resend's API has no delete for sent or received emails (only cancel for scheduled emails), so deleting an email removes Wisemail's copy only. Resend objects that do have a delete endpoint are deleted in Resend too.
 
-| Item | In Mailwise | In Resend |
+| Item | In Wisemail | In Resend |
 |---|---|---|
 | Inbox thread / message | Trash → permanent | Not possible; Resend keeps its copy until its retention ends |
 | Sent email (Activity) | Trash → permanent | Not possible |
@@ -309,7 +309,7 @@ Resend's API has no delete for sent or received emails (only cancel for schedule
 | Draft | Delete immediately (with Undo) | — (drafts are ours) |
 | Notification | Delete / clear all | — |
 | Broadcast: draft or scheduled | Delete | `DELETE /broadcasts/:id` (also cancels a scheduled one) |
-| Broadcast: sent | Remove from Mailwise | Not possible |
+| Broadcast: sent | Remove from Wisemail | Not possible |
 | Contact, segment, topic, template, domain, API key | Delete | Deleted through the matching Resend endpoint first; mirror removed after success |
 
 **Trash.** `trash(items)` sets `trashedAt`, `trashedBy`, `purgeAt = now + 30 days` on the emails (and thread when the whole thread is chosen) in one transaction, recomputes thread counters, and publishes realtime events. All list queries filter `trashedAt: null`; the Trash view shows the rest. `restore(items)` clears the fields. The UI shows a 5-second Undo toast that calls `restore`.
@@ -340,7 +340,7 @@ Resend's API has no delete for sent or received emails (only cancel for schedule
 ## 4. Project structure
 
 ```
-mailwise/
+wisemail/
 ├─ app/
 │  ├─ (marketing)/                 # landing, pricing
 │  ├─ (auth)/sign-in, sign-up, invite/[token]

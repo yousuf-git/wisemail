@@ -1,4 +1,4 @@
-# DBD — Mailwise (Database Design)
+# DBD — Wisemail (Database Design)
 
 > **Status:** Draft v0.1, 2026-09-29
 > **Database:** MongoDB Atlas, Mongoose ODM
@@ -512,7 +512,7 @@ A tracked email is counted once, on its first `email.sent` (`broadcast` when the
 | deletedAt | Date | R |
 | deletedBy | ObjectId → `user` \| null | Null for rules and trash purge |
 | reason | enum `user \| bulk \| rule \| trash_purge` | R |
-| expireAt | Date | TTL; `deletedAt + 800 days` (longer than any Resend or Mailwise retention) |
+| expireAt | Date | TTL; `deletedAt + 800 days` (longer than any Resend or Wisemail retention) |
 
 Sync upserts and `process-event` check this collection before creating or updating an email; a match means the record is skipped and the webhook event is marked `ignoredReason: deleted`. No subject, addresses, or content are kept.
 

@@ -1,4 +1,4 @@
-# FED — Mailwise (Front-End Design)
+# FED — Wisemail (Front-End Design)
 
 > **Status:** Draft v0.1, 2026-09-29
 > **Direction:** Warm, tactile minimalism · approachable companion · progressive disclosure · floating utility dock
@@ -168,7 +168,7 @@ Headings use `text-wrap: balance`; reading text is capped at 68ch (thread view, 
 - **Bulk selection bar:** when rows are selected, a floating `surface` bar (shadow `lg`, `xl` radius) rises from the bottom: "12 selected · Select all 4,812 matching", then Archive, Move to Trash, and (Owner/Admin in Trash) Delete permanently. Long jobs show a progress ring in the bar and can run while the user keeps working.
 - **Trash:** a mailbox at the bottom of the Inbox and Activity lists, with a muted trash icon and item count. Rows show "Deletes permanently in 12 days" in `--ink-faint`. Header actions: Restore, Delete permanently, Empty trash. Empty state: Wizi (Inbox zero pose) "Trash is empty".
 - **Delete feedback:** trashed rows collapse (height and opacity, 200 ms) and a toast "Moved to Trash · Undo" stays 5 seconds with a shrinking progress line. Restored rows slide back in with the arrival highlight.
-- **Permanent delete dialog:** `danger` icon, plain text "Deleted from Mailwise for good. Resend keeps its copy until its own retention ends.", count of items and files; bulk permanent delete asks the user to type the count. The primary button is `danger` solid ("Delete 4,812 emails").
+- **Permanent delete dialog:** `danger` icon, plain text "Deleted from Wisemail for good. Resend keeps its copy until its own retention ends.", count of items and files; bulk permanent delete asks the user to type the count. The primary button is `danger` solid ("Delete 4,812 emails").
 - **Usage meter:** horizontal bar split into three segments (transactional `accent`, broadcast `engaged`, inbound `success`) against the allowance; a dashed marker for the projected month-end total. Bar turns `warning` from 80% and `danger` past 100%, with the label "Over by 12,400 · est. $2 overage".
 - **Plan banners:** full-width, below the top bar, one at a time by priority: payment failed (`danger` soft) → over allowance (`warning` soft) → trial ending (`accent` soft). Each has one action (Update payment, View usage, Choose a plan) and can be dismissed for 24 h, except payment failed.
 - **Locked feature:** the control stays visible at normal size with a small lock icon and `--ink-faint` label; hover or click opens a popover naming the plan that includes it ("Assignment is on Pro and above") with a "See plans" button for Owners, or "Ask your Owner" for others. Never hide a gated feature entirely.

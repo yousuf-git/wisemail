@@ -1,4 +1,4 @@
-# UCD — Mailwise (Use Case Document)
+# UCD — Wisemail (Use Case Document)
 
 > **Status:** Draft v0.1, 2026-09-29
 > **Related:** `PRD.md`, `TRD.md`, `DBD.md`
@@ -251,7 +251,7 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 - Result: items stay in Trash 30 days, then are deleted permanently by the system.
 
 **UC-37 — Delete permanently / Empty trash** · Owner/Admin
-- Main: Trash → select → "Delete permanently" (or "Empty trash") → dialog: "Deleted from Mailwise for good. Resend keeps its copy until its own retention ends." → confirm.
+- Main: Trash → select → "Delete permanently" (or "Empty trash") → dialog: "Deleted from Wisemail for good. Resend keeps its copy until its own retention ends." → confirm.
 - Result: emails, bodies, and files removed; they never reappear through sync or late events; insights and usage unchanged; audit log entry.
 
 **UC-38 — Bulk delete by filter** · Owner/Admin (permanent) or members who can trash (to Trash)
@@ -264,11 +264,11 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 - Result: hourly runs; each rule shows last run and items affected.
 
 **UC-40 — Cancel and delete a scheduled email** · Sender roles
-- Main: Scheduled → Delete → Mailwise cancels it in Resend → on success it is removed; if Resend has already sent it, the dialog says so and nothing is deleted.
+- Main: Scheduled → Delete → Wisemail cancels it in Resend → on success it is removed; if Resend has already sent it, the dialog says so and nothing is deleted.
 
 **UC-41 — Delete Resend objects** · Roles allowed for each object
 - Main: delete a contact, segment, topic, template, draft or scheduled broadcast, domain, or API key → dialog states it will also be deleted in Resend → confirm → deleted in Resend, then here.
-- Alt: sent broadcast → only "Remove from Mailwise" is offered.
+- Alt: sent broadcast → only "Remove from Wisemail" is offered.
 
 ## 3. Pages & routes (derived)
 
@@ -349,7 +349,7 @@ Format: **ID — Name** · Actor · Preconditions · Main flow · Alternatives /
 | Reply arrives to a permanently deleted message | Starts a new thread (the old Message-ID is remembered only as a hash). |
 | Manual re-sync after deletes | Tombstoned emails are skipped. |
 | Scheduled email already sent when deleting | Resend refuses the cancel; nothing is deleted and the user is told it was sent. |
-| Resend delete fails for a contact/template/etc. | Nothing is removed in Mailwise; error shown with Resend's message. |
+| Resend delete fails for a contact/template/etc. | Nothing is removed in Wisemail; error shown with Resend's message. |
 | Two members trash and restore the same thread at once | Last action wins; both see the result live. |
 | Permanent delete while R2 deletion fails | Records are gone; the job retries the R2 deletion; the bucket's lifecycle rule is the final backstop. |
 | Thread partly trashed (one message) | Thread stays in the inbox without that message; the message appears in Trash with its thread subject. |
