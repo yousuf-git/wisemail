@@ -23,6 +23,8 @@ import { expireAtFrom, getMailSettings } from "./mail-settings";
 import { resolveDomain } from "./mail-shared";
 import { incrementRollups, type RollupStream } from "./rollups";
 import { recomputeSenderStatuses } from "./senders";
+import { notifyDomainChanged, notifyForEmailEvent } from "./mail-notifications";
+import { AlertRuleModel } from "@/lib/db/models/alert-rules";
 
 /**
  * `process-event` (TRD §2.1 step 5). Runs after ingest has stored a `webhook_events` document.
@@ -46,6 +48,8 @@ export type ProcessOutcome = {
   emailId?: string;
   /** Set for `email.received`: the caller must enqueue `fetch-inbound` for it. */
   fetchInbound?: FetchInboundRequest | null;
+  /** Org whose alert rules should be re-evaluated (it has enabled rules and the event counted). */
+  alertOrgId?: string;
 };
 
 /* ------------------------------------------------------------------------------------------ */
@@ -414,8 +418,10 @@ async function processEmailEvent(
   );
 
   // TODO(phase 7): meter the email toward `usage_periods` (idempotent via `emails.meteredAt`).
-  // TODO(phase 5): notifications (`reply_opened`, `bounce`, `complaint`, `inbound_received`) and
-  // alert-rule evaluation belong here, skipped for tombstoned emails (handled above).
+  // Notifications for bounces, complaints and opened replies (tombstoned emails returned above;
+  // `inbound_received` is sent by `fetch-inbound` once the message is threaded). Alert
+  // evaluation is requested by the caller after the transaction (`alertOrgId`).
+  await notifyForEmailEvent(type, email, { session });
 
   const threadId = email.threadId?.toHexString();
   await publish(
@@ -455,15 +461,23 @@ async function processEmailEvent(
 }
 
 async function processDomainEvent(
-  event: { orgId: Types.ObjectId; connectionId: Types.ObjectId; type: string; payload: unknown },
+  event: {
+    _id: Types.ObjectId;
+    orgId: Types.ObjectId;
+    connectionId: Types.ObjectId;
+    type: string;
+    payload: unknown;
+  },
   session: ClientSession,
 ): Promise<ProcessOutcome> {
   const { orgId, connectionId, type } = event;
+  const eventId = event._id.toHexString();
   const data = event.payload as DomainEventData;
   const domain = await DomainModel.findOne({ orgId, connectionId, resendId: data.id }, null, {
     session,
   });
   if (domain) {
+    const previousStatus = domain.status;
     if (type === "domain.deleted") {
       // Mirror removed; senders keep their reference and turn `domain_unverified` (DBD §5).
       await DomainModel.deleteOne({ _id: domain._id, orgId }, { session });
@@ -475,6 +489,21 @@ async function processDomainEvent(
       );
     }
     await recomputeSenderStatuses(orgId, { domainId: domain._id }, { session });
+    const nextStatus = type === "domain.deleted" ? "deleted" : data.status;
+    if (nextStatus !== previousStatus) {
+      await notifyDomainChanged(
+        {
+          orgId,
+          connectionId,
+          domainId: domain._id,
+          projectId: domain.projectId ?? null,
+          name: domain.name,
+          status: nextStatus,
+          dedupKey: `domain:${domain._id}:${eventId}`,
+        },
+        { session },
+      );
+    }
     await publish(
       { orgId, topics: ["domains", "senders"], patch: { domain: data.id, status: data.status } },
       { session },
@@ -500,7 +529,7 @@ export async function processWebhookEvent(eventId: string): Promise<ProcessOutco
     orgId: stored.orgId,
   });
 
-  return withTransaction(async (session) => {
+  const outcome = await withTransaction(async (session) => {
     // Claim: a concurrent or repeated run finds `processedAt` set and stops.
     const claimed = await WebhookEventModel.findOneAndUpdate(
       { _id: id, processedAt: null },
@@ -521,6 +550,18 @@ export async function processWebhookEvent(eventId: string): Promise<ProcessOutco
     // contact.* and suppression.* are handled by the audience phases (TODO(phase 6)).
     return { found: true, type: stored.type };
   });
+
+  // Alert rules look at rollups and domain status, both of which just changed. Only ask for an
+  // evaluation when the org has rules to evaluate.
+  const counted =
+    !outcome.alreadyProcessed &&
+    outcome.found &&
+    (!outcome.ignoredReason || outcome.ignoredReason === "deleted") &&
+    (stored.type.startsWith("email.") || stored.type.startsWith("domain."));
+  if (counted && (await AlertRuleModel.exists({ orgId: stored.orgId, enabled: true }))) {
+    outcome.alertOrgId = stored.orgId.toHexString();
+  }
+  return outcome;
 }
 
 /**
@@ -531,4 +572,11 @@ export async function processEventInline(eventId: string): Promise<void> {
   if (env.NODE_ENV === "production") return;
   const outcome = await processWebhookEvent(eventId);
   if (outcome.fetchInbound) await dispatchFetchInbound(outcome.fetchInbound);
+  if (outcome.alertOrgId) {
+    // No Inngest here, so no debounce either: evaluate right away, then send queued emails.
+    const { evaluateOrgAlerts } = await import("./alert-evaluation");
+    await evaluateOrgAlerts(outcome.alertOrgId);
+  }
+  const { sendPendingNotificationEmails } = await import("./notifications");
+  await sendPendingNotificationEmails();
 }

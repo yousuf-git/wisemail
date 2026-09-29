@@ -25,7 +25,13 @@ export const sendEmailRequested = eventType("email/send.requested", {
   schema: z.object({ emailId: z.string(), orgId: z.string(), connectionId: z.string() }),
 });
 
+/** Something changed that alert rules may care about (an email event or a domain update). */
+export const alertsEvaluateRequested = eventType("alerts/evaluate.requested", {
+  schema: z.object({ orgId: z.string() }),
+});
+
 export const eventTypes = {
+  alertsEvaluateRequested,
   resendEventReceived,
   connectionSyncRequested,
   inboundFetchRequested,

@@ -3,9 +3,10 @@
 import { Menu, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
-import { BellIcon, type AnimatedIconHandle } from "@/components/icons/animated";
+import { BellIcon } from "@/components/icons/animated";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   Sheet,
@@ -38,11 +39,16 @@ export function Topbar({
   orgName,
   orgSlug,
   dock,
+  orgId,
+  userId,
   unreadNotifications = 0,
 }: {
   orgName: string;
   orgSlug: string;
   dock: React.ReactNode;
+  /** With `userId`, turns on the live notification bell. */
+  orgId?: string;
+  userId?: string;
   unreadNotifications?: number;
 }) {
   const pathname = usePathname();
@@ -53,7 +59,6 @@ export function Topbar({
     setLastPath(pathname);
     setOpen(false);
   }
-  const bell = useRef<AnimatedIconHandle>(null);
 
   const base = `/${orgSlug}`;
   const rest = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split("/") : [];
@@ -124,18 +129,22 @@ export function Topbar({
             ⌘K
           </kbd>
         </button>
-        <Link
-          href={`${base}/notifications`}
-          aria-label={
-            unreadNotifications ? `Notifications, ${unreadNotifications} unread` : "Notifications"
-          }
-          className={cn(iconButton, "relative")}
-        >
-          <BellIcon ref={bell} size={18} />
-          {unreadNotifications > 0 ? (
-            <span className="absolute top-[7px] right-2 size-2 rounded-full bg-coral ring-2 ring-surface" />
-          ) : null}
-        </Link>
+        {orgId && userId ? (
+          <NotificationBell
+            orgSlug={orgSlug}
+            orgId={orgId}
+            userId={userId}
+            initialCount={unreadNotifications}
+          />
+        ) : (
+          <Link
+            href={`${base}/notifications`}
+            aria-label="Notifications"
+            className={cn(iconButton, "relative")}
+          >
+            <BellIcon size={18} />
+          </Link>
+        )}
         <ThemeToggle className="hidden md:inline-flex" />
       </div>
     </div>

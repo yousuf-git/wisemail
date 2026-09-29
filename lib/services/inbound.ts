@@ -10,6 +10,7 @@ import { ConnectionModel } from "@/lib/db/models/connections";
 import { EmailContentModel } from "@/lib/db/models/email-contents";
 import { EmailModel } from "@/lib/db/models/emails";
 import { withTransaction } from "@/lib/db/transaction";
+import { notifyInboundReceived } from "./mail-notifications";
 import { env } from "@/lib/env";
 import { enqueueFetchInbound } from "@/lib/jobs/send";
 import { domainOf, parseAddress, parseAddressList } from "@/lib/mail/address";
@@ -301,7 +302,18 @@ export async function fetchInboundEmail(
       },
       { session },
     );
-    // TODO(phase 5/7): notify members (`inbound_received`), enqueue `ai-triage` when AI is on.
+    await notifyInboundReceived(
+      {
+        orgId,
+        emailId,
+        threadId: threaded.threadId,
+        projectId: email.projectId ?? null,
+        from: fromAddress,
+        subject,
+      },
+      { session },
+    );
+    // TODO(phase 7): enqueue `ai-triage` when AI is on.
     return threaded.threadId;
   });
 

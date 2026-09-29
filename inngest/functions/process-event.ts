@@ -1,4 +1,5 @@
 import { inngest, resendEventReceived } from "@/inngest/client";
+import { enqueueAlertEvaluation } from "@/lib/jobs/send";
 import { dispatchFetchInbound } from "@/lib/services/inbound";
 import { processWebhookEvent } from "@/lib/services/events-processing";
 
@@ -13,6 +14,11 @@ export const processEvent = inngest.createFunction(
     const outcome = await step.run("process", () => processWebhookEvent(event.data.eventId));
     const request = outcome.fetchInbound;
     if (request) await step.run("enqueue-fetch-inbound", () => dispatchFetchInbound(request));
+    // Alert rules may care about this event; the evaluation job is debounced per org.
+    if (outcome.alertOrgId) {
+      const orgId = outcome.alertOrgId;
+      await step.run("request-alert-evaluation", () => enqueueAlertEvaluation({ orgId }));
+    }
     return { found: outcome.found, type: outcome.type, ignoredReason: outcome.ignoredReason };
   },
 );

@@ -7,7 +7,7 @@ import type { UsageSummary } from "./usage-tile";
 export type AppShellProps = {
   org: { id: string; name: string; slug: string };
   orgs: { id: string; name: string; slug: string }[];
-  user: { name: string; email: string; image?: string | null };
+  user: { id?: string; name: string; email: string; image?: string | null };
   role: string;
   children: React.ReactNode;
   /** Plan, connection health and allowance for the dock tile. Omit for the neutral empty state. */
@@ -49,6 +49,8 @@ export function AppShell({
             <Topbar
               orgName={org.name}
               orgSlug={org.slug}
+              orgId={org.id}
+              userId={user.id}
               unreadNotifications={unreadNotifications}
               dock={<Dock {...dockProps} footerSlot={<MobileTheme />} />}
             />

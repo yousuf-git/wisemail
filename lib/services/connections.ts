@@ -28,6 +28,7 @@ import { toChecklistDTO } from "./checklist";
 import { getLatestSyncStatuses, requestSync } from "./sync";
 import { ServiceError } from "./errors";
 import { keyAad, secretAad } from "./webhook-secret";
+import { notifyConnectionAttention } from "./mail-notifications";
 
 const isDuplicateKey = (error: unknown): error is { code: number; keyPattern?: object } =>
   typeof error === "object" && error !== null && (error as { code?: unknown }).code === 11000;
@@ -156,6 +157,15 @@ export async function registerWebhook(
       await ConnectionModel.updateOne(
         { _id: connection._id, orgId: connection.orgId },
         { $set: { status: "needs_attention", statusReason: failure.reason } },
+        { session },
+      );
+      await notifyConnectionAttention(
+        {
+          orgId: connection.orgId,
+          connectionId: connection._id,
+          name: connection.name,
+          reason: failure.reason,
+        },
         { session },
       );
     }
