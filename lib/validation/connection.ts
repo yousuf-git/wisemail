@@ -31,3 +31,15 @@ export type RemoveConnectionInput = z.infer<typeof removeConnectionSchema>;
 
 export const retryConnectionSchema = z.object({ connectionId: idSchema });
 export type RetryConnectionInput = z.infer<typeof retryConnectionSchema>;
+
+export const syncConnectionSchema = z.object({ connectionId: idSchema });
+export type SyncConnectionInput = z.infer<typeof syncConnectionSchema>;
+
+export const trackingFixSchema = z.object({
+  connectionId: idSchema,
+  kind: z.enum(["open", "click"]),
+});
+export type TrackingFixInput = z.infer<typeof trackingFixSchema>;
+
+export const reregisterWebhookSchema = z.object({ connectionId: idSchema });
+export type ReregisterWebhookInput = z.infer<typeof reregisterWebhookSchema>;

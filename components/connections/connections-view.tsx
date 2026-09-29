@@ -7,7 +7,13 @@ import type { ConnectionDTO, ConnectionQuota } from "@/lib/dto/connection";
 import { AddConnectionDialog } from "./add-connection-dialog";
 import { ConnectionCard } from "./connection-card";
 
-export type ConnectionPermissions = { create: boolean; update: boolean; delete: boolean };
+export type ConnectionPermissions = {
+  create: boolean;
+  update: boolean;
+  delete: boolean;
+  /** domain:update, for the tracking fixes on the checklist. */
+  domainUpdate: boolean;
+};
 
 export function ConnectionsView({
   orgSlug,

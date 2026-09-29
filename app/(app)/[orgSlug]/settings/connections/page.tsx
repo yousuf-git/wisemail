@@ -28,6 +28,7 @@ export default async function ConnectionsPage({
           create: ctx.can("connection:create"),
           update: ctx.can("connection:update"),
           delete: ctx.can("connection:delete"),
+          domainUpdate: ctx.can("domain:update"),
         }}
       />
     </>
