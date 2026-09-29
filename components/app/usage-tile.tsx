@@ -5,6 +5,8 @@ export type ConnectionHealth = "healthy" | "attention" | "down";
 export type UsageSummary = {
   plan?: string;
   connections?: { id: string; health: ConnectionHealth }[];
+  /** Resend accounts included in the plan; shown as "n of limit". */
+  connectionLimit?: number;
   /** Tracked emails this period, split by kind (for the meter segments). */
   used?: { transactional: number; broadcast: number; inbound: number };
   allowance?: number | null;
@@ -34,17 +36,28 @@ export function UsageTile({ usage, className }: { usage?: UsageSummary; classNam
     >
       <div className="flex items-center justify-between gap-2">
         {connections.length > 0 ? (
-          <span
-            className="flex gap-[5px]"
-            role="img"
-            aria-label={`${connections.length} Resend ${connections.length === 1 ? "account" : "accounts"}`}
-          >
-            {connections.map((c) => (
-              <i key={c.id} className={cn("block size-2 rounded-full", dot[c.health])} />
-            ))}
+          <span className="flex items-center gap-2">
+            <span
+              className="flex gap-[5px]"
+              role="img"
+              aria-label={`${connections.length} Resend ${connections.length === 1 ? "account" : "accounts"}`}
+            >
+              {connections.map((c) => (
+                <i key={c.id} className={cn("block size-2 rounded-full", dot[c.health])} />
+              ))}
+            </span>
+            {usage?.connectionLimit != null ? (
+              <span className="text-ink-muted" data-testid="usage-connections">
+                {connections.length} of {usage.connectionLimit}
+              </span>
+            ) : null}
           </span>
         ) : (
-          <span className="text-ink-muted">No Resend accounts yet</span>
+          <span className="text-ink-muted" data-testid="usage-connections">
+            {usage?.connectionLimit != null
+              ? `0 of ${usage.connectionLimit} accounts`
+              : "No Resend accounts yet"}
+          </span>
         )}
         {usage?.plan ? (
           <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.6875rem] font-bold text-info-ink">
