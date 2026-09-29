@@ -30,7 +30,29 @@ export const alertsEvaluateRequested = eventType("alerts/evaluate.requested", {
   schema: z.object({ orgId: z.string() }),
 });
 
+/** Check the DNS of one domain, every domain of a connection, or (no ids) of an organization. */
+export const domainDnsCheckRequested = eventType("domain/dns-check.requested", {
+  schema: z.object({
+    orgId: z.string(),
+    connectionId: z.string().optional(),
+    domainId: z.string().optional(),
+  }),
+});
+
+/** Work through an uploaded CSV import a batch at a time (PRD §5.9). */
+export const contactImportRequested = eventType("audience/contacts.import.requested", {
+  schema: z.object({ importId: z.string(), orgId: z.string(), connectionId: z.string() }),
+});
+
+/** Follow a sent or scheduled broadcast until Resend reports its final status (TRD §2.5). */
+export const broadcastSendRequested = eventType("broadcast/send.requested", {
+  schema: z.object({ broadcastId: z.string(), orgId: z.string(), connectionId: z.string() }),
+});
+
 export const eventTypes = {
+  contactImportRequested,
+  broadcastSendRequested,
+  domainDnsCheckRequested,
   alertsEvaluateRequested,
   resendEventReceived,
   connectionSyncRequested,
