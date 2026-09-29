@@ -169,3 +169,28 @@ describe("parseEnv", () => {
     );
   });
 });
+
+describe("KEK rotation env", () => {
+  const previous = Buffer.alloc(32, 2).toString("base64");
+  it("requires the previous KEK's id alongside it", () => {
+    expect(errorsOf({ ...devEnv, ENCRYPTION_KEK_PREVIOUS: previous })).toContain(
+      "ENCRYPTION_KEK_PREVIOUS_ID: required when ENCRYPTION_KEK_PREVIOUS is set",
+    );
+    expect(errorsOf({ ...devEnv, ENCRYPTION_KEK_PREVIOUS_ID: "old" })).toContain(
+      "ENCRYPTION_KEK_PREVIOUS: required when ENCRYPTION_KEK_PREVIOUS_ID is set",
+    );
+  });
+  it("rejects a previous id equal to the current id, and accepts a valid pair", () => {
+    expect(
+      errorsOf({
+        ...devEnv,
+        ENCRYPTION_KEK_PREVIOUS: previous,
+        ENCRYPTION_KEK_PREVIOUS_ID: "dev-1",
+      }),
+    ).toContain("ENCRYPTION_KEK_PREVIOUS_ID: must differ from ENCRYPTION_KEK_ID");
+    expect(
+      parseEnv({ ...devEnv, ENCRYPTION_KEK_PREVIOUS: previous, ENCRYPTION_KEK_PREVIOUS_ID: "old" })
+        .success,
+    ).toBe(true);
+  });
+});

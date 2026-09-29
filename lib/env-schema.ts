@@ -26,6 +26,8 @@ const schema = z.object({
   ENCRYPTION_KEK_CURRENT: base64Key,
   ENCRYPTION_KEK_ID: z.string().min(1),
   ENCRYPTION_KEK_PREVIOUS: base64Key.optional(),
+  /** Id the previous KEK was stored under; required together with ENCRYPTION_KEK_PREVIOUS. */
+  ENCRYPTION_KEK_PREVIOUS_ID: z.string().min(1).optional(),
 
   RESEND_MODE: z.enum(["live", "fake"]).optional(),
   STORAGE_MODE: z.enum(["r2", "fake"]).optional(),
@@ -157,6 +159,19 @@ export function parseEnv(source: Source): EnvResult {
   };
 
   const errors: string[] = [];
+
+  if (parsed.ENCRYPTION_KEK_PREVIOUS && !parsed.ENCRYPTION_KEK_PREVIOUS_ID) {
+    errors.push("ENCRYPTION_KEK_PREVIOUS_ID: required when ENCRYPTION_KEK_PREVIOUS is set");
+  }
+  if (parsed.ENCRYPTION_KEK_PREVIOUS_ID && !parsed.ENCRYPTION_KEK_PREVIOUS) {
+    errors.push("ENCRYPTION_KEK_PREVIOUS: required when ENCRYPTION_KEK_PREVIOUS_ID is set");
+  }
+  if (
+    parsed.ENCRYPTION_KEK_PREVIOUS_ID &&
+    parsed.ENCRYPTION_KEK_PREVIOUS_ID === parsed.ENCRYPTION_KEK_ID
+  ) {
+    errors.push("ENCRYPTION_KEK_PREVIOUS_ID: must differ from ENCRYPTION_KEK_ID");
+  }
 
   if (production) {
     for (const key of ["APP_URL", "BETTER_AUTH_URL"] as const) {
