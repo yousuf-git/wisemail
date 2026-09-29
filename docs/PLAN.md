@@ -46,10 +46,11 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 Phase 2 follow-ups (not blocking): synced-data deletion choice on remove, key rotation (UC-06 "Rotate"), Agency 16th-connection confirmation (Phase 7), live `useLiveQuery` refresh of the connections list (Phase 5), email verification via system email.
 
 ## Phase 3 — Sync & mirrors
-- [ ] `sync-connection` paged + checkpointed (domains → api keys → audience → templates → broadcasts → automations → emails)
-- [ ] Models: domains, api_keys, templates, automations, contacts, segments, topics, contact_properties, broadcasts
-- [ ] Setup checklist per connection with one-click fixes
-- [ ] Projects CRUD + member scopes
+- [x] `sync-connection` paged + checkpointed (domains → api keys → audience → templates → broadcasts → automations; emails stage is a hook, lands in Phase 4)
+- [x] Models: domains, api_keys, templates, automations, contacts, segments, topics, contact_properties, broadcasts
+- [x] Setup checklist per connection with one-click fixes (tracking toggles, webhook re-register; DNS/MX guidance only)
+- [x] Projects CRUD + member scopes: `projects` / `member_scopes` models, `lib/services/projects.ts` (plan limit, uniqueness, soft delete cascade), `member-scopes.ts`, `project-scope.ts` (`projectFilter`, `OrgContext.projectScope`), Settings → Projects and Members (invite link, roles, scope editor), `/invite/[token]` acceptance
+- [x] Sidebar usage tile wired to real data (`lib/services/usage.ts`: plan, connection health/limit, allowance; tracked emails stay 0 until Phase 4)
 
 ## Phase 4 — Mail core
 - [ ] Models: emails, email_contents, attachments, threads, thread_member_states, labels, deletion_tombstones
@@ -83,6 +84,10 @@ Phase 2 follow-ups (not blocking): synced-data deletion choice on remove, key ro
 ---
 
 ## Log
+
+- 2026-09-29 — Phase 3 done (232 tests). **Launch blocker:** invites accept on email match while email verification is off and invite tokens are Better Auth ObjectIds (partly predictable) — require verified email + random tokens before launch. Follow-ups: contacts sync is N+1 (2 extra calls/contact); per-connection rate-limit bucket in Mongo (TRD §2.3) not built, sync paces in-process; topbar crowds at ~1100px (breadcrumb truncates, search wraps); connection removal keeps mirrors; `projectFilter` must be applied to mail/domain reads as they land.
+
+- 2026-09-29 — Phase 3 (projects + members): scoped members are gated to Team+ (PRICING §3), invites carry `projectIds` on the Better Auth invitation doc and an `afterAcceptInvitation` hook applies them; invitation email is not sent (link is shown for copying); plan catalog now has members/projects/emails limits. Follow-ups: invitation emails (system email), realtime "access" topic consumers (Phase 5), `projectFilter` adoption in mail/domain queries as they land, an empty scope removes the restriction without the Owner confirmation DBD §5 mentions.
 
 - 2026-09-29 — Phase 2 done (116 tests). Follow-ups: sidebar usage tile not wired to real data; duplicate-team error lacks link to existing connection; remove-connection data choice; live list refresh (Phase 5); live Resend "no webhook slot" wording unverified.
 
