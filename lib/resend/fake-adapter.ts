@@ -4,8 +4,22 @@ import { createHash } from "node:crypto";
 
 import { buildRawMime } from "@/lib/mail/fake-mime";
 import { ResendError, mapResendError } from "./errors";
+import type {
+  ContactTopicSubscription,
+  CreateBroadcastInput,
+  CreateContactInput,
+  CreateContactPropertyInput,
+  CreateTopicInput,
+  TemplateWriteInput,
+  UpdateBroadcastInput,
+  UpdateContactInput,
+  UpdateTopicInput,
+} from "./types";
 import type { ResendAdapter } from "./adapter";
 import type {
+  CreateApiKeyInput,
+  CreateDomainInput,
+  CreatedResendApiKey,
   CreatedResendWebhook,
   Page,
   PageOptions,
@@ -545,6 +559,83 @@ export class FakeResendAdapter implements ResendAdapter {
     if (input.clickTracking !== undefined) domain.clickTracking = input.clickTracking;
   }
 
+  /* ---- domain and API key management (Phase 6) ---- */
+
+  async createDomain(input: CreateDomainInput) {
+    this.guard();
+    const name = input.name.toLowerCase();
+    if (this.team.domains.some((d) => d.name === name)) {
+      throw fail("validation_error", `The ${name} domain has already been registered.`, 422);
+    }
+    const id = `dom_${this.team.id.replace(/[^a-z0-9]/g, "") || "team"}_n${++fakeStore().counter}`;
+    const domain: ResendDomain = {
+      id,
+      name,
+      status: "not_started",
+      region: input.region ?? "us-east-1",
+      createdAt: new Date().toISOString(),
+      openTracking: false,
+      clickTracking: false,
+      capabilities: { sending: true, receiving: false },
+    };
+    this.team.domains.push(domain);
+    this.team.records[id] = dnsRecords(name, "not_started");
+    return { ...domain, records: this.team.records[id]! };
+  }
+
+  /**
+   * Verification is instant in the fake: the domain becomes verified, except names starting
+   * with `unverifiable` (they end up `failed`), so both outcomes can be exercised.
+   */
+  async verifyDomain(id: string) {
+    this.guard();
+    const domain = this.team.domains.find((d) => d.id === id);
+    if (!domain) throw fail("not_found", "Domain not found", 404);
+    const ok = !domain.name.startsWith("unverifiable");
+    domain.status = ok ? "verified" : "failed";
+    this.team.records[id] = (this.team.records[id] ?? []).map((r) => ({
+      ...r,
+      status: ok ? "verified" : "failed",
+    }));
+  }
+
+  async removeDomain(id: string) {
+    this.guard();
+    const index = this.team.domains.findIndex((d) => d.id === id);
+    if (index < 0) throw fail("not_found", "Domain not found", 404);
+    this.team.domains.splice(index, 1);
+    delete this.team.records[id];
+  }
+
+  async createApiKey(input: CreateApiKeyInput): Promise<CreatedResendApiKey> {
+    this.guard();
+    if (input.domainId && !this.team.domains.some((d) => d.id === input.domainId)) {
+      throw fail("validation_error", "The domain for this API key was not found.", 422);
+    }
+    const n = ++fakeStore().counter;
+    const id = `key_${this.team.id.replace(/[^a-z0-9]/g, "") || "team"}_n${n}`;
+    this.team.apiKeys.push({
+      id,
+      name: input.name,
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+    });
+    // Shaped like a fake connection key of the same team, so it can be pasted back in a test.
+    const flag = input.permission === "sending_access" ? "sending" : "full";
+    return { id, token: `re_${this.team.id}_${flag}_k${n}${sha(id).toString("hex").slice(0, 8)}` };
+  }
+
+  async removeApiKey(id: string) {
+    this.guard();
+    const index = this.team.apiKeys.findIndex((k) => k.id === id);
+    if (index < 0) throw fail("not_found", "API key not found", 404);
+    this.team.apiKeys.splice(index, 1);
+  }
+
+  ownApiKeyId() {
+    return this.ownKey.id;
+  }
+
   async listSegments(options?: PageOptions) {
     this.guard();
     return paginate(this.team.segments, options);
@@ -603,6 +694,7 @@ export class FakeResendAdapter implements ResendAdapter {
 
   async listBroadcasts(options?: PageOptions) {
     this.guard();
+    this.team.broadcasts.forEach((b) => this.settleScheduled(b));
     return paginate(this.team.broadcasts, options);
   }
 
@@ -610,6 +702,7 @@ export class FakeResendAdapter implements ResendAdapter {
     this.guard();
     const broadcast = this.team.broadcasts.find((b) => b.id === id);
     if (!broadcast) throw fail("not_found", "Broadcast not found", 404);
+    this.settleScheduled(broadcast);
     return { ...broadcast };
   }
 
@@ -623,6 +716,360 @@ export class FakeResendAdapter implements ResendAdapter {
     const automation = this.team.automations.find((a) => a.id === id);
     if (!automation) throw fail("not_found", "Automation not found", 404);
     return { ...automation };
+  }
+
+  /* ------------------- audience, templates, broadcasts (writes, Phase 6) ------------------- */
+
+  private newId(prefix: string) {
+    return `${prefix}_${this.team.id.replace(/[^a-z0-9]/g, "")}_w${String(++fakeStore().counter).padStart(4, "0")}`;
+  }
+
+  private contactById(id: string) {
+    const contact = this.team.contacts.find((c) => c.id === id);
+    if (!contact) throw fail("not_found", "Contact not found", 404);
+    return contact;
+  }
+
+  private assertSegments(ids: string[]) {
+    for (const id of ids) {
+      if (!this.team.segments.some((s) => s.id === id)) {
+        throw fail("validation_error", `Segment ${id} does not exist.`, 422);
+      }
+    }
+  }
+
+  private assertProperties(values: Record<string, string | number | null>) {
+    for (const [key, value] of Object.entries(values)) {
+      const property = this.team.contactProperties.find((p) => p.key === key);
+      if (!property) {
+        throw fail("validation_error", `The contact property "${key}" does not exist.`, 422);
+      }
+      if (value !== null && property.type === "number" && typeof value !== "number") {
+        throw fail("validation_error", `The property "${key}" must be a number.`, 422);
+      }
+    }
+  }
+
+  async createContact(input: CreateContactInput) {
+    this.guard();
+    const email = input.email.trim().toLowerCase();
+    if (this.team.contacts.some((c) => c.email.toLowerCase() === email)) {
+      throw fail("validation_error", `A contact with ${email} already exists.`, 422);
+    }
+    this.assertSegments(input.segmentIds ?? []);
+    this.assertProperties(input.properties ?? {});
+    const id = this.newId("con");
+    this.team.contacts.push({
+      id,
+      email,
+      firstName: input.firstName ?? null,
+      lastName: input.lastName ?? null,
+      unsubscribed: input.unsubscribed ?? false,
+      createdAt: new Date().toISOString(),
+      properties: { ...(input.properties ?? {}) },
+      segmentIds: [...(input.segmentIds ?? [])],
+      topics: [...(input.topics ?? [])],
+    });
+    return { id };
+  }
+
+  async updateContact(input: UpdateContactInput) {
+    this.guard();
+    const contact = this.contactById(input.id);
+    if (input.properties) this.assertProperties(input.properties);
+    if (input.firstName !== undefined) contact.firstName = input.firstName;
+    if (input.lastName !== undefined) contact.lastName = input.lastName;
+    if (input.unsubscribed !== undefined) contact.unsubscribed = input.unsubscribed;
+    for (const [key, value] of Object.entries(input.properties ?? {})) {
+      if (value === null) delete contact.properties[key];
+      else contact.properties[key] = value;
+    }
+  }
+
+  async deleteContact(id: string) {
+    this.guard();
+    this.contactById(id);
+    this.team.contacts = this.team.contacts.filter((c) => c.id !== id);
+  }
+
+  async addContactToSegment(contactId: string, segmentId: string) {
+    this.guard();
+    const contact = this.contactById(contactId);
+    this.assertSegments([segmentId]);
+    if (!contact.segmentIds.includes(segmentId)) contact.segmentIds.push(segmentId);
+  }
+
+  async removeContactFromSegment(contactId: string, segmentId: string) {
+    this.guard();
+    const contact = this.contactById(contactId);
+    contact.segmentIds = contact.segmentIds.filter((id) => id !== segmentId);
+  }
+
+  async updateContactTopics(contactId: string, topics: ContactTopicSubscription[]) {
+    this.guard();
+    const contact = this.contactById(contactId);
+    for (const t of topics) {
+      if (!this.team.topics.some((x) => x.id === t.id)) {
+        throw fail("validation_error", `Topic ${t.id} does not exist.`, 422);
+      }
+      const existing = contact.topics.find((x) => x.id === t.id);
+      if (existing) existing.subscription = t.subscription;
+      else contact.topics.push({ ...t });
+    }
+  }
+
+  async createSegment(input: { name: string }) {
+    this.guard();
+    if (this.team.segments.some((s) => s.name.toLowerCase() === input.name.toLowerCase())) {
+      throw fail("validation_error", `A segment named "${input.name}" already exists.`, 422);
+    }
+    const id = this.newId("seg");
+    this.team.segments.push({ id, name: input.name, createdAt: new Date().toISOString() });
+    return { id };
+  }
+
+  async updateSegment(id: string, input: { name: string }) {
+    this.guard();
+    const segment = this.team.segments.find((s) => s.id === id);
+    if (!segment) throw fail("not_found", "Segment not found", 404);
+    segment.name = input.name;
+  }
+
+  async deleteSegment(id: string) {
+    this.guard();
+    if (!this.team.segments.some((s) => s.id === id))
+      throw fail("not_found", "Segment not found", 404);
+    this.team.segments = this.team.segments.filter((s) => s.id !== id);
+    for (const c of this.team.contacts) c.segmentIds = c.segmentIds.filter((x) => x !== id);
+  }
+
+  async createTopic(input: CreateTopicInput) {
+    this.guard();
+    const id = this.newId("top");
+    this.team.topics.push({
+      id,
+      name: input.name,
+      description: input.description ?? null,
+      defaultSubscription: input.defaultSubscription,
+      createdAt: new Date().toISOString(),
+    });
+    return { id };
+  }
+
+  async updateTopic(input: UpdateTopicInput) {
+    this.guard();
+    const topic = this.team.topics.find((t) => t.id === input.id);
+    if (!topic) throw fail("not_found", "Topic not found", 404);
+    if (input.name !== undefined) topic.name = input.name;
+    if (input.description !== undefined) topic.description = input.description || null;
+  }
+
+  async deleteTopic(id: string) {
+    this.guard();
+    if (!this.team.topics.some((t) => t.id === id)) throw fail("not_found", "Topic not found", 404);
+    this.team.topics = this.team.topics.filter((t) => t.id !== id);
+    for (const c of this.team.contacts) c.topics = c.topics.filter((x) => x.id !== id);
+  }
+
+  async createContactProperty(input: CreateContactPropertyInput) {
+    this.guard();
+    if (this.team.contactProperties.some((p) => p.key === input.key)) {
+      throw fail("validation_error", `The property "${input.key}" already exists.`, 422);
+    }
+    const id = this.newId("prop");
+    this.team.contactProperties.push({
+      id,
+      key: input.key,
+      type: input.type,
+      fallbackValue: input.fallbackValue ?? null,
+      createdAt: new Date().toISOString(),
+    });
+    return { id };
+  }
+
+  async updateContactProperty(input: { id: string; fallbackValue: string | number | null }) {
+    this.guard();
+    const property = this.team.contactProperties.find((p) => p.id === input.id);
+    if (!property) throw fail("not_found", "Property not found", 404);
+    property.fallbackValue = input.fallbackValue;
+  }
+
+  async deleteContactProperty(id: string) {
+    this.guard();
+    const property = this.team.contactProperties.find((p) => p.id === id);
+    if (!property) throw fail("not_found", "Property not found", 404);
+    this.team.contactProperties = this.team.contactProperties.filter((p) => p.id !== id);
+    for (const c of this.team.contacts) delete c.properties[property.key];
+  }
+
+  private templateById(id: string) {
+    const template = this.team.templates.find((t) => t.id === id);
+    if (!template) throw fail("not_found", "Template not found", 404);
+    return template;
+  }
+
+  private applyTemplate(template: ResendTemplate, input: TemplateWriteInput) {
+    if (input.name !== undefined) template.name = input.name;
+    if (input.alias !== undefined) template.alias = input.alias || null;
+    if (input.subject !== undefined) template.subject = input.subject;
+    if (input.from !== undefined) template.from = input.from || null;
+    if (input.replyTo !== undefined) template.replyTo = input.replyTo;
+    if (input.html !== undefined) template.html = input.html;
+    if (input.text !== undefined) template.text = input.text || null;
+    if (input.variables !== undefined) template.variables = input.variables;
+    template.updatedAt = new Date().toISOString();
+  }
+
+  async createTemplate(input: TemplateWriteInput & { name: string; html: string }) {
+    this.guard();
+    if (input.alias && this.team.templates.some((t) => t.alias === input.alias)) {
+      throw fail("validation_error", `The alias "${input.alias}" is already in use.`, 422);
+    }
+    const now = new Date().toISOString();
+    const template: ResendTemplate = {
+      id: this.newId("tpl"),
+      name: input.name,
+      alias: null,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now,
+      subject: null,
+      from: null,
+      replyTo: null,
+      html: input.html,
+      text: null,
+      variables: [],
+    };
+    this.applyTemplate(template, input);
+    this.team.templates.push(template);
+    return { id: template.id };
+  }
+
+  async updateTemplate(id: string, input: TemplateWriteInput) {
+    this.guard();
+    const template = this.templateById(id);
+    if (input.alias && this.team.templates.some((t) => t.alias === input.alias && t.id !== id)) {
+      throw fail("validation_error", `The alias "${input.alias}" is already in use.`, 422);
+    }
+    this.applyTemplate(template, input);
+  }
+
+  async publishTemplate(id: string) {
+    this.guard();
+    this.templateById(id).status = "published";
+  }
+
+  async deleteTemplate(id: string) {
+    this.guard();
+    this.templateById(id);
+    this.team.templates = this.team.templates.filter((t) => t.id !== id);
+  }
+
+  private broadcastById(id: string) {
+    const broadcast = this.team.broadcasts.find((b) => b.id === id);
+    if (!broadcast) throw fail("not_found", "Broadcast not found", 404);
+    return broadcast;
+  }
+
+  async createBroadcast(input: CreateBroadcastInput) {
+    this.guard();
+    this.assertSegments([input.segmentId]);
+    if (input.topicId && !this.team.topics.some((t) => t.id === input.topicId)) {
+      throw fail("validation_error", `Topic ${input.topicId} does not exist.`, 422);
+    }
+    const id = this.newId("bro");
+    this.team.broadcasts.push({
+      id,
+      name: input.name ?? "Untitled",
+      segmentId: input.segmentId,
+      status: "draft",
+      createdAt: new Date().toISOString(),
+      scheduledAt: null,
+      sentAt: null,
+      from: input.from,
+      subject: input.subject,
+      previewText: input.previewText ?? null,
+      replyTo: input.replyTo ?? null,
+      topicId: input.topicId ?? null,
+      html: input.html ?? null,
+      text: input.text ?? null,
+    });
+    return { id };
+  }
+
+  async updateBroadcast(id: string, input: UpdateBroadcastInput) {
+    this.guard();
+    const broadcast = this.broadcastById(id);
+    if (broadcast.status !== "draft") {
+      throw fail("validation_error", "Only draft broadcasts can be edited.", 422);
+    }
+    if (input.segmentId !== undefined) this.assertSegments([input.segmentId]);
+    if (input.name !== undefined) broadcast.name = input.name;
+    if (input.segmentId !== undefined) broadcast.segmentId = input.segmentId;
+    if (input.from !== undefined) broadcast.from = input.from;
+    if (input.subject !== undefined) broadcast.subject = input.subject;
+    if (input.previewText !== undefined) broadcast.previewText = input.previewText || null;
+    if (input.replyTo !== undefined) broadcast.replyTo = input.replyTo;
+    if (input.topicId !== undefined) broadcast.topicId = input.topicId;
+    if (input.html !== undefined) broadcast.html = input.html;
+    if (input.text !== undefined) broadcast.text = input.text || null;
+  }
+
+  async sendBroadcast(id: string, options: { scheduledAt?: string } = {}) {
+    this.guard();
+    const broadcast = this.broadcastById(id);
+    if (broadcast.status !== "draft") {
+      throw fail("validation_error", "This broadcast was already sent or scheduled.", 422);
+    }
+    const fromAddress = /<([^>]+)>/.exec(broadcast.from ?? "")?.[1] ?? broadcast.from ?? "";
+    const domainName = fromAddress.slice(fromAddress.lastIndexOf("@") + 1).toLowerCase();
+    const domain = this.team.domains.find((d) => d.name === domainName);
+    if (!domain || domain.status !== "verified") {
+      throw fail("validation_error", `The ${domainName} domain is not verified.`, 403);
+    }
+    if (options.scheduledAt) {
+      const at = new Date(options.scheduledAt);
+      if (Number.isNaN(at.getTime()) || at.getTime() <= Date.now()) {
+        throw fail("validation_error", "scheduled_at must be in the future.", 422);
+      }
+      broadcast.status = "scheduled";
+      broadcast.scheduledAt = at.toISOString();
+      return;
+    }
+    broadcast.status = "sent";
+    broadcast.sentAt = new Date().toISOString();
+  }
+
+  async cancelBroadcast(id: string) {
+    this.guard();
+    const broadcast = this.broadcastById(id);
+    this.settleScheduled(broadcast);
+    if (broadcast.status !== "scheduled") {
+      throw fail("validation_error", "Only scheduled broadcasts can be canceled.", 422);
+    }
+    broadcast.status = "canceled";
+  }
+
+  async deleteBroadcast(id: string) {
+    this.guard();
+    const broadcast = this.broadcastById(id);
+    this.settleScheduled(broadcast);
+    if (!["draft", "scheduled", "canceled"].includes(broadcast.status)) {
+      throw fail("validation_error", "Sent broadcasts can't be deleted in Resend.", 422);
+    }
+    this.team.broadcasts = this.team.broadcasts.filter((b) => b.id !== id);
+  }
+
+  /** A scheduled broadcast whose time has passed has gone out (the fake sends instantly). */
+  private settleScheduled(broadcast: ResendBroadcast) {
+    if (
+      broadcast.status === "scheduled" &&
+      broadcast.scheduledAt &&
+      new Date(broadcast.scheduledAt).getTime() <= Date.now()
+    ) {
+      broadcast.status = "sent";
+      broadcast.sentAt = broadcast.scheduledAt;
+    }
   }
 
   async sendEmail(
@@ -644,6 +1091,15 @@ export class FakeResendAdapter implements ResendAdapter {
         `The ${domainName} domain is not verified. Please, add and verify your domain on https://resend.com/domains`,
         { status: 403, resendName: "validation_error" },
       );
+    }
+    if (input.template) {
+      const template = this.team.templates.find((t) => t.id === input.template!.id);
+      if (!template || template.status !== "published") {
+        throw fail("validation_error", "The template was not found or is not published.", 422);
+      }
+      if (input.html || input.text) {
+        throw fail("validation_error", "Provide either a template or html/text, not both.", 422);
+      }
     }
     if (input.to.length + (input.cc?.length ?? 0) + (input.bcc?.length ?? 0) > 50) {
       throw fail("validation_error", "Too many recipients (max 50).", 422);

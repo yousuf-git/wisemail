@@ -51,6 +51,8 @@ const emailSchema = new Schema(
     threadId: { type: Schema.Types.ObjectId, ref: "threads", default: null },
     broadcastId: { type: Schema.Types.ObjectId, ref: "broadcasts", default: null },
     templateId: { type: Schema.Types.ObjectId, ref: "templates", default: null },
+    /** Values the sender filled in for a template send (Phase 6); the template renders them. */
+    templateVariables: { type: Schema.Types.Mixed, select: false },
     authorId: { type: Schema.Types.ObjectId, ref: "user", default: null },
     /** RFC 5322 Message-ID, angle brackets included. */
     messageId: { type: String },

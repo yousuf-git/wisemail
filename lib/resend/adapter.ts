@@ -5,6 +5,20 @@ import { Resend } from "resend";
 import { mapResendError, ResendError, type SdkError } from "./errors";
 import { singlePage, toPage } from "./pagination";
 import type {
+  ContactTopicSubscription,
+  CreateBroadcastInput,
+  CreateContactInput,
+  CreateContactPropertyInput,
+  CreateTopicInput,
+  TemplateWriteInput,
+  UpdateBroadcastInput,
+  UpdateContactInput,
+  UpdateTopicInput,
+} from "./types";
+import type {
+  CreateApiKeyInput,
+  CreateDomainInput,
+  CreatedResendApiKey,
   CreatedResendWebhook,
   Page,
   PageOptions,
@@ -59,6 +73,22 @@ export interface ResendAdapter {
   getDomain(id: string): Promise<ResendDomainDetail>;
   /** Turns open/click tracking on or off. Throws `resend_not_found` for an unknown domain. */
   updateDomain(input: UpdateDomainInput): Promise<void>;
+  /* ------------------------- domain and API key management (Phase 6) ------------------------- */
+  /** Adds a domain to the account; the result carries the DNS records to add. */
+  createDomain(input: CreateDomainInput): Promise<ResendDomainDetail>;
+  /** Asks Resend to (re)check the domain's DNS. Resolves once the check is queued. */
+  verifyDomain(id: string): Promise<void>;
+  /** Deletes the domain in Resend. Throws `resend_not_found` when it is already gone. */
+  removeDomain(id: string): Promise<void>;
+  /** Creates an API key. The returned `token` is shown once and never stored by Wisemail. */
+  createApiKey(input: CreateApiKeyInput): Promise<CreatedResendApiKey>;
+  /** Throws `resend_not_found` when the key is already gone. */
+  removeApiKey(id: string): Promise<void>;
+  /**
+   * Resend id of the key this adapter authenticates with, when that is knowable (the fake
+   * adapter; live Resend does not expose it), else `null`.
+   */
+  ownApiKeyId(): string | null;
   listSegments(options?: PageOptions): Promise<Page<ResendSegment>>;
   /** Resend's topics list is not paginated: always one page. */
   listTopics(): Promise<Page<ResendTopic>>;
@@ -96,6 +126,42 @@ export interface ResendAdapter {
    * `resend_not_found` for an expired or removed file and `resend_validation` past `maxBytes`.
    */
   downloadFile(url: string, options?: { maxBytes?: number }): Promise<Buffer>;
+
+  /* ------------------- audience, templates, broadcasts (writes, Phase 6) ------------------- */
+  createContact(input: CreateContactInput): Promise<{ id: string }>;
+  updateContact(input: UpdateContactInput): Promise<void>;
+  /** Throws `resend_not_found` when it is already gone. */
+  deleteContact(id: string): Promise<void>;
+  addContactToSegment(contactId: string, segmentId: string): Promise<void>;
+  removeContactFromSegment(contactId: string, segmentId: string): Promise<void>;
+  updateContactTopics(contactId: string, topics: ContactTopicSubscription[]): Promise<void>;
+  createSegment(input: { name: string }): Promise<{ id: string }>;
+  updateSegment(id: string, input: { name: string }): Promise<void>;
+  deleteSegment(id: string): Promise<void>;
+  createTopic(input: CreateTopicInput): Promise<{ id: string }>;
+  updateTopic(input: UpdateTopicInput): Promise<void>;
+  deleteTopic(id: string): Promise<void>;
+  createContactProperty(input: CreateContactPropertyInput): Promise<{ id: string }>;
+  updateContactProperty(input: {
+    id: string;
+    fallbackValue: string | number | null;
+  }): Promise<void>;
+  deleteContactProperty(id: string): Promise<void>;
+  createTemplate(
+    input: TemplateWriteInput & { name: string; html: string },
+  ): Promise<{ id: string }>;
+  updateTemplate(id: string, input: TemplateWriteInput): Promise<void>;
+  /** Makes the current draft content live (only published templates can be sent). */
+  publishTemplate(id: string): Promise<void>;
+  deleteTemplate(id: string): Promise<void>;
+  createBroadcast(input: CreateBroadcastInput): Promise<{ id: string }>;
+  updateBroadcast(id: string, input: UpdateBroadcastInput): Promise<void>;
+  /** Sends now, or at `scheduledAt` (ISO 8601). */
+  sendBroadcast(id: string, options?: { scheduledAt?: string }): Promise<void>;
+  /** Cancels a scheduled broadcast. Throws `resend_validation` once it is sending. */
+  cancelBroadcast(id: string): Promise<void>;
+  /** Draft and scheduled broadcasts only. */
+  deleteBroadcast(id: string): Promise<void>;
 }
 
 type Envelope<T> = {
@@ -169,6 +235,30 @@ const pageArgs = (options: PageOptions = {}) => ({
   limit: options.limit ?? 100,
   ...(options.after ? { after: options.after } : {}),
 });
+
+/** Our template write shape as the SDK's payload (variables use `fallbackValue`). */
+function templatePayload(input: TemplateWriteInput & { name?: string }) {
+  return {
+    ...(input.name === undefined ? {} : { name: input.name }),
+    ...(input.alias === undefined ? {} : { alias: input.alias }),
+    ...(input.subject === undefined ? {} : { subject: input.subject }),
+    ...(input.from === undefined ? {} : { from: input.from }),
+    ...(input.replyTo === undefined ? {} : { replyTo: input.replyTo }),
+    ...(input.html === undefined ? {} : { html: input.html }),
+    ...(input.text === undefined ? {} : { text: input.text }),
+    ...(input.variables === undefined
+      ? {}
+      : {
+          variables: input.variables.map((v) => ({
+            key: v.key,
+            type: v.type,
+            ...(v.fallbackValue === null || v.fallbackValue === undefined
+              ? {}
+              : { fallbackValue: v.fallbackValue }),
+          })),
+        }),
+  };
+}
 
 /** Real Resend, one client per API key. */
 export class LiveResendAdapter implements ResendAdapter {
@@ -258,6 +348,64 @@ export class LiveResendAdapter implements ResendAdapter {
         ...(input.clickTracking === undefined ? {} : { clickTracking: input.clickTracking }),
       }),
     );
+  }
+
+  async createDomain(input: CreateDomainInput): Promise<ResendDomainDetail> {
+    const d = await call(() =>
+      this.client.domains.create({
+        name: input.name,
+        ...(input.region ? { region: input.region } : {}),
+      }),
+    );
+    return {
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      region: d.region,
+      createdAt: d.created_at,
+      openTracking: d.open_tracking,
+      clickTracking: d.click_tracking,
+      capabilities: {
+        sending: d.capabilities?.sending === "enabled",
+        receiving: d.capabilities?.receiving === "enabled",
+      },
+      records: d.records.map((r): ResendDnsRecord => ({
+        record: r.record,
+        type: r.type,
+        name: r.name,
+        value: r.value,
+        ttl: r.ttl,
+        priority: "priority" in r ? r.priority : undefined,
+        status: r.status,
+      })),
+    };
+  }
+
+  async verifyDomain(id: string) {
+    await call(() => this.client.domains.verify(id));
+  }
+
+  async removeDomain(id: string) {
+    await call(() => this.client.domains.remove(id));
+  }
+
+  async createApiKey(input: CreateApiKeyInput): Promise<CreatedResendApiKey> {
+    const key = await call(() =>
+      this.client.apiKeys.create({
+        name: input.name,
+        permission: input.permission,
+        ...(input.domainId ? { domain_id: input.domainId } : {}),
+      }),
+    );
+    return { id: key.id, token: key.token };
+  }
+
+  async removeApiKey(id: string) {
+    await call(() => this.client.apiKeys.remove(id));
+  }
+
+  ownApiKeyId(): string | null {
+    return null;
   }
 
   listSegments(options?: PageOptions) {
@@ -444,6 +592,7 @@ export class LiveResendAdapter implements ResendAdapter {
             ...(input.tags?.length ? { tags: input.tags } : {}),
             ...(input.attachments?.length ? { attachments: input.attachments } : {}),
             ...(input.scheduledAt ? { scheduledAt: input.scheduledAt } : {}),
+            ...(input.template ? { template: input.template } : {}),
           } as Parameters<Resend["emails"]["send"]>[0],
           { idempotencyKey: options.idempotencyKey },
         ),
@@ -511,6 +660,187 @@ export class LiveResendAdapter implements ResendAdapter {
   async getReceivedAttachment(emailId: string, id: string) {
     const a = await call(() => this.client.emails.receiving.attachments.get({ emailId, id }));
     return toReceivedAttachment(a);
+  }
+
+  /* ------------------- audience, templates, broadcasts (writes, Phase 6) ------------------- */
+
+  async createContact(input: CreateContactInput) {
+    const res = await call(() =>
+      this.client.contacts.create({
+        email: input.email,
+        ...(input.firstName ? { firstName: input.firstName } : {}),
+        ...(input.lastName ? { lastName: input.lastName } : {}),
+        ...(input.unsubscribed === undefined ? {} : { unsubscribed: input.unsubscribed }),
+        ...(input.properties && Object.keys(input.properties).length
+          ? { properties: input.properties }
+          : {}),
+        ...(input.segmentIds?.length ? { segments: input.segmentIds.map((id) => ({ id })) } : {}),
+        ...(input.topics?.length ? { topics: input.topics } : {}),
+      }),
+    );
+    return { id: res.id };
+  }
+
+  async updateContact(input: UpdateContactInput) {
+    await call(() =>
+      this.client.contacts.update({
+        id: input.id,
+        ...(input.firstName === undefined ? {} : { firstName: input.firstName }),
+        ...(input.lastName === undefined ? {} : { lastName: input.lastName }),
+        ...(input.unsubscribed === undefined ? {} : { unsubscribed: input.unsubscribed }),
+        ...(input.properties ? { properties: input.properties } : {}),
+      }),
+    );
+  }
+
+  async deleteContact(id: string) {
+    await call(() => this.client.contacts.remove(id));
+  }
+
+  async addContactToSegment(contactId: string, segmentId: string) {
+    await call(() => this.client.contacts.segments.add({ contactId, segmentId }));
+  }
+
+  async removeContactFromSegment(contactId: string, segmentId: string) {
+    await call(() => this.client.contacts.segments.remove({ contactId, segmentId }));
+  }
+
+  async updateContactTopics(contactId: string, topics: ContactTopicSubscription[]) {
+    await call(() => this.client.contacts.topics.update({ id: contactId, topics }));
+  }
+
+  async createSegment(input: { name: string }) {
+    const res = await call(() => this.client.segments.create({ name: input.name }));
+    return { id: res.id };
+  }
+
+  async updateSegment(id: string, input: { name: string }) {
+    await call(() => this.client.segments.update(id, { name: input.name }));
+  }
+
+  async deleteSegment(id: string) {
+    await call(() => this.client.segments.remove(id));
+  }
+
+  async createTopic(input: CreateTopicInput) {
+    const res = await call(() =>
+      this.client.topics.create({
+        name: input.name,
+        defaultSubscription: input.defaultSubscription,
+        ...(input.description ? { description: input.description } : {}),
+      }),
+    );
+    return { id: res.id };
+  }
+
+  async updateTopic(input: UpdateTopicInput) {
+    await call(() =>
+      this.client.topics.update({
+        id: input.id,
+        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(input.description === undefined ? {} : { description: input.description }),
+      }),
+    );
+  }
+
+  async deleteTopic(id: string) {
+    await call(() => this.client.topics.remove(id));
+  }
+
+  async createContactProperty(input: CreateContactPropertyInput) {
+    const res = await call(() =>
+      this.client.contactProperties.create({
+        key: input.key,
+        type: input.type,
+        ...(input.fallbackValue === undefined ? {} : { fallbackValue: input.fallbackValue }),
+      } as Parameters<Resend["contactProperties"]["create"]>[0]),
+    );
+    return { id: res.id };
+  }
+
+  async updateContactProperty(input: { id: string; fallbackValue: string | number | null }) {
+    await call(() => this.client.contactProperties.update(input));
+  }
+
+  async deleteContactProperty(id: string) {
+    await call(() => this.client.contactProperties.remove(id));
+  }
+
+  async createTemplate(input: TemplateWriteInput & { name: string; html: string }) {
+    // `create` returns a chainable (`.publish()`); awaiting it gives the plain response.
+    const res = await call(async () =>
+      this.client.templates.create(
+        templatePayload(input) as Parameters<Resend["templates"]["create"]>[0],
+      ),
+    );
+    return { id: res.id };
+  }
+
+  async updateTemplate(id: string, input: TemplateWriteInput) {
+    await call(() =>
+      this.client.templates.update(
+        id,
+        templatePayload(input) as Parameters<Resend["templates"]["update"]>[1],
+      ),
+    );
+  }
+
+  async publishTemplate(id: string) {
+    await call(() => this.client.templates.publish(id));
+  }
+
+  async deleteTemplate(id: string) {
+    await call(() => this.client.templates.remove(id));
+  }
+
+  async createBroadcast(input: CreateBroadcastInput) {
+    const res = await call(() =>
+      this.client.broadcasts.create({
+        segmentId: input.segmentId,
+        from: input.from,
+        subject: input.subject,
+        ...(input.name ? { name: input.name } : {}),
+        ...(input.previewText ? { previewText: input.previewText } : {}),
+        ...(input.replyTo?.length ? { replyTo: input.replyTo } : {}),
+        ...(input.topicId ? { topicId: input.topicId } : {}),
+        ...(input.html ? { html: input.html } : {}),
+        ...(input.text ? { text: input.text } : {}),
+      } as Parameters<Resend["broadcasts"]["create"]>[0]),
+    );
+    return { id: res.id };
+  }
+
+  async updateBroadcast(id: string, input: UpdateBroadcastInput) {
+    await call(() =>
+      this.client.broadcasts.update(id, {
+        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(input.segmentId === undefined ? {} : { segmentId: input.segmentId }),
+        ...(input.from === undefined ? {} : { from: input.from }),
+        ...(input.subject === undefined ? {} : { subject: input.subject }),
+        ...(input.previewText === undefined ? {} : { previewText: input.previewText }),
+        ...(input.replyTo === undefined ? {} : { replyTo: input.replyTo }),
+        ...(input.topicId === undefined ? {} : { topicId: input.topicId }),
+        ...(input.html === undefined ? {} : { html: input.html }),
+        ...(input.text === undefined ? {} : { text: input.text }),
+      }),
+    );
+  }
+
+  async sendBroadcast(id: string, options: { scheduledAt?: string } = {}) {
+    await call(() =>
+      this.client.broadcasts.send(
+        id,
+        options.scheduledAt ? { scheduledAt: options.scheduledAt } : {},
+      ),
+    );
+  }
+
+  async cancelBroadcast(id: string) {
+    await call(() => this.client.broadcasts.cancel(id));
+  }
+
+  async deleteBroadcast(id: string) {
+    await call(() => this.client.broadcasts.remove(id));
   }
 
   async downloadFile(url: string, options: { maxBytes?: number } = {}) {

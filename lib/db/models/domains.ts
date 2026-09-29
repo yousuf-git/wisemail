@@ -57,6 +57,24 @@ const domainSchema = new Schema(
           dkim: String,
           dmarc: String,
           mx: String,
+          /** Per-record findings of the last check; bounded (a handful of records per domain). */
+          details: {
+            type: [
+              new Schema(
+                {
+                  group: String,
+                  type: String,
+                  name: String,
+                  expected: String,
+                  found: { type: [String], default: [] },
+                  verdict: String,
+                  message: String,
+                },
+                { _id: false },
+              ),
+            ],
+            default: [],
+          },
         },
         { _id: false },
       ),
