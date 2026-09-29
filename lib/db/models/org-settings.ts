@@ -55,6 +55,8 @@ const orgSettingsSchema = new Schema(
           reserved: { type: Number, default: 0 },
           packBalance: { type: Number, default: 0 },
           packExpiresAt: Date,
+          /** Start of the period `periodUsed` belongs to; `lib/ai/credits.ts` rolls it over. */
+          periodStart: Date,
         },
         { _id: false },
       ),
@@ -76,17 +78,17 @@ const orgSettingsSchema = new Schema(
     ai: {
       type: new Schema(
         {
-          enabled: { type: Boolean, default: false },
+          enabled: { type: Boolean, default: true },
           features: {
-            triage: { type: Boolean, default: false },
-            drafts: { type: Boolean, default: false },
-            compose: { type: Boolean, default: false },
-            anomalies: { type: Boolean, default: false },
+            triage: { type: Boolean, default: true },
+            drafts: { type: Boolean, default: true },
+            compose: { type: Boolean, default: true },
+            anomalies: { type: Boolean, default: true },
           },
         },
         { _id: false },
       ),
-      default: () => ({ enabled: false, features: {} }),
+      default: () => ({ enabled: true, features: {} }),
     },
     deletedAt: { type: Date, default: null },
   },

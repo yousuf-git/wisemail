@@ -106,6 +106,8 @@ const emailSchema = new Schema(
     trashedAt: { type: Date, default: null },
     trashedBy: { type: Schema.Types.ObjectId, ref: "user", default: null },
     trashedByRuleId: { type: Schema.Types.ObjectId, default: null },
+    /** The `bulk_operations` document that trashed it (its Undo restores by this id). */
+    trashedByOpId: { type: Schema.Types.ObjectId, default: null },
     purgeAt: { type: Date, default: null },
     /** Plan retention TTL (documents own no R2 objects here, so a TTL index is fine). */
     expireAt: { type: Date, default: null },
@@ -132,6 +134,10 @@ emailSchema.index(
 emailSchema.index(
   { orgId: 1, trashedAt: -1 },
   { partialFilterExpression: { trashedAt: { $type: "date" } } },
+);
+emailSchema.index(
+  { orgId: 1, trashedByOpId: 1 },
+  { partialFilterExpression: { trashedByOpId: { $type: "objectId" } } },
 );
 emailSchema.index({ purgeAt: 1 }, { partialFilterExpression: { purgeAt: { $type: "date" } } });
 emailSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
