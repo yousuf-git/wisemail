@@ -53,6 +53,14 @@
   --neutral-soft: #f1efea;
   --neutral-ink: #52504b;
 
+  --paper: #fff9ee;
+  --paper-2: #f6e4be;
+  --paper-line: #3a342c;
+  --paper-fold: #d9c7a2;
+  --eye: #1f1e1c;
+  --wizi-limb: #1f1e1c;
+  --ground: rgb(60 45 20 / 0.1);
+
   --shadow-sm-value: 0 1px 2px rgb(60 45 20 / 0.06);
   --shadow-md-value: 0 1px 0 var(--line), 0 12px 28px -14px rgb(60 45 20 / 0.14);
   --shadow-lg-value: 0 24px 60px -20px rgb(60 45 20 / 0.22);
@@ -95,6 +103,13 @@
     --neutral: #6e6b65;
     --neutral-soft: rgb(163 161 168 / 0.14);
     --neutral-ink: #cfcbc3;
+
+    --paper: #f7f4ee;
+    --paper-2: #e9e3d6;
+    --paper-line: #cfc7b6;
+    --paper-fold: #cfc7b6;
+    --wizi-limb: #cfc7b6;
+    --ground: rgb(0 0 0 / 0.35);
 
     --shadow-sm-value: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-md-value: 0 1px 0 var(--line), 0 12px 28px -14px rgb(0 0 0 / 0.5);
@@ -139,6 +154,13 @@
   --neutral-soft: rgb(163 161 168 / 0.14);
   --neutral-ink: #cfcbc3;
 
+  --paper: #f7f4ee;
+  --paper-2: #e9e3d6;
+  --paper-line: #cfc7b6;
+  --paper-fold: #cfc7b6;
+  --wizi-limb: #cfc7b6;
+  --ground: rgb(0 0 0 / 0.35);
+
   --shadow-sm-value: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-md-value: 0 1px 0 var(--line), 0 12px 28px -14px rgb(0 0 0 / 0.5);
   --shadow-lg-value: 0 24px 60px -20px rgb(0 0 0 / 0.65);
@@ -181,6 +203,7 @@
   --color-glow: var(--glow);
   --color-glow-soft: var(--glow-soft);
   --color-coral: var(--coral);
+  --color-paper: var(--paper);
 
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
