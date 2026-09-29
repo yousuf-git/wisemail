@@ -11,7 +11,6 @@ import { ConnectionModel, type ConnectionDoc } from "@/lib/db/models/connections
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { env } from "@/lib/env";
 import type { ConnectionDTO, ConnectionQuota } from "@/lib/dto/connection";
-import { enqueueConnectionSync } from "@/lib/jobs/send";
 import { publish } from "@/lib/realtime/publish";
 import { isResendError, ResendError } from "@/lib/resend/errors";
 import { getResendAdapter } from "@/lib/resend/client-factory";
@@ -24,6 +23,8 @@ import type {
   RenameConnectionInput,
 } from "@/lib/validation/connection";
 import { writeAuditLog } from "./audit";
+import { toChecklistDTO } from "./checklist";
+import { getLatestSyncStatuses, requestSync } from "./sync";
 import { ServiceError } from "./errors";
 import { keyAad, secretAad } from "./webhook-secret";
 
@@ -47,6 +48,7 @@ export function toConnectionDTO(doc: {
   webhook?: { resendId?: string | null } | null;
   lastEventAt?: Date | null;
   lastSyncAt?: Date | null;
+  checklist?: { key: string; status: "ok" | "warn" | "fail"; checkedAt: Date }[] | null;
   createdAt: Date;
 }): ConnectionDTO {
   return {
@@ -58,6 +60,8 @@ export function toConnectionDTO(doc: {
     webhookRegistered: !!doc.webhook?.resendId,
     lastEventAt: doc.lastEventAt?.toISOString() ?? null,
     lastSyncAt: doc.lastSyncAt?.toISOString() ?? null,
+    checklist: doc.checklist ? toChecklistDTO(doc.checklist) : null,
+    sync: null,
     createdAt: doc.createdAt.toISOString(),
   };
 }
@@ -105,7 +109,7 @@ function keyProblem(error: unknown): ServiceError {
  * active, or `needs_attention` with a reason (no free slot, key revoked, other failure). Runs
  * outside any transaction because it calls Resend; the resulting writes are one transaction.
  */
-async function registerWebhook(
+export async function registerWebhook(
   ctx: OrgContext,
   connection: ConnectionDoc,
   adapter: ResendAdapter,
@@ -185,11 +189,9 @@ async function registerWebhook(
 async function afterActive(ctx: OrgContext, connection: ConnectionDTO) {
   if (connection.status !== "active") return;
   try {
-    await enqueueConnectionSync({
-      connectionId: connection.id,
-      orgId: ctx.org.id,
-      trigger: "initial",
-    });
+    // Creates the run and hands it to Inngest; in development without an Inngest server it runs
+    // in this process instead (see `requestSync`).
+    await requestSync({ connectionId: connection.id, orgId: ctx.org.id, trigger: "initial" });
   } catch (error) {
     // The connection is usable; a manual sync can be requested later.
     console.error("[connections] could not enqueue initial sync", error);
@@ -472,12 +474,20 @@ export async function listConnections(ctx: OrgContext): Promise<ConnectionDTO[]>
       "webhook.resendId": 1,
       lastEventAt: 1,
       lastSyncAt: 1,
+      checklist: 1,
       createdAt: 1,
     },
   )
     .sort({ createdAt: 1 })
     .lean();
-  return docs.map(toConnectionDTO);
+  const syncs = await getLatestSyncStatuses(
+    orgOid(ctx),
+    docs.map((d) => d._id),
+  );
+  return docs.map((doc) => ({
+    ...toConnectionDTO(doc),
+    sync: syncs.get(doc._id.toHexString()) ?? null,
+  }));
 }
 
 /** Connection usage against the plan, for the "N of M" line and the limit dialog. */

@@ -26,21 +26,23 @@ export type JobEvent =
 export const sentJobs: JobEvent[] = [];
 export const resetSentJobs = () => void (sentJobs.length = 0);
 
-async function send(event: JobEvent): Promise<void> {
+/** Resolves `true` when the job was handed over, `false` when a dev server could not be reached. */
+async function send(event: JobEvent): Promise<boolean> {
   if (env.NODE_ENV === "test") {
     sentJobs.push(event);
-    return;
+    return true;
   }
   const { inngest } = await import("@/inngest/client");
   try {
     await inngest.send({ name: event.name, data: event.data });
+    return true;
   } catch (error) {
     if (env.NODE_ENV !== "production" && env.INNGEST_DEV) {
       console.warn(
         `[jobs] Could not reach the Inngest dev server; dropped "${event.name}". ` +
           "Run `npx inngest-cli@latest dev` to process jobs locally.",
       );
-      return;
+      return false;
     }
     throw error;
   }
