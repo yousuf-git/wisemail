@@ -193,6 +193,7 @@ Rules:
 - Wizi appears at most **once per view**, only in greetings, empty states, onboarding, success moments, and errors. Never in dense tables or next to data that needs attention.
 - Sizes: 160 px (onboarding/empty), 64 px (greeting), 24 px (toasts, favicon variant uses seal only).
 - Built as React SVG components with CSS-variable colors so they follow the theme; the envelope body stays cream in dark mode.
+- **Contrast on light surfaces:** Wizi mostly sits on white cards and toasts, so in light mode the envelope is warm cream (`#FFF9EE`, flap `#F6E4BE`) with a 2.5 px warm-charcoal outline (`#3A342C`) and soft fold lines (`#D9C7A2`). In dark mode it keeps the pale paper (`#F7F4EE`, flap `#E9E3D6`) with a light outline (`#CFC7B6`), which already stands out on charcoal.
 - Animated with Motion variants on the SVG parts (arms, eyes, flap, seal); see §9.3 for the behaviors. If the final illustration comes as a rigged animation file, Rive can replace the SVG later without changing where Wizi appears.
 
 ## 8. Voice & copy
