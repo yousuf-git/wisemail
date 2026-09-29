@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
-import { signUpSchema, type SignUpInput } from "@/lib/validation/auth";
+import { safeNext, signUpSchema, type SignUpInput } from "@/lib/validation/auth";
 
-export function SignUpForm() {
+export function SignUpForm({ next }: { next?: string }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm<SignUpInput>({
@@ -42,7 +42,7 @@ export function SignUpForm() {
       }
       return;
     }
-    router.replace("/onboarding");
+    router.replace(safeNext(next));
     router.refresh();
   }
 
@@ -95,7 +95,10 @@ export function SignUpForm() {
         </Button>
         <p className="text-center text-sm text-ink-muted">
           Already have an account?{" "}
-          <Link href="/sign-in" className="font-medium text-accent hover:underline">
+          <Link
+            href={next ? `/sign-in?next=${encodeURIComponent(safeNext(next))}` : "/sign-in"}
+            className="font-medium text-accent hover:underline"
+          >
             Sign in
           </Link>
         </p>
