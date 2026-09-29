@@ -53,12 +53,21 @@ Phase 2 follow-ups (not blocking): synced-data deletion choice on remove, key ro
 - [x] Sidebar usage tile wired to real data (`lib/services/usage.ts`: plan, connection health/limit, allowance; tracked emails stay 0 until Phase 4)
 
 ## Phase 4 — Mail core
-- [ ] Models: emails, email_contents, attachments, threads, thread_member_states, labels, deletion_tombstones
-- [ ] `process-event`: status ranking, timeline, rollups, tombstone handling
-- [ ] `fetch-inbound`: raw MIME → R2, mailparser, sanitize, threading
-- [ ] Senders + status derivation
-- [ ] Composer (TipTap rich, CodeMirror HTML, template mode, sandboxed preview, scheduling, attachments via presigned R2)
-- [ ] Inbox (threads, read state, replies, read receipts), Activity log + email timeline, Scheduled
+Backend (services, jobs, storage; no UI yet):
+- [x] Models: emails, email_contents, attachments, threads, thread_member_states, labels, deletion_tombstones, senders, drafts, metric_rollups (orgId-first indexes, compound text index for search, trash fields, `expireAt` without TTL on documents that own R2 objects)
+- [x] `lib/storage`: R2 (S3 client, endpoint derived from `R2_ACCOUNT_ID`), key builders, presigned GET (5 min, `attachment` with exact filename; inline only for safe image types) / PUT (signed size and type), local fake store (`.data/storage`) with HMAC-token URLs served by `/api/dev-storage/[token]`, `file-url.ts` for both storage modes
+- [x] `lib/mail`: `parse` (mailparser), `sanitize` (DOMPurify config per TRD §3), `thread` (Message-ID / References, subject + participant fallback in 14 days, tombstone-aware, deterministic), status ranking
+- [x] `process-event`: one transaction per event (claim `processedAt`, upsert email, `metric_rollups` hour and day, realtime), status ranking + timeline via `webhook_events`, tombstones (`ignoredReason: deleted`), adopts app-sent emails by `mw_email` tag, `email.received` -> `fetch-inbound`, `domain.*` -> sender recompute
+- [x] `fetch-inbound`: raw MIME (paid: to R2), mailparser, sanitize, attachments (paid: to R2, Free: Resend URLs), threading, thread caches, unread, realtime
+- [x] Senders service + status derivation (`active | domain_unverified | connection_inactive | disabled`), recompute on `domain.*` events, domain sync, connection status changes and Resend domain rejections
+- [x] Drafts (optimistic concurrency, presigned attachment uploads with confirm) and sending service (sendability check, `email:send`, reply headers, tags, idempotency key, inline vs `send-email` job, scheduled + cancel + reschedule, needs attention list)
+- [x] UI-facing services: `listThreads` (inbox / sent / scheduled / trash, keyset cursor, search, unread, `projectFilter`), `getThread` (sanitized HTML with signed images, attachments, read receipts), read/unread per member, trash/restore, `listActivity`, `getEmailTimeline`
+- [x] `GET /api/files/[attachmentId]` (session + org + role + project scope, 302 to a 5-minute presigned URL, small Free-plan files streamed)
+- [x] Tests (threading, sanitizing, ranking, idempotency, tombstones, fetch-inbound end to end, sending, files route, project scope) and `pnpm mail:check`
+UI (next agent):
+- [ ] Composer (TipTap rich, CodeMirror HTML, template mode, sandboxed preview, scheduling, attachments via presigned upload)
+- [ ] Inbox (threads, read state, replies, read receipts), Activity log + email timeline, Scheduled, Sent
+- [ ] Senders management UI
 
 ## Phase 5 — Live, insights, alerts
 - [ ] Realtime: `realtime_events` change stream → SSE `/api/stream` → `useLiveQuery`
@@ -84,6 +93,8 @@ Phase 2 follow-ups (not blocking): synced-data deletion choice on remove, key ro
 ---
 
 ## Log
+
+- 2026-09-29 — Phase 4 backend landed (mail core services, no UI). Decisions: emails get an `mw_email` tag so webhooks find app-sent emails before Resend's id is stored (an id-less stub is folded into our document if an event still wins the race); Message-ID of our own sends comes from Resend (the `email.sent` event's `message_id`, the fake reports it at send) since we do not send our own `Message-ID` header; scheduled sends use Resend's native `scheduled_at` (the `send-email` job runs at once), so the sendability re-check runs when the job runs, not at fire time; `process-event` is exactly-once because the claim, upsert, rollups and realtime event share one transaction; `processedAt` claim + `ignoredReason` on webhook events; rollups keep `hour` and `day` buckets for `dimension all` and `stream`; `replied` is counted when an inbound message threads by Message-ID into a conversation with an outbound reply; storage mode follows the plan (Free: files stay at Resend; Pro and up and trial: R2). Follow-ups: sync backfill of sent/received emails (emails stage hook in `sync.ts`), permanent delete + `deletion_tombstones` writes + `purge-trash`/`retention` jobs (Phase 7), notifications and alert rules in `process-event` (Phase 5), metering into `usage_periods` (Phase 7), labels/assignee/star/archive actions, block_sender rules, `backfill-storage` on upgrade, R2 presign verified only offline (needs a live bucket check).
 
 - 2026-09-29 — Phase 3 done (232 tests). **Launch blocker:** invites accept on email match while email verification is off and invite tokens are Better Auth ObjectIds (partly predictable) — require verified email + random tokens before launch. Follow-ups: contacts sync is N+1 (2 extra calls/contact); per-connection rate-limit bucket in Mongo (TRD §2.3) not built, sync paces in-process; topbar crowds at ~1100px (breadcrumb truncates, search wraps); connection removal keeps mirrors; `projectFilter` must be applied to mail/domain reads as they land.
 
