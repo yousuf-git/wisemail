@@ -2,40 +2,67 @@
 
 import { MailCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { FormAlert } from "@/components/auth/auth-shell";
+import { FormAlert, FormNotice } from "@/components/auth/auth-shell";
+import {
+  DevOutboxHint,
+  ExpiryText,
+  otpErrorMessage,
+  useCodeClocks,
+} from "@/components/auth/code-form-parts";
+import { OtpInput } from "@/components/auth/otp-input";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
-
-const COOLDOWN_SECONDS = 30;
+import { OTP_LENGTH } from "@/lib/auth/otp-config";
 
 /**
- * "Check your inbox" state shown after sign-up (and when an unverified address tries to sign
- * in). `devOutbox` adds a link to the local outbox page, where fake-mode mail lands in
- * development.
+ * "Check your inbox" screen after sign-up, when an unverified address signs in, and on an
+ * invitation page. The email carries a link and a 6-digit code; either confirms the address.
+ * Entering the code signs the person in (Better Auth `autoSignInAfterVerification`) and continues
+ * to `callbackURL`. `devOutbox` adds a pointer to the local outbox, where fake-mode mail lands.
  */
 export function VerifyNotice({
   email,
   callbackURL,
   devOutbox,
-  onBack,
+  backHref,
 }: {
   email: string;
   callbackURL: string;
   devOutbox?: boolean;
-  onBack?: () => void;
+  /** Where "Use a different email" goes. Omit to hide it. */
+  backHref?: string;
 }) {
-  const [cooldown, setCooldown] = useState(COOLDOWN_SECONDS);
+  const router = useRouter();
+  const clocks = useCodeClocks();
+  const [code, setCode] = useState("");
+  const [boxes, setBoxes] = useState(0);
+  const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
+  async function verify(otp: string) {
+    if (otp.length !== OTP_LENGTH || checking) return;
+    setChecking(true);
+    setError(null);
+    setMessage(null);
+    const { error: failure } = await authClient.emailOtp.verifyEmail({ email, otp });
+    if (failure) {
+      const { message: copy, needsNewCode } = otpErrorMessage(failure);
+      setError(copy);
+      if (needsNewCode) clocks.allowResendNow();
+      if (failure.code === "OTP_EXPIRED") clocks.markExpired();
+      setCode("");
+      setBoxes((n) => n + 1);
+      setChecking(false);
+      return;
+    }
+    router.replace(callbackURL);
+    router.refresh();
+  }
 
   async function resend() {
     setSending(true);
@@ -51,49 +78,68 @@ export function VerifyNotice({
       );
       return;
     }
-    setMessage("Sent again. It can take a minute to arrive.");
-    setCooldown(COOLDOWN_SECONDS);
+    setMessage("Sent again. The new code replaces the old one.");
+    setCode("");
+    setBoxes((n) => n + 1);
+    clocks.restart();
   }
 
   return (
-    <div className="grid gap-4" data-testid="verify-notice">
+    <div className="grid gap-5" data-testid="verify-notice">
       <div className="flex items-start gap-3 rounded-lg bg-accent-soft p-3.5">
         <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-fill" />
         <p className="text-sm text-ink-secondary">
-          We sent a confirmation link to <b className="font-semibold text-ink">{email}</b>. Open it
-          on this device to finish setting up.
+          We sent a 6-digit code and a confirmation link to{" "}
+          <b className="font-semibold break-all text-ink">{email}</b>. Enter the code here, or open
+          the link.
         </p>
       </div>
-      <FormAlert>{error}</FormAlert>
-      {message ? (
-        <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-ink">
-          {message}
+
+      <form
+        className="grid gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void verify(code);
+        }}
+      >
+        <FormAlert>{error}</FormAlert>
+        <FormNotice>{message}</FormNotice>
+        <OtpInput
+          key={boxes}
+          idPrefix="verify-otp"
+          label="6-digit confirmation code"
+          value={code}
+          onChange={setCode}
+          onComplete={(full) => void verify(full)}
+          disabled={checking}
+          invalid={!!error}
+          autoFocus
+        />
+        <p className="text-[0.8125rem] text-ink-muted" data-testid="otp-expiry">
+          <ExpiryText seconds={clocks.expiresIn} />
         </p>
-      ) : null}
-      <Button variant="outline" size="lg" onClick={resend} disabled={sending || cooldown > 0}>
-        {sending ? "Sending…" : cooldown > 0 ? `Resend email in ${cooldown}s` : "Resend email"}
+        <Button type="submit" size="lg" disabled={checking || code.length !== OTP_LENGTH}>
+          {checking ? "Checking…" : "Confirm email"}
+        </Button>
+      </form>
+
+      <Button
+        variant="outline"
+        size="lg"
+        onClick={resend}
+        disabled={sending || clocks.cooldown > 0}
+      >
+        {sending
+          ? "Sending…"
+          : clocks.cooldown > 0
+            ? `Resend email in ${clocks.cooldown}s`
+            : "Resend email"}
       </Button>
-      {devOutbox ? (
-        <p className="rounded-md bg-canvas-sunken px-3 py-2 text-[0.8125rem] text-ink-secondary">
-          Development mode: nothing is really sent.{" "}
-          <Link
-            href="/dev/outbox"
-            target="_blank"
-            className="font-semibold text-accent-fill hover:underline"
-          >
-            Open the dev outbox
-          </Link>{" "}
-          to find the link.
-        </p>
-      ) : null}
-      {onBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-center text-sm text-ink-muted hover:underline"
-        >
+      {devOutbox ? <DevOutboxHint /> : null}
+      {backHref ? (
+        <Link href={backHref} className="text-center text-sm text-ink-muted hover:underline">
           Use a different email
-        </button>
+        </Link>
       ) : null}
     </div>
   );

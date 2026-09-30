@@ -1,27 +1,37 @@
 import { Text } from "@react-email/components";
 
-import { EmailLayout, LinkFallback, PrimaryButton, text } from "./layout";
+import { CodeBlock, EmailLayout, LinkFallback, PrimaryButton, text } from "./layout";
 
-export type VerifyEmailProps = { name: string; url: string };
+/** `code` is the 6-digit one-time code; `url` the confirmation link. A message carries either or both. */
+export type VerifyEmailProps = { name: string; url?: string | null; code?: string | null };
 
-export const verifyEmailSubject = () => "Confirm your email for Wisemail";
+/** A code-only message leads with the code; one with a link keeps the plain subject. */
+export const verifyEmailSubject = (code?: string | null, hasLink = true) =>
+  code && !hasLink ? `${code} is your Wisemail code` : "Confirm your email for Wisemail";
 
-export default function VerifyEmail({ name, url }: VerifyEmailProps) {
+export default function VerifyEmail({ name, url, code }: VerifyEmailProps) {
   return (
-    <EmailLayout preview="One quick step and you're in.">
+    <EmailLayout preview={code ? `Your code is ${code}` : "One quick step and you're in."}>
       <Text style={text.h1}>Welcome, {name.split(" ")[0] || "there"}</Text>
       <Text style={text.p}>
-        One quick step and you&apos;re in. Confirm that this is your email address and we&apos;ll
-        take you straight to your workspace.
+        One quick step and you&apos;re in. Confirm that this is your email address
+        {code ? " with this code" : ""}
+        {code && url ? ", or with the button below" : ""}.
       </Text>
-      <PrimaryButton href={url}>Confirm email</PrimaryButton>
+      {code ? <CodeBlock code={code} /> : null}
+      {url ? <PrimaryButton href={url}>Confirm email</PrimaryButton> : null}
       <Text style={text.small}>
-        This link works for an hour. If you didn&apos;t create a Wisemail account, you can ignore
-        this message.
+        {code ? "The code works for 10 minutes" : ""}
+        {code && url ? " and the link for an hour" : url ? "This link works for an hour" : ""}. If
+        you didn&apos;t create a Wisemail account, you can ignore this message.
       </Text>
-      <LinkFallback href={url} />
+      {url ? <LinkFallback href={url} /> : null}
     </EmailLayout>
   );
 }
 
-VerifyEmail.PreviewProps = { name: "Sam Rivera", url: "https://app.wisemail.dev/verify" };
+VerifyEmail.PreviewProps = {
+  name: "Sam Rivera",
+  url: "https://app.wisemail.dev/verify",
+  code: "482913",
+};

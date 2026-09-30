@@ -8,17 +8,16 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { FormAlert } from "@/components/auth/auth-shell";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
 import { signUpSchema } from "@/lib/validation/auth";
 
@@ -57,9 +56,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
             <FormItem>
               <FormLabel>New password</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" strength {...field} />
               </FormControl>
-              <FormDescription>At least 8 characters.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -69,7 +67,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         </Button>
         <p className="text-center text-sm text-ink-muted">
           <Link href="/forgot-password" className="font-medium text-accent-fill hover:underline">
-            Send me a new link
+            Send me a new link or code
           </Link>
         </p>
       </form>

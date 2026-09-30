@@ -38,6 +38,8 @@ export type OutboxEntry = {
   text: string;
   /** The message's main call-to-action link, when it has one. */
   link: string | null;
+  /** The one-time code, when the message carries one (dev outbox and tests read it). */
+  code?: string | null;
   sentAt: string;
 };
 
@@ -80,6 +82,7 @@ async function deliver(
   element: ReactElement,
   link: string | null,
   tags: { name: string; value: string }[] = [],
+  code: string | null = null,
 ): Promise<void> {
   const { html, text } = await renderMessage(element);
 
@@ -105,6 +108,7 @@ async function deliver(
     html,
     text,
     link,
+    code,
     sentAt: new Date().toISOString(),
   };
   const box = outbox();
@@ -124,17 +128,35 @@ async function deliver(
     } catch (error) {
       console.warn("[system-email] could not write the dev outbox file", error);
     }
-    console.info(`[system-email] ${kind} to ${to}${link ? `: ${link}` : ""}`);
+    console.info(
+      `[system-email] ${kind} to ${to}${link ? `: ${link}` : ""}${code ? ` (code ${code})` : ""}`,
+    );
   }
 }
 
 /* ---------------------------------- typed senders ---------------------------------- */
 
 export const sendVerificationEmail = (to: string, props: VerifyEmailProps) =>
-  deliver("verify-email", to, verifyEmailSubject(), VerifyEmail(props), props.url);
+  deliver(
+    "verify-email",
+    to,
+    verifyEmailSubject(props.code, !!props.url),
+    VerifyEmail(props),
+    props.url ?? null,
+    [],
+    props.code ?? null,
+  );
 
 export const sendPasswordResetEmail = (to: string, props: ResetPasswordProps) =>
-  deliver("reset-password", to, resetPasswordSubject(), ResetPassword(props), props.url);
+  deliver(
+    "reset-password",
+    to,
+    resetPasswordSubject(props.code, !!props.url),
+    ResetPassword(props),
+    props.url ?? null,
+    [],
+    props.code ?? null,
+  );
 
 export const sendInvitationEmail = (to: string, props: InvitationProps) =>
   deliver("invitation", to, invitationSubject(props), Invitation(props), props.url);

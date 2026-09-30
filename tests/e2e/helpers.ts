@@ -48,6 +48,37 @@ export async function outboxLink(page: Page, email: string, kind?: string): Prom
   return href;
 }
 
+/**
+ * Reads the newest one-time code in the dev outbox addressed to `email` (of `kind`), in a second
+ * tab so the page that asked for it stays where it is.
+ */
+export async function outboxCode(page: Page, email: string, kind: string): Promise<string> {
+  const tab = await page.context().newPage();
+  try {
+    const rows = () =>
+      tab
+        .getByTestId("outbox-row")
+        .filter({ hasText: email })
+        .and(tab.locator(`[data-kind="${kind}"]`));
+    await expect(async () => {
+      await tab.goto("/dev/outbox");
+      await expect(rows().first()).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+    const code = (await rows().first().getByTestId("outbox-code").textContent())?.trim();
+    if (!code || !/^\d{6}$/.test(code))
+      throw new Error(`no 6-digit code in the outbox for ${email}`);
+    return code;
+  } finally {
+    await tab.close();
+  }
+}
+
+/** Types a code into the segmented input (digit by digit, like a person). */
+export async function typeCode(page: Page, code: string) {
+  await page.getByLabel("Digit 1 of 6").click();
+  await page.keyboard.type(code);
+}
+
 /** Sign-up, verify and create a workspace; resolves with the org slug (page is on its overview). */
 export async function createWorkspace(
   page: Page,

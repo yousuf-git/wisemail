@@ -20,6 +20,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (preview.status === "invalid") {
     return (
       <AuthShell
+        mood="worried"
         title="This invite link isn't valid"
         description="Check that you copied the whole link, or ask for a new invitation."
       >
@@ -30,6 +31,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (preview.status === "expired") {
     return (
       <AuthShell
+        mood="sleep"
         title="This invitation expired"
         description={`Invitations to ${preview.orgName} last 7 days. Ask an Owner or Admin to send a new one.`}
       >
@@ -40,6 +42,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (preview.status === "used") {
     return (
       <AuthShell
+        mood="sleep"
         title="This invitation was already used"
         description={`It was accepted or canceled. If you're already in ${preview.orgName}, just open your workspace.`}
       >
@@ -56,6 +59,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (!session) {
     return (
       <AuthShell
+        mood="happy"
         title={title}
         description={`${summary} Sign in or create an account with that address to continue.`}
       >
@@ -74,6 +78,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (session.user.email.toLowerCase() !== preview.email.toLowerCase()) {
     return (
       <AuthShell
+        mood="detective"
         title="Wrong account"
         description={`This invitation to ${preview.orgName} was sent to ${preview.maskedEmail}, but you're signed in as ${session.user.email}.`}
       >
@@ -94,6 +99,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   if (!session.user.emailVerified) {
     return (
       <AuthShell
+        mood="detective"
         title="Confirm your email first"
         description={`To join ${preview.orgName} we need to know ${session.user.email} is really yours. Use the link we emailed you, then come back to this page.`}
       >
@@ -107,7 +113,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   }
 
   return (
-    <AuthShell title={title} description={summary}>
+    <AuthShell mood="happy" title={title} description={summary}>
       <AcceptButton token={token} />
     </AuthShell>
   );

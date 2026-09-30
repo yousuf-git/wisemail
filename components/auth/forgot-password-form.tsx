@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MailCheck } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -22,9 +22,13 @@ import { authClient } from "@/lib/auth/client";
 
 const schema = z.object({ email: z.email("That email doesn't look right.") });
 
-export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
+/**
+ * Asks for the address, then moves on to the code screen whether or not an account exists
+ * (Better Auth answers the same either way, so this page can't be used to probe for accounts).
+ */
+export function ForgotPasswordForm() {
+  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { email: "" },
@@ -44,37 +48,7 @@ export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
       );
       return;
     }
-    setSentTo(email);
-  }
-
-  if (sentTo) {
-    return (
-      <div className="grid gap-4" data-testid="reset-sent">
-        <div className="flex items-start gap-3 rounded-lg bg-accent-soft p-3.5">
-          <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-fill" />
-          <p className="text-sm text-ink-secondary">
-            If there&apos;s an account for <b className="font-semibold text-ink">{sentTo}</b>, a
-            reset link is on its way. It works for an hour.
-          </p>
-        </div>
-        {devOutbox ? (
-          <p className="rounded-md bg-canvas-sunken px-3 py-2 text-[0.8125rem] text-ink-secondary">
-            Development mode: nothing is really sent.{" "}
-            <Link
-              href="/dev/outbox"
-              target="_blank"
-              className="font-semibold text-accent-fill hover:underline"
-            >
-              Open the dev outbox
-            </Link>{" "}
-            to find the link.
-          </p>
-        ) : null}
-        <Button asChild variant="outline" size="lg">
-          <Link href="/sign-in">Back to sign in</Link>
-        </Button>
-      </div>
-    );
+    router.push(`/reset-password?${new URLSearchParams({ email })}`);
   }
 
   return (
@@ -94,8 +68,14 @@ export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Sending…" : "Send reset link"}
+        <Button
+          type="submit"
+          size="lg"
+          disabled={form.formState.isSubmitting || form.formState.isSubmitSuccessful}
+        >
+          {form.formState.isSubmitting || form.formState.isSubmitSuccessful
+            ? "Sending…"
+            : "Send code and link"}
         </Button>
         <p className="text-center text-sm text-ink-muted">
           <Link href="/sign-in" className="font-medium text-accent-fill hover:underline">
