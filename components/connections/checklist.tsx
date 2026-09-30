@@ -98,7 +98,7 @@ export function Checklist({
                 <StatusChip state={chip.state}>{chip.label}</StatusChip>
                 <span className="text-[0.875rem] font-semibold">{item.title}</span>
                 {item.technical ? (
-                  <span className="text-xs text-ink-faint">· {item.technical}</span>
+                  <span className="text-xs text-ink-muted">· {item.technical}</span>
                 ) : null}
               </div>
               {item.status !== "ok" || showDomains ? (
@@ -123,7 +123,7 @@ export function Checklist({
                 {item.fix.label}
               </Button>
             ) : item.fix && item.status !== "ok" ? (
-              <span className="text-xs text-ink-faint">Ask an Admin to fix this</span>
+              <span className="text-xs text-ink-muted">Ask an Admin to fix this</span>
             ) : null}
           </li>
         );

@@ -175,7 +175,7 @@ export function ThreadList({
           <div className="relative min-w-0 flex-1">
             <Search
               aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted"
             />
             <Input
               ref={searchRef}
@@ -280,7 +280,7 @@ export function ThreadList({
             </ul>
             <div ref={sentinel} aria-hidden className="h-px" />
             {fetchingNext ? (
-              <p className="p-3 text-center text-xs text-ink-faint" role="status">
+              <p className="p-3 text-center text-xs text-ink-muted" role="status">
                 Loading more…
               </p>
             ) : null}

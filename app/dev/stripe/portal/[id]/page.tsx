@@ -80,7 +80,7 @@ export default async function FakePortalPage({ params }: PageProps<"/dev/stripe/
         )}
         <a
           href={portal.return_url ?? "/"}
-          className="text-sm font-semibold text-accent hover:underline"
+          className="text-sm font-semibold text-accent-fill hover:underline"
           data-testid="fake-portal-return"
         >
           Return to Wisemail

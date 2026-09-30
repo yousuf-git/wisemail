@@ -51,7 +51,7 @@ export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
     return (
       <div className="grid gap-4" data-testid="reset-sent">
         <div className="flex items-start gap-3 rounded-lg bg-accent-soft p-3.5">
-          <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent" />
+          <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-fill" />
           <p className="text-sm text-ink-secondary">
             If there&apos;s an account for <b className="font-semibold text-ink">{sentTo}</b>, a
             reset link is on its way. It works for an hour.
@@ -63,7 +63,7 @@ export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
             <Link
               href="/dev/outbox"
               target="_blank"
-              className="font-semibold text-accent hover:underline"
+              className="font-semibold text-accent-fill hover:underline"
             >
               Open the dev outbox
             </Link>{" "}
@@ -98,7 +98,7 @@ export function ForgotPasswordForm({ devOutbox }: { devOutbox?: boolean }) {
           {form.formState.isSubmitting ? "Sending…" : "Send reset link"}
         </Button>
         <p className="text-center text-sm text-ink-muted">
-          <Link href="/sign-in" className="font-medium text-accent hover:underline">
+          <Link href="/sign-in" className="font-medium text-accent-fill hover:underline">
             Back to sign in
           </Link>
         </p>

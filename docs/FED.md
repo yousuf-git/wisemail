@@ -37,6 +37,8 @@ All colors are CSS variables mapped into Tailwind v4 `@theme`. Components use se
 | `--line-strong` | `#DDDAD2` | Input borders, focused table rows |
 | `--accent` | `#0EA5E9` | Brand: primary buttons, links, selected nav, the mascot's seal |
 | `--accent-hover` | `#0284C7` | |
+| `--accent-fill` | `#0369A1` | Filled controls with white text (buttons, checked checkbox/switch): 5.9:1 contrast. Sky `--accent` stays for links, chips, dots and bars |
+| `--accent-fill-hover` | `#075985` | |
 | `--accent-soft` | `#E6F6FE` | Selected rows, accent chips background |
 | `--accent-ink` | `#FFFFFF` | Text on accent |
 | `--glow` | `#F59E0B` | Warm interaction glow (composer focus ring, upgrade pill, Wizi's cheeks) |
@@ -76,6 +78,7 @@ Warm charcoal, not blue-black. Surfaces get lighter as they rise instead of rely
 | `--line-strong` | `#44413C` |
 | `--accent` | `#38BDF8` (lifted for contrast) |
 | `--accent-hover` | `#7DD3FC` |
+| `--accent-fill` | `#38BDF8` (dark text on it) |
 | `--accent-soft` | `rgba(56,189,248,0.14)` |
 | `--accent-ink` | `#0B1A22` |
 | `--glow-soft` | `rgba(245,158,11,0.12)` |

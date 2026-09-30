@@ -418,7 +418,7 @@ export function InsightsView({
             </p>
           ) : null}
 
-          <p className="text-xs text-ink-faint" data-testid="insights-footnote">
+          <p className="text-xs text-ink-muted" data-testid="insights-footnote">
             {data.timezone === "UTC" && data.days > 30
               ? "Daily totals over 90 days use UTC days."
               : `Days are cut in ${data.timezone}.`}{" "}

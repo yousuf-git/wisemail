@@ -62,7 +62,7 @@ export function NotificationBell({
       {count > 0 ? (
         <span
           data-testid="notification-count"
-          className="absolute -top-1 -right-1 grid min-w-[1.125rem] place-items-center rounded-full bg-coral px-1 text-[0.6875rem] leading-[1.125rem] font-bold text-white ring-2 ring-surface"
+          className="absolute -top-1 -right-1 grid min-w-[1.125rem] place-items-center rounded-full bg-coral px-1 text-[0.6875rem] leading-[1.125rem] font-bold text-ink ring-2 ring-surface"
         >
           {count > 99 ? "99+" : count}
         </span>

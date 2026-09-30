@@ -147,7 +147,7 @@ export function PreferencesForm({
       <section aria-labelledby="digest-h" className="grid gap-2">
         <h2 id="digest-h" className="flex items-center gap-2 text-base font-semibold">
           Daily digest
-          {initial.digestAllowed ? null : <Lock aria-hidden className="size-3.5 text-ink-faint" />}
+          {initial.digestAllowed ? null : <Lock aria-hidden className="size-3.5 text-ink-muted" />}
         </h2>
         <div className="flex items-center justify-between gap-3 rounded-xl bg-surface p-4 shadow-md">
           <span className="grid">

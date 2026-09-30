@@ -28,6 +28,9 @@
 
   --accent: #0ea5e9;
   --accent-hover: #0284c7;
+  /* Filled controls with white text: sky #0ea5e9 is 2.8:1, this is 5.9:1 (WCAG AA). */
+  --accent-fill: #0369a1;
+  --accent-fill-hover: #075985;
   --accent-soft: #e6f6fe;
   --accent-ink: #ffffff;
   --glow: #f59e0b;
@@ -84,6 +87,8 @@
 
     --accent: #38bdf8;
     --accent-hover: #7dd3fc;
+    --accent-fill: #38bdf8;
+    --accent-fill-hover: #7dd3fc;
     --accent-soft: rgb(56 189 248 / 0.14);
     --accent-ink: #0b1a22;
     --glow-soft: rgb(245 158 11 / 0.12);
@@ -134,6 +139,8 @@
 
   --accent: #38bdf8;
   --accent-hover: #7dd3fc;
+  --accent-fill: #38bdf8;
+  --accent-fill-hover: #7dd3fc;
   --accent-soft: rgb(56 189 248 / 0.14);
   --accent-ink: #0b1a22;
   --glow-soft: rgb(245 158 11 / 0.12);
@@ -198,6 +205,8 @@
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-fill-hover: var(--accent-fill-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
   --color-glow: var(--glow);
@@ -231,7 +240,7 @@
   --color-card-foreground: var(--ink);
   --color-popover: var(--surface-raised);
   --color-popover-foreground: var(--ink);
-  --color-primary: var(--accent);
+  --color-primary: var(--accent-fill);
   --color-primary-foreground: var(--accent-ink);
   --color-secondary: var(--canvas-sunken);
   --color-secondary-foreground: var(--ink);

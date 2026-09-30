@@ -308,7 +308,7 @@ export function BillingView({
                 </b>
                 <span className="text-sm text-ink-muted"> / month</span>
                 {plan.priceMonthly > 0 ? (
-                  <span className="block text-[0.75rem] text-ink-faint">
+                  <span className="block text-[0.75rem] text-ink-muted">
                     {stripe && interval === "year"
                       ? `$${plan.priceAnnualPerMonth * 12} billed yearly`
                       : `$${plan.priceAnnualPerMonth} a month billed yearly`}
@@ -324,7 +324,7 @@ export function BillingView({
                 ))}
               </ul>
               {plan.overage ? (
-                <p className="text-[0.75rem] text-ink-faint">{plan.overage}</p>
+                <p className="text-[0.75rem] text-ink-muted">{plan.overage}</p>
               ) : null}
               <Button
                 variant={current ? "outline" : "default"}

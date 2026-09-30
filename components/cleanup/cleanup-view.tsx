@@ -118,7 +118,7 @@ export function CleanupView({
                     </span>
                   </div>
                   <p className="text-[13px] text-ink-muted">{describeRule(rule)}</p>
-                  <p className="text-xs text-ink-faint">
+                  <p className="text-xs text-ink-muted">
                     {rule.kind === "block_sender"
                       ? "Applies to mail as it arrives"
                       : rule.lastRunAt

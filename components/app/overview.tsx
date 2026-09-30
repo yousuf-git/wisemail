@@ -67,7 +67,7 @@ export function OverviewContent({
           className="grid gap-6 rounded-xl bg-surface p-5 shadow-glow min-[760px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[760px]:p-6"
         >
           <div className="grid content-start gap-3">
-            <span className="grid size-10 place-items-center rounded-md bg-accent-soft text-accent">
+            <span className="grid size-10 place-items-center rounded-md bg-accent-soft text-accent-fill">
               <PlugZap aria-hidden className="size-5" />
             </span>
             <h2 id="connect-title" className="text-xl leading-7 font-semibold tracking-[-0.01em]">

@@ -148,7 +148,7 @@ export function ContactsView({
       <EmptyState title="Connect Resend to see your contacts" mood="idle">
         Contacts, segments and topics come from your connected Resend accounts.{" "}
         <Link
-          className="font-semibold text-accent underline"
+          className="font-semibold text-accent-fill underline"
           href={`/${orgSlug}/settings/connections`}
         >
           Open Connections
@@ -165,7 +165,7 @@ export function ContactsView({
           <div className="relative min-w-[14rem] flex-1 md:w-72 md:flex-none">
             <Search
               aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted"
             />
             <Input
               type="search"
@@ -246,7 +246,7 @@ export function ContactsView({
       <section aria-label="Contacts" className="rounded-xl bg-surface p-1.5 shadow-md">
         <div
           aria-hidden
-          className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem] gap-x-3 px-3 py-2 text-[11px] font-semibold tracking-[0.06em] text-ink-faint uppercase md:grid"
+          className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem] gap-x-3 px-3 py-2 text-[11px] font-semibold tracking-[0.06em] text-ink-muted uppercase md:grid"
         >
           <span>Contact</span>
           <span>Account</span>
@@ -307,7 +307,7 @@ export function ContactsView({
             </ul>
             <div ref={sentinel} aria-hidden className="h-px" />
             {isFetchingNextPage ? (
-              <p role="status" className="p-3 text-center text-xs text-ink-faint">
+              <p role="status" className="p-3 text-center text-xs text-ink-muted">
                 Loading more…
               </p>
             ) : null}

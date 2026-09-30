@@ -68,7 +68,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           {form.formState.isSubmitting ? "Saving…" : "Save new password"}
         </Button>
         <p className="text-center text-sm text-ink-muted">
-          <Link href="/forgot-password" className="font-medium text-accent hover:underline">
+          <Link href="/forgot-password" className="font-medium text-accent-fill hover:underline">
             Send me a new link
           </Link>
         </p>

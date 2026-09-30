@@ -88,7 +88,7 @@ function NavLink({ base, item, active }: { base: string; item: NavItem; active: 
         active && "bg-accent-soft font-semibold text-ink hover:bg-accent-soft",
       )}
     >
-      <Icon size={18} className={cn(active && "text-accent")} />
+      <Icon size={18} className={cn(active && "text-accent-fill")} />
       {item.label}
     </Link>
   );

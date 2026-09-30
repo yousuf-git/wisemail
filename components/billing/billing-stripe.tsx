@@ -213,7 +213,7 @@ export function CreditPackCard({
       data-testid="credit-packs"
     >
       <div className="flex items-center gap-2">
-        <Sparkles aria-hidden className="size-4 text-accent" />
+        <Sparkles aria-hidden className="size-4 text-accent-fill" />
         <h2 className="text-base font-semibold">AI credit packs</h2>
       </div>
       <p className="text-sm text-ink-secondary">
@@ -250,7 +250,7 @@ export function ExtraConnectionsCard({ overview }: { overview: StripeOverview })
       data-testid="extra-connections"
     >
       <div className="flex items-center gap-2">
-        <Plug aria-hidden className="size-4 text-accent" />
+        <Plug aria-hidden className="size-4 text-accent-fill" />
         <h2 className="text-base font-semibold">Extra connections</h2>
       </div>
       <p className="text-sm text-ink-secondary">

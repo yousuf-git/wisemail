@@ -42,7 +42,7 @@ export function OrgSwitcher({ org, orgs, role }: { org: Org; orgs: Org[]; role: 
             <LiveDot />
           </span>
         </span>
-        <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-faint" />
+        <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 rounded-lg shadow-lg">
         <DropdownMenuLabel className="text-xs font-semibold tracking-[0.06em] text-ink-muted uppercase">
@@ -54,7 +54,7 @@ export function OrgSwitcher({ org, orgs, role }: { org: Org; orgs: Org[]; role: 
               <OrgAvatar name={o.name} />
               <span className="min-w-0 flex-1 truncate">{o.name}</span>
               {o.id === org.id ? (
-                <Check aria-label="Current" className="size-4 text-accent" />
+                <Check aria-label="Current" className="size-4 text-accent-fill" />
               ) : null}
             </Link>
           </DropdownMenuItem>

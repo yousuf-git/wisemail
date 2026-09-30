@@ -63,7 +63,7 @@ export function SyncStatus({
       <div className="min-w-0 text-[0.8125rem] text-ink-secondary" role="status" aria-live="polite">
         {running ? (
           <p className="flex items-center gap-2">
-            <RefreshCw aria-hidden className="size-4 shrink-0 animate-spin text-accent" />
+            <RefreshCw aria-hidden className="size-4 shrink-0 animate-spin text-accent-fill" />
             <span>
               Syncing{sync?.stage ? ` ${sync.stage.label.toLowerCase()}` : ""}…{" "}
               <span className="text-ink-muted">

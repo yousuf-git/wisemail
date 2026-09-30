@@ -72,7 +72,7 @@ export default async function DevOutboxPage() {
                 <a
                   href={row.link}
                   data-testid="outbox-link"
-                  className="font-mono text-[0.8125rem] break-all text-accent hover:underline"
+                  className="font-mono text-[0.8125rem] break-all text-accent-fill hover:underline"
                 >
                   {row.link}
                 </a>

@@ -115,7 +115,7 @@ export function SignInForm({
                 <FormLabel>Password</FormLabel>
                 <Link
                   href="/forgot-password"
-                  className="text-[0.8125rem] font-medium text-accent hover:underline"
+                  className="text-[0.8125rem] font-medium text-accent-fill hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -134,7 +134,7 @@ export function SignInForm({
           New here?{" "}
           <Link
             href={next ? `/sign-up?next=${encodeURIComponent(safeNext(next))}` : "/sign-up"}
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-fill hover:underline"
           >
             Create an account
           </Link>

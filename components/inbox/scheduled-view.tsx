@@ -233,7 +233,7 @@ export function ScheduledView({
                 <p className="truncate text-sm text-ink-muted">To {(row.peopleLabels ?? row.people).join(", ")}</p>
                 {row.scheduledAt ? (
                   <p className="flex items-center gap-1.5 text-sm text-ink-secondary">
-                    <CalendarClock aria-hidden className="size-4 text-ink-faint" />
+                    <CalendarClock aria-hidden className="size-4 text-ink-muted" />
                     <time dateTime={row.scheduledAt}>
                       {absoluteTime(row.scheduledAt, now ? undefined : "UTC")}
                     </time>

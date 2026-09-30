@@ -31,7 +31,7 @@ export function Dock({
       <OrgSwitcher org={org} orgs={orgs} role={role} />
       <Link
         href={`/${org.slug}/compose`}
-        className="flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2.5 text-sm font-bold text-accent-ink shadow-[0_8px_18px_-10px_var(--accent)] transition-[transform,background-color] duration-150 ease-soft outline-none hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.97]"
+        className="flex items-center justify-center gap-2 rounded-md bg-accent-fill px-3 py-2.5 text-sm font-bold text-accent-ink shadow-[0_8px_18px_-10px_var(--accent-fill)] transition-[transform,background-color] duration-150 ease-soft outline-none hover:bg-accent-fill-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.97]"
       >
         <PenIcon size={18} />
         Compose

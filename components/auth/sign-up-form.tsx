@@ -109,7 +109,7 @@ export function SignUpForm({ next, devOutbox }: { next?: string; devOutbox?: boo
           Already have an account?{" "}
           <Link
             href={next ? `/sign-in?next=${encodeURIComponent(safeNext(next))}` : "/sign-in"}
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-fill hover:underline"
           >
             Sign in
           </Link>

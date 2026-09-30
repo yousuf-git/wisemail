@@ -45,7 +45,7 @@ export function LockedFeature({
           data-slot="locked-feature"
           aria-label={`${name} is on ${planLabel} and above`}
           className={cn(
-            "inline-flex items-center gap-1.5 text-ink-faint outline-none focus-visible:ring-2 focus-visible:ring-accent",
+            "inline-flex items-center gap-1.5 text-ink-muted outline-none focus-visible:ring-2 focus-visible:ring-accent",
             variant === "button"
               ? "h-8 rounded-md border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-canvas-sunken"
               : "rounded-sm text-[inherit] underline decoration-dotted underline-offset-4 hover:text-ink-muted",

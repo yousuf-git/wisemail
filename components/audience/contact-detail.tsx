@@ -167,7 +167,7 @@ export function ContactDetail({
                 <dt className="text-ink-muted">{p.key}</dt>
                 <dd className="min-w-0 break-words">
                   {contact.properties[p.key] ?? (
-                    <span className="text-ink-faint">
+                    <span className="text-ink-muted">
                       Not set{p.fallbackValue !== null ? ` (default ${p.fallbackValue})` : ""}
                     </span>
                   )}
@@ -309,7 +309,7 @@ export function ContactDetail({
                   <StatusChip state={statusState(e.status as EmailStatus)}>
                     {statusLabel(e.status as EmailStatus)}
                   </StatusChip>
-                  <time dateTime={e.at} className="text-xs text-ink-faint tabular-nums">
+                  <time dateTime={e.at} className="text-xs text-ink-muted tabular-nums">
                     {now ? relativeTime(e.at, now) : e.at.slice(0, 10)}
                   </time>
                 </>

@@ -265,7 +265,7 @@ function AuditRow({
           <ChevronDown
             aria-hidden
             className={cn(
-              "size-4 shrink-0 text-ink-faint transition-transform",
+              "size-4 shrink-0 text-ink-muted transition-transform",
               open && "rotate-180",
             )}
           />

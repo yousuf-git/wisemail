@@ -142,7 +142,7 @@ export function CreateApiKeyDialog({
           <div className="grid gap-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
-                <KeyRound aria-hidden className="size-5 text-accent" /> Copy your new key
+                <KeyRound aria-hidden className="size-5 text-accent-fill" /> Copy your new key
               </DialogTitle>
               <DialogDescription>
                 “{secret.keyName}” now exists in {secret.where}.

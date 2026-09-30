@@ -196,7 +196,7 @@ export function AiSettings({
         <ul className="grid gap-2 sm:grid-cols-2">
           {AI_FLAGS.map((flag) => (
             <li key={flag} className="flex gap-3 rounded-xl bg-surface p-4 shadow-md">
-              <Lock aria-hidden className="mt-0.5 size-4 flex-none text-ink-faint" />
+              <Lock aria-hidden className="mt-0.5 size-4 flex-none text-ink-muted" />
               <div>
                 <p className="text-sm font-semibold">{FLAG_INFO[flag].label}</p>
                 <p className="text-[0.8125rem] text-ink-muted">{FLAG_INFO[flag].description}</p>

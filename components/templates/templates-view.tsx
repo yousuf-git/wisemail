@@ -63,7 +63,7 @@ export function TemplatesView({
       <EmptyState title="Connect Resend to see your templates" mood="idle">
         Templates live in your Resend accounts.{" "}
         <Link
-          className="font-semibold text-accent underline"
+          className="font-semibold text-accent-fill underline"
           href={`/${orgSlug}/settings/connections`}
         >
           Open Connections
@@ -113,7 +113,7 @@ export function TemplatesView({
               </span>
               <time
                 dateTime={t.updatedAt}
-                className="hidden w-24 text-right text-xs whitespace-nowrap text-ink-faint tabular-nums min-[700px]:block"
+                className="hidden w-24 text-right text-xs whitespace-nowrap text-ink-muted tabular-nums min-[700px]:block"
               >
                 {now ? relativeTime(t.updatedAt, now) : t.updatedAt.slice(0, 10)}
               </time>
