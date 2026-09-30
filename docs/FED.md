@@ -31,7 +31,7 @@ All colors are CSS variables mapped into Tailwind v4 `@theme`. Components use se
 | `--surface-raised` | `#FFFFFF` + shadow `lg` | Dialogs, command palette |
 | `--ink` | `#1F1E1C` | Primary text, active icons |
 | `--ink-secondary` | `#52504B` | Body copy in dense areas |
-| `--ink-muted` | `#74737A` | Descriptions, placeholders, section labels |
+| `--ink-muted` | `#6C6B72` | Descriptions, placeholders, section labels |
 | `--ink-faint` | `#A3A1A8` | Disabled, tertiary metadata |
 | `--line` | `#ECEAE4` | Dividers, card edges |
 | `--line-strong` | `#DDDAD2` | Input borders, focused table rows |
@@ -318,7 +318,7 @@ Guided tours for new users, built with NextStepjs (see `TRD.md`) and styled to t
 }
 
 :root {
-  --canvas: #F8F7F4; --surface: #FFFFFF; --ink: #1F1E1C; --ink-muted: #74737A;
+  --canvas: #F8F7F4; --surface: #FFFFFF; --ink: #1F1E1C; --ink-muted: #6C6B72;
   --line: #ECEAE4; --accent: #0EA5E9; --glow: #F59E0B; --engaged: #8B5CF6;
 }
 .dark {

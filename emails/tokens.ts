@@ -9,7 +9,7 @@ export const color = {
   surface: "#FFFFFF", // --surface
   ink: "#1F1E1C", // --ink
   inkSecondary: "#52504B", // --ink-secondary
-  inkMuted: "#74737A", // --ink-muted
+  inkMuted: "#6C6B72", // --ink-muted
   line: "#ECEAE4", // --line
   accent: "#0EA5E9", // --accent
   accentInk: "#FFFFFF", // --accent-ink
