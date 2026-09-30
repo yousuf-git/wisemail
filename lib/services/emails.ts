@@ -199,6 +199,8 @@ async function withPeopleLabels(
     { threadId: 1, from: 1, to: 1 },
   )
     .sort({ createdAt: -1 })
+    // Without the hint the planner walks the whole org by { orgId, createdAt } to skip the sort.
+    .hint({ orgId: 1, threadId: 1, createdAt: 1 })
     .limit(threadIds.length * 12)
     .lean();
   const names = new Map<string, Map<string, string>>();
