@@ -1,8 +1,19 @@
 "use client";
 
 import { useAnimation, useReducedMotion } from "motion/react";
+
+type AnimationControls = ReturnType<typeof useAnimation>;
 import * as m from "motion/react-m";
 import { useEffect, useRef, useState } from "react";
+
+/** A mood without arms or eyes leaves its controls unbound, and start() then throws. */
+function play(controls: AnimationControls, definition: Parameters<AnimationControls["start"]>[0]) {
+  try {
+    void controls.start(definition);
+  } catch {
+    // nothing mounted to animate
+  }
+}
 
 import { cn } from "@/lib/utils";
 import type { WiziMood } from "./moods";
@@ -169,7 +180,7 @@ export function Wizi({
       // storage blocked: wave once per page load instead
     }
     greetedThisPage = true;
-    const t = setTimeout(() => void arm.start(waveKeyframes), 350);
+    const t = setTimeout(() => play(arm, waveKeyframes), 350);
     return () => clearTimeout(t);
   }, [greet, reduced, arm]);
 
@@ -180,7 +191,7 @@ export function Wizi({
     const schedule = () => {
       timer = setTimeout(
         () => {
-          void eyes.start({ scaleY: [1, 0.1, 1], transition: { duration: 0.2 } });
+          play(eyes, { scaleY: [1, 0.1, 1], transition: { duration: 0.2 } });
           schedule();
         },
         4000 + Math.random() * 3000,
@@ -193,7 +204,7 @@ export function Wizi({
   const wave = () => {
     if (!interactive || reduced) return;
     setBlush(true);
-    void arm.start(waveKeyframes);
+    play(arm, waveKeyframes);
   };
 
   const loop = (keyframes: Record<string, number[]>, duration: number, delay = 0) =>
