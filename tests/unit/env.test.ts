@@ -247,3 +247,33 @@ describe("KEK rotation env", () => {
     ).toBe(true);
   });
 });
+
+describe("social sign-in variables", () => {
+  it("are optional: none set is a valid env", () => {
+    expect(parseEnv(devEnv).success).toBe(true);
+  });
+  it("accepts a complete pair per provider", () => {
+    const result = parseEnv({
+      ...devEnv,
+      GOOGLE_CLIENT_ID: "g-id",
+      GOOGLE_CLIENT_SECRET: "g-secret",
+      GITHUB_CLIENT_ID: "h-id",
+      GITHUB_CLIENT_SECRET: "h-secret",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.GOOGLE_CLIENT_ID).toBe("g-id");
+  });
+  it("rejects half a pair, naming what is missing", () => {
+    expect(errorsOf({ ...devEnv, GOOGLE_CLIENT_ID: "g-id" })).toContain(
+      "GOOGLE_CLIENT_SECRET: required when GOOGLE_CLIENT_ID is set (Google sign-in needs both)",
+    );
+    expect(errorsOf({ ...devEnv, GITHUB_CLIENT_SECRET: "h-secret" })).toContain(
+      "GITHUB_CLIENT_ID: required when GITHUB_CLIENT_SECRET is set (GitHub sign-in needs both)",
+    );
+  });
+  it("treats blank values as unset", () => {
+    expect(parseEnv({ ...devEnv, GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "  " }).success).toBe(
+      true,
+    );
+  });
+});

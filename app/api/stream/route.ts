@@ -29,6 +29,9 @@ export async function GET(request: Request) {
   if (result.status === "not_member") {
     return problem(404, "not_found", "We couldn't find that workspace.");
   }
+  if (result.status === "suspended") {
+    return problem(403, "workspace_suspended", "This workspace is suspended.");
+  }
   const { ctx } = result;
 
   // Empty reply for a client that already hung up (nobody reads it, and nothing is logged).

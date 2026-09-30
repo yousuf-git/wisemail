@@ -98,8 +98,14 @@ Handy while developing:
 | `pnpm test:e2e` | Playwright end-to-end suite (starts everything it needs) |
 | `pnpm perf` | Seeds a large dataset and measures the hot paths against the TRD §6 targets |
 | `pnpm db:dev` | Start the local MongoDB replica set |
+| `pnpm db:seed` | Seed demo workspaces, users and a platform admin (`--reset` drops the dev database) |
 | `pnpm webhook:test` | Send a signed sample webhook to a connection |
 | `pnpm mail:check` | Check system email rendering |
+
+### Platform admin and demo data
+
+- `/admin` is the operator panel (users, organizations, plans and limits, suspension, impersonation, system health). Access is the Better Auth role `admin`; list your email in `PLATFORM_ADMIN_EMAILS` and sign in to get it. Everyone else sees a 404. Every change is written to the audit log.
+- `pnpm db:seed` fills the dev database with a platform admin and demo workspaces on every plan (free, pro, team, agency) with users in every role, mail, events and ~30 days of metrics. All accounts use the password `wisemail-dev-123` (`admin@wisemail.test` for `/admin`, `team.owner@wisemail.test` for a full workspace); the script prints the whole table. It is safe to re-run; `pnpm db:seed --reset` drops the dev database `wisemail` first. It refuses production and non-local databases.
 
 ## Testing
 

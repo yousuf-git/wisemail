@@ -287,11 +287,12 @@ type ApplyOptions = {
     | "trial_cancelled"
     | "subscription"
     | "subscription_ended"
-    | "payment_failed";
+    | "payment_failed"
+    | "admin";
   now?: Date;
 };
 
-async function syncUsageAllowance(orgId: Types.ObjectId, plan: Plan, session: ClientSession) {
+export async function syncUsageAllowance(orgId: Types.ObjectId, plan: Plan, session: ClientSession) {
   const settings = await OrgSettingsModel.findOne({ orgId }, null, { session }).lean();
   if (!settings) return;
   const e = computeEntitlements(settings);
@@ -303,7 +304,7 @@ async function syncUsageAllowance(orgId: Types.ObjectId, plan: Plan, session: Cl
 }
 
 /** Oldest live connections up to `limit` that plan limits had frozen become active again. */
-async function restoreConnections(orgId: Types.ObjectId, limit: number, session: ClientSession) {
+export async function restoreConnections(orgId: Types.ObjectId, limit: number, session: ClientSession) {
   const conns = await liveConnections(orgId, session);
   const room = Math.max(0, limit);
   const keep = conns.slice(0, room);

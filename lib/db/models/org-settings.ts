@@ -96,6 +96,22 @@ const orgSettingsSchema = new Schema(
       ),
       default: () => ({ enabled: true, features: {} }),
     },
+    /**
+     * Platform-admin suspension. While set, `getOrgContext` answers `suspended`: members see a
+     * "workspace suspended" page and every action and API route refuses. Data keeps flowing in
+     * (ingest, sync) so nothing is lost while the workspace is on hold.
+     */
+    suspended: {
+      type: new Schema(
+        {
+          at: { type: Date, required: true },
+          by: { type: Schema.Types.ObjectId, required: true },
+          reason: { type: String, required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true, collection: "org_settings" },

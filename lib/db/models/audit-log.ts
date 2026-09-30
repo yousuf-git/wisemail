@@ -27,6 +27,8 @@ const auditLogSchema = new Schema(
       ),
       immutable: true,
     },
+    /** Why a destructive platform-admin action was taken (`admin.*` actions). */
+    reason: { type: String, immutable: true },
     ip: { type: String, immutable: true },
     userAgent: { type: String, immutable: true },
   },
