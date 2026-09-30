@@ -5,6 +5,8 @@ import type { MongoClient } from "mongodb";
 
 import { env } from "@/lib/env";
 
+import { ensureAuthCollections } from "./auth-collections";
+
 /**
  * One MongoClient (one pool) shared by Mongoose and Better Auth's MongoDB adapter.
  *
@@ -18,9 +20,13 @@ type Cache = { client: MongoClient; ready: Promise<typeof mongoose> };
 const globalForMongo = globalThis as unknown as { __wisemailMongo?: Cache };
 
 function open(): Cache {
-  const ready = mongoose.connect(env.MONGODB_URI, { maxPoolSize: 20 });
+  const connecting = mongoose.connect(env.MONGODB_URI, { maxPoolSize: 20 });
   // The client exists as soon as connect() is called; it also connects lazily on first use.
   const client = mongoose.connection.getClient() as unknown as MongoClient;
+  const ready = connecting.then(async (m) => {
+    await ensureAuthCollections(client.db());
+    return m;
+  });
   return { client, ready };
 }
 
