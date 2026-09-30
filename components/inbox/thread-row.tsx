@@ -94,7 +94,7 @@ export function ThreadRow({
           ) : null}
           <span className={cn("truncate", !row.unread && "font-medium")}>{name}</span>
           {row.messageCount > 1 ? (
-            <span className="flex-none text-xs font-medium text-ink-faint">{row.messageCount}</span>
+            <span className="flex-none text-xs font-medium text-ink-muted">{row.messageCount}</span>
           ) : null}
           {row.ai && folder === "inbox" ? <TriageChip ai={row.ai} /> : null}
         </span>
@@ -106,15 +106,15 @@ export function ThreadRow({
             {row.snippet ? <> · {row.snippet}</> : null}
           </span>
           {row.hasAttachments ? (
-            <Paperclip aria-label="Has attachments" className="size-3 flex-none text-ink-faint" />
+            <Paperclip aria-label="Has attachments" className="size-3 flex-none text-ink-muted" />
           ) : null}
         </span>
         {trashed ? (
-          <span className="text-xs text-ink-faint">{purgeNote(row.purgeAt, now)}</span>
+          <span className="text-xs text-ink-muted">{purgeNote(row.purgeAt, now)}</span>
         ) : null}
       </span>
       <span className="grid justify-items-end gap-1">
-        <time dateTime={row.lastMessageAt} className="text-xs text-ink-faint tabular-nums">
+        <time dateTime={row.lastMessageAt} className="text-xs text-ink-muted tabular-nums">
           {time}
         </time>
         {row.status && folder !== "trash" && (folder === "sent" || folder === "scheduled") ? (

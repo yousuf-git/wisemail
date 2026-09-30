@@ -107,7 +107,7 @@ export function UsageTile({ usage, className }: { usage?: UsageSummary; classNam
         <span
           className={cn(
             "text-[0.72rem]",
-            over > 0 ? "font-semibold text-danger-ink" : "text-ink-faint",
+            over > 0 ? "font-semibold text-danger-ink" : "text-ink-muted",
           )}
           data-testid="usage-allowance"
         >

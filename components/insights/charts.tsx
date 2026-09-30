@@ -235,7 +235,11 @@ export function TrendLine({ values, tone = "coral" }: { values: number[]; tone?:
         minWidth={0}
         initialDimension={{ width: 96, height: 24 }}
       >
-        <LineChart data={data} margin={{ top: 3, right: 3, bottom: 3, left: 3 }}>
+        <LineChart
+          data={data}
+          margin={{ top: 3, right: 3, bottom: 3, left: 3 }}
+          accessibilityLayer={false}
+        >
           <YAxis hide domain={[0, "dataMax"]} />
           <Line
             type="monotone"

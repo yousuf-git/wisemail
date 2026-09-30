@@ -36,7 +36,7 @@ async function loadRows(): Promise<Row[]> {
     }
   } catch {}
   for (const m of getOutbox()) if (!rows.has(m.id)) rows.set(m.id, m);
-  return [...rows.values()].sort((a, b) => b.sentAt.localeCompare(a.sentAt)).slice(0, 30);
+  return [...rows.values()].sort((a, b) => b.sentAt.localeCompare(a.sentAt)).slice(0, 200);
 }
 
 export default async function DevOutboxPage() {
@@ -72,7 +72,7 @@ export default async function DevOutboxPage() {
                 <a
                   href={row.link}
                   data-testid="outbox-link"
-                  className="font-mono text-[0.8125rem] break-all text-accent hover:underline"
+                  className="font-mono text-[0.8125rem] break-all text-accent-fill hover:underline"
                 >
                   {row.link}
                 </a>

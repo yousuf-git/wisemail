@@ -136,7 +136,7 @@ export function AddressField({
               placeholder={values.length === 0 ? placeholder : undefined}
               aria-invalid={hasInvalid || !!error || undefined}
               aria-describedby={error ? `${id}-error` : undefined}
-              className="h-7 w-full bg-transparent text-sm outline-none placeholder:text-ink-faint"
+              className="h-7 w-full bg-transparent text-sm outline-none placeholder:text-ink-muted"
               onChange={(event) => {
                 const next = event.target.value;
                 // A comma or semicolon finishes an address; so does a space after a valid one

@@ -188,7 +188,7 @@ function MemberRow({
       <div className="flex min-w-0 flex-1 basis-56 items-center gap-3">
         <Avatar>
           {member.image ? <AvatarImage src={member.image} alt="" /> : null}
-          <AvatarFallback className="bg-coral text-xs font-bold text-white">
+          <AvatarFallback className="bg-coral text-xs font-bold text-ink">
             {initials(member.name)}
           </AvatarFallback>
         </Avatar>

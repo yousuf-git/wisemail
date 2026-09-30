@@ -114,20 +114,20 @@ export function ThreadView({
         {canSend && target ? (
           <Button type="button" variant="ghost" size="sm" onClick={() => onReplyOpenChange(true)}>
             <Reply aria-hidden /> <span className="sr-only sm:not-sr-only">Reply</span>
-            <kbd className="hidden font-sans text-[11px] font-medium text-ink-faint lg:inline">
+            <kbd className="hidden font-sans text-[11px] font-medium text-ink-muted lg:inline">
               r
             </kbd>
           </Button>
         ) : null}
         <Button type="button" variant="ghost" size="sm" onClick={onMarkUnread}>
           <MailOpen aria-hidden /> <span className="sr-only sm:not-sr-only">Mark unread</span>
-          <kbd className="hidden font-sans text-[11px] font-medium text-ink-faint lg:inline">u</kbd>
+          <kbd className="hidden font-sans text-[11px] font-medium text-ink-muted lg:inline">u</kbd>
         </Button>
         {canTrash ? (
           <Button type="button" variant="ghost" size="sm" onClick={onTrash}>
             <TrashIcon aria-hidden size={16} />{" "}
             <span className="sr-only sm:not-sr-only">Trash</span>
-            <kbd className="hidden font-sans text-[11px] font-medium text-ink-faint lg:inline">
+            <kbd className="hidden font-sans text-[11px] font-medium text-ink-muted lg:inline">
               e
             </kbd>
           </Button>

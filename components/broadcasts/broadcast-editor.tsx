@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Segmented, SegmentedItem } from "@/components/ui/segmented";
 import type { BroadcastDTO, BroadcastFormOptionsDTO, BroadcastStatus } from "@/lib/dto/audience";
 import { previewMergeTags } from "@/lib/mail/template-vars";
 import { cn } from "@/lib/utils";
@@ -566,7 +566,7 @@ export function BroadcastEditor({
                       </SelectContent>
                     </Select>
                   ) : null}
-                  <Tabs
+                  <Segmented
                     value={mode}
                     onValueChange={(next) => {
                       if (next === mode) return;
@@ -581,12 +581,11 @@ export function BroadcastEditor({
                       setMode(next as "rich" | "html");
                       setEditorKey((k) => k + 1);
                     }}
+                    aria-label="Editor mode"
                   >
-                    <TabsList aria-label="Editor mode">
-                      <TabsTrigger value="rich">Rich text</TabsTrigger>
-                      <TabsTrigger value="html">HTML</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                    <SegmentedItem value="rich">Rich text</SegmentedItem>
+                    <SegmentedItem value="html">HTML</SegmentedItem>
+                  </Segmented>
                 </div>
               ) : null}
             </div>

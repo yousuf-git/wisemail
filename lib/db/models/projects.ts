@@ -29,3 +29,6 @@ export const ProjectModel = (models.Project as ReturnType<typeof build> | undefi
 function build() {
   return model("Project", projectSchema);
 }
+// `deletedAt: null` also matches missing fields, so the partial indexes above can never serve
+// "live projects of an org" (it was a COLLSCAN across all tenants); this plain index does.
+projectSchema.index({ orgId: 1, deletedAt: 1, name: 1 });

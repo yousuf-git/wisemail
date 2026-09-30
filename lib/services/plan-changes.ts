@@ -3,7 +3,13 @@ import "server-only";
 import { Types, type ClientSession } from "mongoose";
 import mongoose from "mongoose";
 
+import { getAiBalance } from "@/lib/ai/credits";
 import { computeEntitlements, getEntitlements } from "@/lib/billing/entitlements";
+import {
+  CREDIT_PACK_CREDITS,
+  CREDIT_PACK_PRICE_USD,
+  MAX_PACKS_PER_PURCHASE,
+} from "@/lib/billing/stripe-prices";
 import {
   FEATURES,
   FEATURE_LABELS,
@@ -11,6 +17,7 @@ import {
   PLAN_LABELS,
   PLAN_ORDER,
   RETENTION_NOTICE_DAYS,
+  paymentGraceEnds,
   TRIAL_DAYS,
   getPlanLimits,
   type Feature,
@@ -45,12 +52,12 @@ export const PLAN_LIMIT_REASON = "plan_limit";
 const rank = (plan: Plan) => PLAN_ORDER.indexOf(plan);
 const orgOid = (ctx: OrgContext) => new Types.ObjectId(ctx.org.id);
 
+/** Direct plan switching is the beta mechanism; with billing on, plans change through Stripe. */
 function assertBetaBilling() {
   if (env.BILLING_ENABLED) {
-    // TODO(phase 8): Stripe Checkout for upgrades, Customer Portal for downgrades and cancel.
     throw new ServiceError(
       "billing_unavailable",
-      "Plan changes go through Stripe checkout, which is not connected yet.",
+      "Plan changes go through Stripe checkout and the billing portal.",
     );
   }
 }
@@ -223,10 +230,12 @@ export async function cancelPendingChange(ctx: OrgContext): Promise<void> {
   });
 }
 
-/** Starts the 14-day Pro trial (once per org, no card). */
+/**
+ * Starts the 14-day Pro trial (once per org, no card). The trial is ours, not a Stripe trial, so
+ * it works the same with billing on: subscribing during the trial simply replaces it.
+ */
 export async function startTrial(ctx: OrgContext): Promise<void> {
   authorize(ctx, "billing:manage");
-  assertBetaBilling();
   await connectDb();
   const orgId = orgOid(ctx);
   const now = new Date();
@@ -271,7 +280,14 @@ export async function startTrial(ctx: OrgContext): Promise<void> {
 
 type ApplyOptions = {
   actorId?: Types.ObjectId;
-  reason: "owner" | "scheduled" | "trial_ended" | "trial_cancelled";
+  reason:
+    | "owner"
+    | "scheduled"
+    | "trial_ended"
+    | "trial_cancelled"
+    | "subscription"
+    | "subscription_ended"
+    | "payment_failed";
   now?: Date;
 };
 
@@ -372,8 +388,11 @@ export async function applyPlanChange(
     );
     await syncUsageAllowance(orgId, toPlan, session);
 
-    const frozen = await freezeConnections(orgId, target.limits.connections, session);
-    const restored = await restoreConnections(orgId, target.limits.connections, session);
+    // Agency keeps the connections it pays extra for (PRICING §6 "Agency extra connections").
+    const connectionLimit =
+      target.limits.connections + (toPlan === "agency" ? (before.extraConnections ?? 0) : 0);
+    const frozen = await freezeConnections(orgId, connectionLimit, session);
+    const restored = await restoreConnections(orgId, connectionLimit, session);
 
     await writeAuditLog(
       {
@@ -530,12 +549,72 @@ function highlights(plan: Plan): string[] {
   return list;
 }
 
+async function stripeOverview(
+  orgId: Types.ObjectId,
+  e: Awaited<ReturnType<typeof getEntitlements>>,
+  settings: {
+    stripeSubscriptionId?: string | null;
+    billingInterval?: "month" | "year" | null;
+    stripePeriodEnd?: Date | null;
+    extraConnections?: number | null;
+    grace?: { pastDueSince?: Date | null } | null;
+  } | null,
+): Promise<BillingOverviewDTO["stripe"]> {
+  if (!env.BILLING_ENABLED) return null;
+  const agency = e.plan === "agency";
+  const extra = Math.max(0, settings?.extraConnections ?? 0);
+  const unit = PLAN_CATALOG.agency.extraConnectionUsd ?? 5;
+  const balance = e.features.ai ? await getAiBalance(orgId).catch(() => null) : null;
+  const graceEnds = paymentGraceEnds(settings?.grace?.pastDueSince);
+  return {
+    fake: env.STRIPE_MODE === "fake",
+    interval: settings?.billingInterval ?? null,
+    hasSubscription: !!settings?.stripeSubscriptionId,
+    renewsAt:
+      settings?.stripeSubscriptionId && settings.stripePeriodEnd
+        ? settings.stripePeriodEnd.toISOString()
+        : null,
+    cancelAtPeriodEnd: e.planState === "canceling",
+    payment: {
+      pastDue: e.planState === "past_due",
+      graceEndsAt: e.planState === "past_due" && graceEnds ? graceEnds.toISOString() : null,
+    },
+    extraConnections: agency
+      ? {
+          quantity: extra,
+          included: PLAN_CATALOG.agency.limits.connections,
+          unitUsd: unit,
+          monthlyUsd: extra * unit,
+        }
+      : null,
+    creditPack: {
+      credits: CREDIT_PACK_CREDITS,
+      priceUsd: CREDIT_PACK_PRICE_USD,
+      available: e.features.ai,
+      balance: balance?.packs ?? 0,
+      maxPacks: MAX_PACKS_PER_PURCHASE,
+    },
+    overage:
+      e.overagePer10kUsd === null ? null : `$${e.overagePer10kUsd.toFixed(2)} per extra 10k emails`,
+  };
+}
+
 export async function getBillingOverview(ctx: OrgContext): Promise<BillingOverviewDTO> {
   authorize(ctx, "billing:read");
   await connectDb();
   const orgId = orgOid(ctx);
   const e = await getEntitlements(orgId);
-  const settings = await OrgSettingsModel.findOne({ orgId }, { trial: 1 }).lean();
+  const settings = await OrgSettingsModel.findOne(
+    { orgId },
+    {
+      trial: 1,
+      stripeSubscriptionId: 1,
+      stripePeriodEnd: 1,
+      billingInterval: 1,
+      extraConnections: 1,
+      grace: 1,
+    },
+  ).lean();
   const now = Date.now();
   const pc = e.pendingChange;
   return {
@@ -573,5 +652,6 @@ export async function getBillingOverview(ctx: OrgContext): Promise<BillingOvervi
       };
     }),
     canManage: ctx.can("billing:manage"),
+    stripe: await stripeOverview(orgId, e, settings),
   };
 }

@@ -58,7 +58,11 @@ function Sparkline({ series, tone }: { series: number[]; tone: KpiTone }) {
         minWidth={0}
         initialDimension={{ width: 160, height: 32 }}
       >
-        <AreaChart data={data} margin={{ top: 3, right: 3, bottom: 2, left: 3 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 3, right: 3, bottom: 2, left: 3 }}
+          accessibilityLayer={false}
+        >
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Area
             type="monotone"

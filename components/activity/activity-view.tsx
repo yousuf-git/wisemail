@@ -117,20 +117,20 @@ function ActivityRow({
         <span className="order-1 flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold md:order-none">
           <Arrow
             aria-label={outbound ? "Sent" : "Received"}
-            className="size-3.5 flex-none text-ink-faint"
+            className="size-3.5 flex-none text-ink-muted"
           />
           <span className="truncate">{party}</span>
         </span>
         <span className="order-3 col-span-2 truncate text-[13px] text-ink-muted md:order-none md:col-span-1">
           {row.subject || "(no subject)"}
           {row.openCount > 1 ? (
-            <span className="text-ink-faint"> · opened {row.openCount}×</span>
+            <span className="text-ink-muted"> · opened {row.openCount}×</span>
           ) : null}
         </span>
         <time
           dateTime={row.at}
           title={new Date(row.at).toISOString()}
-          className="order-1 justify-self-end text-xs text-ink-faint tabular-nums md:order-none"
+          className="order-1 justify-self-end text-xs text-ink-muted tabular-nums md:order-none"
         >
           {now ? relativeTime(row.at, now) : row.at.slice(0, 10)}
         </time>
@@ -266,7 +266,7 @@ export function ActivityView({
         <div className="relative min-w-[14rem] flex-1 md:max-w-sm">
           <Search
             aria-hidden
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted"
           />
           <Input
             type="search"
@@ -374,7 +374,7 @@ export function ActivityView({
       <section aria-label="Activity" className="rounded-xl bg-surface p-1.5 shadow-md">
         <div
           aria-hidden
-          className="hidden grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1.6fr)_7.5rem] gap-x-3 px-3 py-2 text-[11px] font-semibold tracking-[0.06em] text-ink-faint uppercase md:grid"
+          className="hidden grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1.6fr)_7.5rem] gap-x-3 px-3 py-2 text-[11px] font-semibold tracking-[0.06em] text-ink-muted uppercase md:grid"
         >
           <span>Status</span>
           <span>Recipient</span>
@@ -440,7 +440,7 @@ export function ActivityView({
             </ul>
             <div ref={sentinel} aria-hidden className="h-px" />
             {isFetchingNextPage ? (
-              <p role="status" className="p-3 text-center text-xs text-ink-faint">
+              <p role="status" className="p-3 text-center text-xs text-ink-muted">
                 Loading more…
               </p>
             ) : null}

@@ -18,7 +18,7 @@ const ORIGIN: Record<string, string> = {
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-0.5">
-      <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink-faint uppercase">
+      <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink-muted uppercase">
         {label}
       </dt>
       <dd className="min-w-0 text-[13.5px] break-words">{children}</dd>
@@ -131,7 +131,7 @@ export function EmailDetail({
               >
                 <span
                   aria-hidden
-                  className="absolute top-1.5 left-0 size-2.5 rounded-full bg-current text-ink-faint"
+                  className="absolute top-1.5 left-0 size-2.5 rounded-full bg-current text-ink-muted"
                 />
                 {index < entries.length - 1 ? (
                   <span aria-hidden className="absolute top-4 bottom-0 left-[4.5px] w-px bg-line" />

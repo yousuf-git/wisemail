@@ -64,7 +64,7 @@ export function BroadcastsView({
       <EmptyState title="Connect Resend to send broadcasts" mood="idle">
         Broadcasts go out through your Resend accounts.{" "}
         <Link
-          className="font-semibold text-accent underline"
+          className="font-semibold text-accent-fill underline"
           href={`/${orgSlug}/settings/connections`}
         >
           Open Connections
@@ -146,7 +146,7 @@ export function BroadcastsView({
                   </span>
                   <time
                     dateTime={when.iso}
-                    className="order-5 col-span-2 text-xs text-ink-faint tabular-nums min-[760px]:order-4 min-[760px]:col-span-1 min-[760px]:text-right"
+                    className="order-5 col-span-2 text-xs text-ink-muted tabular-nums min-[760px]:order-4 min-[760px]:col-span-1 min-[760px]:text-right"
                   >
                     {when.label}{" "}
                     {b.status === "scheduled"

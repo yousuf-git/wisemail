@@ -339,7 +339,7 @@ export function InboxView({
           ) : (
             <div className="grid flex-1 place-items-center p-8 text-center text-ink-muted">
               <div className="grid justify-items-center gap-2">
-                <InboxGlyph aria-hidden className="size-8 text-ink-faint" />
+                <InboxGlyph aria-hidden className="size-8 text-ink-muted" />
                 <p className="font-semibold text-ink-secondary">
                   {folder === "trash"
                     ? "Restore a conversation to read it"

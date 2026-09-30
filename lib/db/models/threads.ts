@@ -57,6 +57,9 @@ const threadSchema = new Schema(
 );
 
 threadSchema.index({ orgId: 1, archived: 1, lastMessageAt: -1 });
+// Inbox list sorts by (lastMessageAt, _id): with `_id` in the index Mongo returns the page straight
+// from the index instead of sorting every matching thread in memory (scripts/perf.ts).
+threadSchema.index({ orgId: 1, archived: 1, lastMessageAt: -1, _id: -1 });
 threadSchema.index({ orgId: 1, assigneeId: 1, lastMessageAt: -1 });
 threadSchema.index({ orgId: 1, aiCategory: 1, lastMessageAt: -1 });
 threadSchema.index({ orgId: 1, projectId: 1, lastMessageAt: -1 });

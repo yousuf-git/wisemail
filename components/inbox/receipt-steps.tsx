@@ -10,7 +10,7 @@ import { useNow } from "./format";
 import { deriveReceiptSteps, type StepTone } from "./receipt";
 
 const tones: Record<StepTone, string> = {
-  off: "bg-canvas-sunken text-ink-faint",
+  off: "bg-canvas-sunken text-ink-muted",
   info: "bg-info-soft text-info-ink",
   ok: "bg-success-soft text-success-ink",
   engaged: "bg-engaged-soft text-engaged-ink",
@@ -49,7 +49,7 @@ export function ReceiptSteps({
       {steps.map((step, index) => (
         <Fragment key={`${step.key}-${step.tone}`}>
           {index > 0 ? (
-            <li aria-hidden className="text-ink-faint">
+            <li aria-hidden className="text-ink-muted">
               ·
             </li>
           ) : null}

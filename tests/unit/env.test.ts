@@ -163,6 +163,59 @@ describe("parseEnv", () => {
     });
   });
 
+  describe("Stripe mode (fake / live)", () => {
+    const fakeBilling = { ...devEnv, BILLING_ENABLED: "true" };
+
+    it("defaults to fake in development and needs no keys or prices when billing is on", () => {
+      const result = parseEnv(fakeBilling);
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.STRIPE_MODE).toBe("fake");
+    });
+
+    it("accepts an explicit STRIPE_MODE=fake next to billing", () => {
+      expect(parseEnv({ ...fakeBilling, STRIPE_MODE: "fake" }).success).toBe(true);
+    });
+
+    it("goes live when a secret key is set, and then checks keys, secrets and prices", () => {
+      const result = parseEnv(billingEnv);
+      expect(result.success && result.data.STRIPE_MODE).toBe("live");
+      const errors = errorsOf({
+        ...fakeBilling,
+        STRIPE_SECRET_KEY: "sk_test_abc",
+        STRIPE_SANDBOX: "true",
+      });
+      expect(errors.join("\n")).toContain("STRIPE_WEBHOOK_SECRET");
+      expect(errors.join("\n")).toContain("STRIPE_BILLING_WEBHOOK_SECRET");
+    });
+
+    it("requires everything when STRIPE_MODE=live is explicit", () => {
+      const errors = errorsOf({ ...fakeBilling, STRIPE_MODE: "live" });
+      expect(errors.join("\n")).toContain("STRIPE_SECRET_KEY");
+    });
+
+    it("refuses the fake in production once billing is on", () => {
+      const errors = errorsOf({
+        ...fakeBilling,
+        NODE_ENV: "production",
+        BETTER_AUTH_URL: "https://app.example.com",
+        APP_URL: "https://app.example.com",
+        RESEND_MODE: "fake",
+        STORAGE_MODE: "fake",
+        AI_MODE: "fake",
+        INNGEST_DEV: "true",
+        STRIPE_MODE: "fake",
+      });
+      expect(errors).toEqual([
+        "STRIPE_MODE: fake is not allowed in production when BILLING_ENABLED=true",
+      ]);
+    });
+
+    it("leaves beta untouched: billing off ignores STRIPE_MODE entirely", () => {
+      const result = parseEnv({ ...devEnv, STRIPE_MODE: "live" });
+      expect(result.success).toBe(true);
+    });
+  });
+
   it("formats errors as a combined message", () => {
     expect(formatEnvErrors(["A: bad", "B: bad"])).toBe(
       "[env] Invalid environment configuration:\n  - A: bad\n  - B: bad",

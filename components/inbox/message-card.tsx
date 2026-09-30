@@ -117,12 +117,12 @@ export function MessageCard({
           <b className="font-semibold text-ink">{who}</b>
           {expanded ? <> &lt;{message.from.address}&gt;</> : null}
           {!expanded && message.snippet ? (
-            <span className="ml-2 text-ink-faint">{message.snippet}</span>
+            <span className="ml-2 text-ink-muted">{message.snippet}</span>
           ) : null}
           {!expanded && message.attachments.some((a) => !a.embedded) ? (
             <Paperclip
               aria-label="Has attachments"
-              className="ml-1.5 inline size-3 align-[-1px] text-ink-faint"
+              className="ml-1.5 inline size-3 align-[-1px] text-ink-muted"
             />
           ) : null}
         </span>
@@ -133,7 +133,7 @@ export function MessageCard({
 
       {expanded ? (
         <>
-          <p className="text-xs text-ink-faint">
+          <p className="text-xs text-ink-muted">
             To: {list(message.to) || "(none)"}
             {message.cc.length ? <> · Cc: {list(message.cc)}</> : null}
             {message.bcc.length ? <> · Bcc: {list(message.bcc)}</> : null}

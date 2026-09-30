@@ -328,7 +328,7 @@ describe("Composer preview", () => {
   it("shows the sandboxed preview beside the HTML editor", async () => {
     const user = userEvent.setup();
     render(<Composer orgSlug="acme" senders={[sender()]} canSend />);
-    await user.click(screen.getByRole("tab", { name: "HTML" }));
+    await user.click(screen.getByRole("radio", { name: "HTML" }));
     const source = await screen.findByLabelText("HTML source");
     fireEvent.change(source, { target: { value: "<h1>Hello</h1>" } });
     const frame = screen.getByTestId("composer-preview");
@@ -338,7 +338,7 @@ describe("Composer preview", () => {
 
   it("keeps Template mode disabled when there are no published templates", () => {
     render(<Composer orgSlug="acme" senders={[sender()]} canSend />);
-    expect(screen.getByRole("tab", { name: "Template" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Template" })).toBeDisabled();
   });
 });
 
@@ -375,7 +375,7 @@ describe("Composer template mode", () => {
         senderConnections={connections}
       />,
     );
-    expect(screen.getByRole("tab", { name: "Template" })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: "Template" })).toBeEnabled();
   });
 
   it("offers only templates from the sender's own connection", () => {
@@ -388,7 +388,7 @@ describe("Composer template mode", () => {
         senderConnections={connections}
       />,
     );
-    expect(screen.getByRole("tab", { name: "Template" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Template" })).toBeDisabled();
   });
 
   it("renders the template with the typed variables in the sandboxed preview", async () => {

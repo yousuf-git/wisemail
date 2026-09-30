@@ -58,7 +58,7 @@ export function VerifyNotice({
   return (
     <div className="grid gap-4" data-testid="verify-notice">
       <div className="flex items-start gap-3 rounded-lg bg-accent-soft p-3.5">
-        <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent" />
+        <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-fill" />
         <p className="text-sm text-ink-secondary">
           We sent a confirmation link to <b className="font-semibold text-ink">{email}</b>. Open it
           on this device to finish setting up.
@@ -79,7 +79,7 @@ export function VerifyNotice({
           <Link
             href="/dev/outbox"
             target="_blank"
-            className="font-semibold text-accent hover:underline"
+            className="font-semibold text-accent-fill hover:underline"
           >
             Open the dev outbox
           </Link>{" "}

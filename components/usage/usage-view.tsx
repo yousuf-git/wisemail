@@ -77,7 +77,7 @@ function TrackedMeter({ usage }: { usage: UsageOverviewDTO }) {
           />
         ) : null}
       </div>
-      <div className="relative h-4 text-[0.72rem] text-ink-faint" aria-hidden>
+      <div className="relative h-4 text-[0.72rem] text-ink-muted" aria-hidden>
         <span
           className={cn("absolute", allowance / scale > 0.9 ? "right-0" : "-translate-x-1/2")}
           style={allowance / scale > 0.9 ? undefined : { left: w(allowance) }}
@@ -269,7 +269,7 @@ function DailyChart({ days }: { days: UsageDayDTO[] }) {
           );
         })}
       </div>
-      <div className="mt-1.5 flex justify-between text-[0.72rem] text-ink-faint">
+      <div className="mt-1.5 flex justify-between text-[0.72rem] text-ink-muted">
         <span>{day(days[0]!.date)}</span>
         <span>{day(days.at(-1)!.date)}</span>
       </div>

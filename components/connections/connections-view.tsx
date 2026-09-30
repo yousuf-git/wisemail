@@ -28,7 +28,8 @@ export function ConnectionsView({
   quota: ConnectionQuota;
   can: ConnectionPermissions;
 }) {
-  const atLimit = quota.used >= quota.limit;
+  // Agency with billing on can go past the included connections (after a cost confirmation).
+  const atLimit = quota.used >= quota.limit && !quota.extraUnitUsd;
   const addButton = can.create ? (
     <AddConnectionDialog orgSlug={orgSlug} quota={quota} atLimit={atLimit} />
   ) : null;

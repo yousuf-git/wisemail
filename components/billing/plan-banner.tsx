@@ -7,7 +7,7 @@ import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 export type PlanBannerData = {
-  kind: "over_allowance" | "trial";
+  kind: "over_allowance" | "trial" | "payment";
   message: string;
   action: { label: string; href: string };
 };
@@ -48,13 +48,18 @@ export function PlanBanner({ banner }: { banner: PlanBannerData | null }) {
 
   if (!banner || hidden) return null;
   const warning = banner.kind === "over_allowance";
+  const danger = banner.kind === "payment";
   return (
     <div
       role="status"
       data-testid="plan-banner"
       className={cn(
         "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-4 py-2.5 text-sm",
-        warning ? "bg-warning-soft text-warning-ink" : "bg-accent-soft text-info-ink",
+        danger
+          ? "bg-danger-soft text-danger-ink"
+          : warning
+            ? "bg-warning-soft text-warning-ink"
+            : "bg-accent-soft text-info-ink",
       )}
     >
       <span className="min-w-0 flex-1 font-medium">{banner.message}</span>

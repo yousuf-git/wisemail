@@ -31,6 +31,12 @@ import { getLatestSyncStatuses, requestSync, shouldRunInline } from "./sync";
 import { ServiceError } from "./errors";
 import { keyAad, secretAad } from "./webhook-secret";
 import { notifyConnectionAttention } from "./mail-notifications";
+import {
+  extraConnectionUnitUsd,
+  previewExtraConnection,
+  setExtraConnections,
+  syncExtraConnections,
+} from "./billing-extras";
 
 const isDuplicateKey = (error: unknown): error is { code: number; keyPattern?: object } =>
   typeof error === "object" && error !== null && (error as { code?: unknown }).code === 11000;
@@ -229,12 +235,33 @@ export async function addConnection(
   const apiKey = input.apiKey.trim();
 
   // Cheap, non-authoritative pre-checks so we don't call Resend for a doomed request.
-  const entitlements = await getEntitlements(orgId);
-  assertLimitFor(
-    entitlements,
-    "connections",
-    await ConnectionModel.countDocuments({ orgId, ...live }),
-  );
+  let entitlements = await getEntitlements(orgId);
+  const liveCount = await ConnectionModel.countDocuments({ orgId, ...live });
+  // Agency with billing on: the 16th and later connections cost +$5/month each. The Owner must
+  // confirm; Admins are told to ask the Owner (PRICING §6 "Agency extra connections").
+  const extra = previewExtraConnection({
+    plan: entitlements.plan,
+    billingEnabled: env.BILLING_ENABLED,
+    liveConnections: liveCount,
+    currentExtra: Math.max(0, entitlements.limits.connections - 15),
+    limit: entitlements.limits.connections,
+  });
+  if (extra.needsExtra) {
+    if (!ctx.can("billing:manage")) {
+      throw new ServiceError(
+        "plan_limit_reached",
+        `Connection ${liveCount + 1} on Agency adds $${extra.unitUsd}/month to the plan. Ask your Owner to add it.`,
+      );
+    }
+    if (!input.confirmExtraCost) {
+      throw new ServiceError(
+        "confirmation_required",
+        `This adds $${extra.unitUsd}/month to your plan (${extra.newExtra} extra ${extra.newExtra === 1 ? "connection" : "connections"}, $${extra.monthlyUsd}/month in total). It is prorated on your next invoice.`,
+      );
+    }
+  } else {
+    assertLimitFor(entitlements, "connections", liveCount);
+  }
   if (await ConnectionModel.exists({ orgId, name, ...live })) {
     throw new ServiceError("conflict", "You already have a connection with that name.", {
       name: ["You already have a connection with that name."],
@@ -258,6 +285,12 @@ export async function addConnection(
   if (duplicate) {
     const message = `This Resend account is already connected as “${duplicate.name}”.`;
     throw new ServiceError("conflict", message, { apiKey: [message] });
+  }
+
+  // Stripe first (the Owner confirmed the cost); the limit check below then sees the new room.
+  if (extra.needsExtra) {
+    await setExtraConnections(orgId, extra.newExtra, { actorId: userOid(ctx) });
+    entitlements = await getEntitlements(orgId);
   }
 
   const _id = new Types.ObjectId();
@@ -312,6 +345,8 @@ export async function addConnection(
       return doc!;
     });
   } catch (error) {
+    // The connection was not created: do not keep charging for room it never used.
+    if (extra.needsExtra) await syncExtraConnections(orgId);
     if (isDuplicateKey(error)) {
       const byName = JSON.stringify((error as { keyPattern?: object }).keyPattern ?? {}).includes(
         '"name"',
@@ -502,6 +537,9 @@ export async function removeConnection(
     }
   }
 
+  // Agency: fewer connections lower the extra-connection quantity from the next invoice.
+  await syncExtraConnections(connection.orgId);
+
   return {
     id: connection._id.toHexString(),
     webhook,
@@ -552,6 +590,9 @@ export async function getConnectionQuota(ctx: OrgContext): Promise<ConnectionQuo
     limit: e.limits.connections,
     planLabel: e.planLabel,
     nextTierLabel: e.nextTierLabel,
+    ...(env.BILLING_ENABLED && e.plan === "agency"
+      ? { extraUnitUsd: extraConnectionUnitUsd() }
+      : {}),
   };
 }
 

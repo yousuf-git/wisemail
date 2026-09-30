@@ -32,6 +32,8 @@ const schema = z.object({
   RESEND_MODE: z.enum(["live", "fake"]).optional(),
   STORAGE_MODE: z.enum(["r2", "fake"]).optional(),
   AI_MODE: z.enum(["live", "fake"]).optional(),
+  /** `fake` = in-memory Stripe (dev/test); default: live in production or when a secret key is set. */
+  STRIPE_MODE: z.enum(["live", "fake"]).optional(),
   INNGEST_DEV: bool.optional(),
 
   INNGEST_EVENT_KEY: optionalString,
@@ -57,15 +59,26 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: optionalString,
   STRIPE_BILLING_WEBHOOK_SECRET: optionalString,
 
+  /** Enables the test-only `/api/e2e/*` routes (Playwright). Refused in production. */
+  E2E: bool.optional(),
+
   SENTRY_DSN: z.url().optional(),
+  /** Release name for error reports (defaults to the Vercel commit sha, set by next.config.ts). */
+  SENTRY_RELEASE: optionalString,
+  /** Only used at build time (source map upload); listed so the name is documented. */
+  SENTRY_AUTH_TOKEN: optionalString,
 });
 
 type Parsed = z.infer<typeof schema>;
 
-export type Env = Omit<Parsed, "RESEND_MODE" | "STORAGE_MODE" | "AI_MODE" | "INNGEST_DEV"> & {
+export type Env = Omit<
+  Parsed,
+  "RESEND_MODE" | "STORAGE_MODE" | "AI_MODE" | "STRIPE_MODE" | "INNGEST_DEV"
+> & {
   RESEND_MODE: "live" | "fake";
   STORAGE_MODE: "r2" | "fake";
   AI_MODE: "live" | "fake";
+  STRIPE_MODE: "live" | "fake";
   INNGEST_DEV: boolean;
   STRIPE_PRICES: Record<string, string>;
 };
@@ -152,6 +165,7 @@ export function parseEnv(source: Source): EnvResult {
     RESEND_MODE: parsed.RESEND_MODE ?? (production ? "live" : "fake"),
     STORAGE_MODE: parsed.STORAGE_MODE ?? (production ? "r2" : "fake"),
     AI_MODE: parsed.AI_MODE ?? (production ? "live" : "fake"),
+    STRIPE_MODE: parsed.STRIPE_MODE ?? (production || parsed.STRIPE_SECRET_KEY ? "live" : "fake"),
     INNGEST_DEV: parsed.INNGEST_DEV ?? !production,
     STRIPE_PRICES: Object.fromEntries(
       Object.entries(cleaned).filter(([key]) => key.startsWith(PRICE_PREFIX)),
@@ -171,6 +185,10 @@ export function parseEnv(source: Source): EnvResult {
     parsed.ENCRYPTION_KEK_PREVIOUS_ID === parsed.ENCRYPTION_KEK_ID
   ) {
     errors.push("ENCRYPTION_KEK_PREVIOUS_ID: must differ from ENCRYPTION_KEK_ID");
+  }
+
+  if (production && parsed.E2E) {
+    errors.push("E2E: must not be enabled in production (it exposes test-only seed routes)");
   }
 
   if (production) {
@@ -211,7 +229,11 @@ export function parseEnv(source: Source): EnvResult {
     );
   }
 
-  if (resolved.BILLING_ENABLED) {
+  if (resolved.BILLING_ENABLED && resolved.STRIPE_MODE === "fake") {
+    if (production) {
+      errors.push("STRIPE_MODE: fake is not allowed in production when BILLING_ENABLED=true");
+    }
+  } else if (resolved.BILLING_ENABLED) {
     errors.push(
       ...requireAll(
         parsed,

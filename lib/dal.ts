@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { auth } from "@/lib/auth/server";
+import { tagOrg, tagUser } from "@/lib/observability/context";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
 import { provisionOrganization } from "@/lib/services/org-settings";
 import { loadProjectScope } from "@/lib/services/project-scope";
@@ -140,6 +141,9 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
       });
     } catch {}
   }
+
+  tagOrg(access.org.id);
+  tagUser(userId);
 
   const { id, name, email, image } = session.user;
   const user: UserDTO = { id, name, email, image: image ?? null };

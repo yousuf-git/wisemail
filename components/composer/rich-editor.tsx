@@ -266,7 +266,7 @@ export default function RichEditor({
           "[&_.tiptap_ol]:my-2 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_ul]:my-2 [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6",
           "[&_.tiptap_blockquote]:my-2 [&_.tiptap_blockquote]:border-l-[3px] [&_.tiptap_blockquote]:border-line-strong [&_.tiptap_blockquote]:pl-3 [&_.tiptap_blockquote]:text-ink-secondary",
           "[&_.tiptap_a]:text-accent-hover [&_.tiptap_a]:underline [&_.tiptap_img]:my-2 [&_.tiptap_img]:h-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:rounded-md",
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none [&_.tiptap_p.is-editor-empty:first-child::before]:float-left [&_.tiptap_p.is-editor-empty:first-child::before]:h-0 [&_.tiptap_p.is-editor-empty:first-child::before]:text-ink-faint [&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
+          "[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none [&_.tiptap_p.is-editor-empty:first-child::before]:float-left [&_.tiptap_p.is-editor-empty:first-child::before]:h-0 [&_.tiptap_p.is-editor-empty:first-child::before]:text-ink-muted [&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
         )}
       />
     </div>

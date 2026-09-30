@@ -1,6 +1,13 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import {
   useAnimation,
   useReducedMotion,
@@ -56,15 +63,30 @@ export function createAnimatedIcon(
     const controls = useAnimation();
     const reduced = useReducedMotion();
     const svgRef = useRef<SVGSVGElement>(null);
+    // Controls throw before mount and after unmount (a focused button removed from the page still
+    // fires focusout), and icons without animated parts never bind them at all.
+    const bound = useRef(false);
+    const mounted = useRef(false);
+    useLayoutEffect(() => {
+      mounted.current = true;
+      return () => {
+        mounted.current = false;
+      };
+    }, []);
+
+    const run = useCallback(
+      (variant: "animate" | "normal") => {
+        if (!bound.current || !mounted.current) return;
+        void controls.start(variant);
+      },
+      [controls],
+    );
 
     const startAnimation = useCallback(() => {
-      if (reduced) return;
-      void controls.start("animate");
-    }, [controls, reduced]);
+      if (!reduced) run("animate");
+    }, [run, reduced]);
 
-    const stopAnimation = useCallback(() => {
-      void controls.start("normal");
-    }, [controls]);
+    const stopAnimation = useCallback(() => run("normal"), [run]);
 
     useImperativeHandle(ref, () => ({ startAnimation, stopAnimation }), [
       startAnimation,
@@ -90,7 +112,10 @@ export function createAnimatedIcon(
       };
     }, [trigger, startAnimation, stopAnimation]);
 
-    const part: PartFactory = (variants) => ({ variants, initial: "normal", animate: controls });
+    const part: PartFactory = (variants) => {
+      bound.current = true;
+      return { variants, initial: "normal", animate: controls };
+    };
 
     return (
       <svg

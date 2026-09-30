@@ -1,7 +1,7 @@
 "use client";
 
 import * as m from "motion/react-m";
-import { createAnimatedIcon, iconEase, iconSpring } from "./base";
+import { createAnimatedIcon, iconEase } from "./base";
 
 /** Tray dips and a letter drops in. */
 export const InboxIcon = createAnimatedIcon("InboxIcon", (part) => (
@@ -9,7 +9,7 @@ export const InboxIcon = createAnimatedIcon("InboxIcon", (part) => (
     <m.g
       {...part({
         normal: { y: 0 },
-        animate: { y: [0, 2, 0], transition: { ...iconSpring, duration: 0.5 } },
+        animate: { y: [0, 2, 0], transition: { duration: 0.5, ease: "easeInOut" } },
       })}
     >
       <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
