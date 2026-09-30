@@ -16,7 +16,7 @@ import { senderReason } from "@/components/senders/sender-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Segmented, SegmentedItem } from "@/components/ui/segmented";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TemplateOptionDTO } from "@/lib/dto/audience";
 import type { DraftDTO, SenderDTO } from "@/lib/dto/mail";
@@ -730,31 +730,29 @@ export function Composer({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
-          <Tabs value={mode} onValueChange={changeMode}>
-            <TabsList aria-label="Editor mode">
-              <TabsTrigger value="rich" disabled={!editable}>
-                Rich text
-              </TabsTrigger>
-              <TabsTrigger value="html" disabled={!editable}>
-                HTML
-              </TabsTrigger>
-              <span
-                title={
-                  availableTemplates.length === 0
-                    ? "No published templates for this sender's Resend account yet"
-                    : undefined
-                }
-                className="inline-flex flex-1"
+          <Segmented value={mode} onValueChange={(v) => changeMode(v)} aria-label="Editor mode">
+            <SegmentedItem value="rich" disabled={!editable}>
+              Rich text
+            </SegmentedItem>
+            <SegmentedItem value="html" disabled={!editable}>
+              HTML
+            </SegmentedItem>
+            <span
+              title={
+                availableTemplates.length === 0
+                  ? "No published templates for this sender's Resend account yet"
+                  : undefined
+              }
+              className="inline-flex flex-1"
+            >
+              <SegmentedItem
+                value="template"
+                disabled={!editable || availableTemplates.length === 0}
               >
-                <TabsTrigger
-                  value="template"
-                  disabled={!editable || availableTemplates.length === 0}
-                >
-                  Template
-                </TabsTrigger>
-              </span>
-            </TabsList>
-          </Tabs>
+                Template
+              </SegmentedItem>
+            </span>
+          </Segmented>
           {previewVisible ? (
             <div className="flex items-center gap-1" role="group" aria-label="Preview options">
               <Button
@@ -951,7 +949,7 @@ export function Composer({
             )}
           </div>
         </div>
-        <p className="mt-2 hidden text-right text-xs text-ink-faint min-[560px]:block">
+        <p className="mt-2 hidden text-right text-xs text-ink-muted min-[560px]:block">
           Ctrl or ⌘ + Enter sends
         </p>
       </div>
