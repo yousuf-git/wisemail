@@ -3,14 +3,15 @@ import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "@/components/auth/sign-in-form";
-import { env } from "@/lib/env";
+import { enabledSocialProviders } from "@/lib/auth/social";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
-  const { next, expired, reset } = await searchParams;
+  const { next, expired, reset, error } = await searchParams;
   return (
     <AuthShell
+      mood="idle"
       title="Welcome back"
       description="Sign in to see what your email has been up to."
       footer={
@@ -23,7 +24,8 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         next={typeof next === "string" ? next : undefined}
         expired={expired !== undefined}
         passwordReset={reset !== undefined}
-        devOutbox={env.RESEND_MODE === "fake" && env.NODE_ENV !== "production"}
+        socialError={typeof error === "string" ? error : undefined}
+        providers={enabledSocialProviders()}
       />
     </AuthShell>
   );

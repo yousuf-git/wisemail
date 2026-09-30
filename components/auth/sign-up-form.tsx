@@ -2,16 +2,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { FormAlert } from "@/components/auth/auth-shell";
-import { VerifyNotice } from "@/components/auth/verify-notice";
+import { PasswordInput } from "@/components/auth/password-input";
+import { SocialButtons } from "@/components/auth/social-buttons";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,11 +20,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
+import type { SocialProvider } from "@/lib/auth/social";
 import { safeNext, signUpSchema, type SignUpInput } from "@/lib/validation/auth";
 
-export function SignUpForm({ next, devOutbox }: { next?: string; devOutbox?: boolean }) {
+export function SignUpForm({
+  next,
+  providers = [],
+}: {
+  next?: string;
+  providers?: SocialProvider[];
+}) {
+  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
   const form = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
     defaultValues: { name: "", email: "", password: "" },
@@ -44,23 +52,15 @@ export function SignUpForm({ next, devOutbox }: { next?: string; devOutbox?: boo
       return;
     }
     // Same screen whether or not the address already had an account (no account enumeration).
-    setSentTo(values.email);
-  }
-
-  if (sentTo) {
-    return (
-      <VerifyNotice
-        email={sentTo}
-        callbackURL={safeNext(next)}
-        devOutbox={devOutbox}
-        onBack={() => setSentTo(null)}
-      />
-    );
+    const params = new URLSearchParams({ email: values.email });
+    if (next) params.set("next", safeNext(next));
+    router.push(`/verify-email?${params}`);
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+        <SocialButtons providers={providers} next={next} disabled={form.formState.isSubmitting} />
         <FormAlert>{formError}</FormAlert>
         <FormField
           control={form.control}
@@ -95,15 +95,16 @@ export function SignUpForm({ next, devOutbox }: { next?: string; devOutbox?: boo
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" strength {...field} />
               </FormControl>
-              <FormDescription>At least 8 characters.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating account…" : "Create account"}
+          {form.formState.isSubmitting || form.formState.isSubmitSuccessful
+            ? "Creating account…"
+            : "Create account"}
         </Button>
         <p className="text-center text-sm text-ink-muted">
           Already have an account?{" "}

@@ -12,7 +12,7 @@ import {
 } from "@react-email/components";
 import type { CSSProperties, ReactNode } from "react";
 
-import { color, font } from "./tokens";
+import { color, font, mono } from "./tokens";
 
 const styles = {
   body: { backgroundColor: color.canvas, margin: 0, padding: "32px 12px", fontFamily: font },
@@ -101,5 +101,35 @@ export function LinkFallback({ href }: { href: string }) {
         </Link>
       </Text>
     </>
+  );
+}
+
+/** The 6-digit code, big and easy to copy. Spaced in the middle so it reads as two groups. */
+export function CodeBlock({ code }: { code: string }) {
+  const grouped = code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+  return (
+    <Section
+      style={{
+        backgroundColor: color.canvasSunken,
+        borderRadius: "12px",
+        padding: "16px 12px",
+        textAlign: "center",
+        margin: "0 0 20px",
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: mono,
+          fontSize: "32px",
+          lineHeight: "40px",
+          fontWeight: 700,
+          letterSpacing: "0.18em",
+          color: color.ink,
+          margin: 0,
+        }}
+      >
+        {grouped}
+      </Text>
+    </Section>
   );
 }

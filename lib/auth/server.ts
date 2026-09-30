@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
-import { organization } from "better-auth/plugins";
+import { emailOTP, organization } from "better-auth/plugins";
 import { Types } from "mongoose";
 
 import { getMongoClient } from "@/lib/db/connect";
@@ -17,7 +17,10 @@ import { deleteTourProgress } from "@/lib/tours/progress";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { stripePlugin } from "@/lib/billing/stripe-plugin";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/system-email";
+import { platformAdminAllowlistPlugin, platformAdminPlugin } from "@/lib/admin/plugin";
 import { ac, roles } from "./permissions";
+import { OTP_ALLOWED_ATTEMPTS, OTP_EXPIRES_IN, OTP_LENGTH } from "./otp-config";
+import { enabledSocialProviders } from "./social";
 
 const client = getMongoClient();
 
@@ -29,6 +32,16 @@ async function mailSafely(what: string, send: () => Promise<void>) {
     console.error(`[auth] could not send the ${what} email`, error);
   }
 }
+
+type OtpType = "email-verification" | "forget-password";
+/**
+ * Mints a code for `email` without sending it, so the link emails can carry both. Wired to
+ * `auth.api.createVerificationOTP` right after `auth` exists (callbacks only run later).
+ */
+const issueOtp = (args: { body: { email: string; type: OtpType } }): Promise<string> =>
+  auth.api.createVerificationOTP(args);
+
+const social = enabledSocialProviders();
 
 export const auth = betterAuth({
   appName: "Wisemail",
@@ -45,9 +58,10 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 60 * 60,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      await mailSafely("password reset", () =>
-        sendPasswordResetEmail(user.email, { name: user.name, url }),
-      );
+      await mailSafely("password reset", async () => {
+        const code = await issueOtp({ body: { email: user.email, type: "forget-password" } });
+        await sendPasswordResetEmail(user.email, { name: user.name, url, code });
+      });
     },
   },
   emailVerification: {
@@ -56,14 +70,56 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
-      await mailSafely("verification", () =>
-        sendVerificationEmail(user.email, { name: user.name, url }),
-      );
+      await mailSafely("verification", async () => {
+        const code = await issueOtp({ body: { email: user.email, type: "email-verification" } });
+        await sendVerificationEmail(user.email, { name: user.name, url, code });
+      });
+    },
+  },
+  // Google and GitHub switch on when both their env values are set. Their emails arrive verified,
+  // so social sign-ups skip the confirmation step. An existing password account is linked only
+  // when its own address is verified too (`requireLocalEmailVerified`), so nobody can pre-register
+  // someone else's address and inherit their social login.
+  socialProviders: {
+    ...(social.includes("google")
+      ? { google: { clientId: env.GOOGLE_CLIENT_ID!, clientSecret: env.GOOGLE_CLIENT_SECRET! } }
+      : {}),
+    ...(social.includes("github")
+      ? { github: { clientId: env.GITHUB_CLIENT_ID!, clientSecret: env.GITHUB_CLIENT_SECRET! } }
+      : {}),
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github"],
+      requireLocalEmailVerified: true,
     },
   },
   // Endpoint rate limiting is only on for requests through /api/auth (not `auth.api` calls).
   rateLimit: { storage: "database" },
   plugins: [
+    // Six-digit codes next to the links (verify email, reset password). Codes are requested by the
+    // link emails above; the HTTP `send-verification-otp` endpoint also works for a plain resend.
+    emailOTP({
+      otpLength: OTP_LENGTH,
+      expiresIn: OTP_EXPIRES_IN,
+      allowedAttempts: OTP_ALLOWED_ATTEMPTS,
+      // Codes exist for verification and reset only; nobody signs in or signs up with one.
+      disableSignUp: true,
+      storeOTP: "hashed",
+      rateLimit: { window: 60, max: 5 },
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type !== "email-verification" && type !== "forget-password") return;
+        const user = await getUserName(email);
+        // Unknown addresses get no email and the same response (no account enumeration).
+        if (user === null) return;
+        await mailSafely("one-time code", () =>
+          type === "email-verification"
+            ? sendVerificationEmail(email, { name: user, code: otp })
+            : sendPasswordResetEmail(email, { name: user, code: otp }),
+        );
+      },
+    }),
     organization({
       ac,
       roles,
@@ -120,10 +176,19 @@ export const auth = betterAuth({
         },
       },
     }),
+    // Platform admin panel: ban, sessions, impersonation, allowlist bootstrap (lib/admin).
+    platformAdminPlugin(),
+    platformAdminAllowlistPlugin(),
     // Subscriptions with the organization as Stripe customer; only when billing is on.
     ...(env.BILLING_ENABLED ? [stripePlugin()] : []),
     nextCookies(), // must be last
   ],
 });
+
+/** Display name of the user with this address, or null when there is none. */
+async function getUserName(email: string): Promise<string | null> {
+  const found = await (await auth.$context).internalAdapter.findUserByEmail(email.toLowerCase());
+  return found ? found.user.name : null;
+}
 
 export type Auth = typeof auth;

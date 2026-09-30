@@ -1,41 +1,62 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
 
+import { MotionProvider } from "@/components/app/motion-provider";
+import { BrandPanel } from "@/components/auth/brand-panel";
+import type { WiziMood } from "@/components/mascot/moods";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
+/**
+ * Split auth layout shared by sign-in, sign-up, forgot/reset password, email verification,
+ * invitations and onboarding: a brand panel (Wizi in a `mood` that fits the page) next to the
+ * form. Below `lg` the brand panel becomes a compact header above the form.
+ */
 export function AuthShell({
   title,
   description,
   children,
   footer,
+  mood = "idle",
+  bubble,
 }: {
   title: string;
-  description: string;
+  description: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  mood?: WiziMood;
+  /** Overrides what Wizi says in the brand panel. */
+  bubble?: string;
 }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-12">
-      <Link href="/" className="flex items-center gap-2.5 text-ink" aria-label="Go to the Wisemail home page">
-        <span className="grid size-9 place-items-center rounded-md bg-accent text-accent-ink shadow-glow">
-          <Mail className="size-5" aria-hidden />
-        </span>
-        <span className="text-lg font-bold tracking-[-0.02em]">Wisemail</span>
-      </Link>
+    <MotionProvider>
+      <div className="grid flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <BrandPanel mood={mood} bubble={bubble} />
+        <main className="flex min-w-0 flex-col items-center justify-center gap-6 px-4 py-10 sm:py-14">
+          <div className="w-full max-w-[26rem]">
+            <div className="mb-6 flex flex-col gap-1.5">
+              <h1 className="text-[1.75rem] leading-[2.125rem] font-bold tracking-[-0.02em] text-balance">
+                {title}
+              </h1>
+              <p className="text-ink-muted">{description}</p>
+            </div>
+            {children}
+          </div>
 
-      <div className="w-full max-w-[26rem] rounded-xl border border-line bg-surface p-6 shadow-md sm:p-8">
-        <div className="mb-6 flex flex-col gap-1.5">
-          <h1 className="text-[1.75rem] leading-[2.125rem] font-bold tracking-[-0.02em] text-balance">
-            {title}
-          </h1>
-          <p className="text-ink-muted">{description}</p>
-        </div>
-        {children}
+          {footer ? <p className="text-sm text-ink-muted">{footer}</p> : null}
+          <p className="max-w-[26rem] text-center text-[0.8125rem] text-ink-muted">
+            By continuing you agree to the{" "}
+            <Link href="/terms" className="font-medium underline-offset-2 hover:underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="font-medium underline-offset-2 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+          <ThemeToggle />
+        </main>
       </div>
-
-      {footer ? <p className="text-sm text-ink-muted">{footer}</p> : null}
-      <ThemeToggle />
-    </main>
+    </MotionProvider>
   );
 }
 
@@ -43,6 +64,15 @@ export function FormAlert({ children }: { children: React.ReactNode }) {
   if (!children) return null;
   return (
     <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
+      {children}
+    </p>
+  );
+}
+
+export function FormNotice({ children }: { children: React.ReactNode }) {
+  if (!children) return null;
+  return (
+    <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-ink">
       {children}
     </p>
   );

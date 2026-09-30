@@ -10,6 +10,8 @@ export type AuditInput = {
   target: { type: string; id: Types.ObjectId | string };
   /** Never include secrets. */
   changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
+  /** Required by platform-admin writes that are destructive. */
+  reason?: string;
   ip?: string;
   userAgent?: string;
 };

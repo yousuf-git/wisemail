@@ -96,7 +96,11 @@ export function buildOrgContext(
 }
 
 export type OrgContextResult =
-  { status: "ok"; ctx: OrgContext } | { status: "unauthenticated" } | { status: "not_member" };
+  | { status: "ok"; ctx: OrgContext }
+  | { status: "unauthenticated" }
+  | { status: "not_member" }
+  /** A platform admin put the workspace on hold (`org_settings.suspended`). */
+  | { status: "suspended"; org: OrgRef; reason: string };
 
 /**
  * Non-redirecting core of `requireOrg`, also used by server actions (which return typed errors
@@ -118,7 +122,12 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
   const orgOid = new Types.ObjectId(access.org.id);
 
   // Self-heal: org_settings is created by the org-creation hook; re-provision if it is missing.
-  if (!(await OrgSettingsModel.exists({ orgId: orgOid }))) {
+  const settings = await OrgSettingsModel.findOne({ orgId: orgOid }, { suspended: 1 }).lean();
+  if (settings?.suspended) {
+    return { status: "suspended", org: access.org, reason: settings.suspended.reason };
+  }
+
+  if (!settings) {
     await withTransaction((tx) =>
       provisionOrganization(
         {
@@ -160,6 +169,7 @@ export async function requireOrg(orgSlug: string): Promise<OrgContext> {
   const result = await getOrgContext(orgSlug);
   if (result.status === "unauthenticated") redirect("/sign-in?expired=1");
   if (result.status === "not_member") notFound();
+  if (result.status === "suspended") redirect(`/suspended/${result.org.slug}`);
   return result.ctx;
 }
 

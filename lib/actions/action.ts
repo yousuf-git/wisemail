@@ -57,6 +57,9 @@ export function orgAction<S extends z.ZodType, R>(
       }
       if (result.status === "not_member")
         return fail("not_found", "We couldn't find that workspace.");
+      if (result.status === "suspended") {
+        return fail("workspace_suspended", "This workspace is suspended. Contact Wisemail support.");
+      }
       const { ctx } = result;
       if (options.permission && !roleHasPermission(ctx.role, options.permission)) {
         return fail("forbidden", "You don't have permission to do that.");
@@ -67,7 +70,7 @@ export function orgAction<S extends z.ZodType, R>(
     });
 }
 
-function parse<S extends z.ZodType>(schema: S, raw: unknown) {
+export function parse<S extends z.ZodType>(schema: S, raw: unknown) {
   const result = schema.safeParse(raw);
   if (result.success) return { ok: true as const, data: result.data as z.output<S> };
   const fieldErrors: Record<string, string[]> = {};
@@ -81,7 +84,7 @@ function parse<S extends z.ZodType>(schema: S, raw: unknown) {
   };
 }
 
-async function guarded<R>(fn: () => Promise<ActionResult<R>>): Promise<ActionResult<R>> {
+export async function guarded<R>(fn: () => Promise<ActionResult<R>>): Promise<ActionResult<R>> {
   try {
     return await fn();
   } catch (error) {

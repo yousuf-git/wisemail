@@ -14,6 +14,7 @@ type Row = {
   to: string;
   subject: string;
   link: string | null;
+  code?: string | null;
   sentAt: string;
   html?: string;
 };
@@ -68,6 +69,14 @@ export default async function DevOutboxPage() {
               <p className="text-sm text-ink-muted">
                 {row.kind} to {row.to}
               </p>
+              {row.code ? (
+                <p className="text-sm text-ink-secondary">
+                  Code:{" "}
+                  <span data-testid="outbox-code" className="font-mono text-base font-semibold">
+                    {row.code}
+                  </span>
+                </p>
+              ) : null}
               {row.link ? (
                 <a
                   href={row.link}

@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { FormAlert } from "@/components/auth/auth-shell";
-import { VerifyNotice } from "@/components/auth/verify-notice";
+import { FormAlert, FormNotice } from "@/components/auth/auth-shell";
+import { PasswordInput } from "@/components/auth/password-input";
+import { SocialButtons } from "@/components/auth/social-buttons";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,7 +20,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
+import type { SocialProvider } from "@/lib/auth/social";
 import { safeNext, signInSchema, type SignInInput } from "@/lib/validation/auth";
+
+function socialErrorMessage(code: string): string {
+  if (code === "account_not_linked" || code === "unable_to_link_account") {
+    return "That email already has a Wisemail account with a password. Sign in with it, and confirm the email first, then you can use Google or GitHub too.";
+  }
+  if (code === "access_denied") return "You cancelled the sign-in. Want to try again?";
+  return "We couldn't sign you in with that provider. Try again, or use your email.";
+}
 
 /**
  * Uses the Better Auth client (POST /api/auth/sign-in/email) rather than a server action:
@@ -30,18 +40,24 @@ export function SignInForm({
   next,
   expired,
   passwordReset,
-  devOutbox,
+  socialError,
+  providers = [],
 }: {
   next?: string;
   expired?: boolean;
   passwordReset?: boolean;
-  devOutbox?: boolean;
+  /** `?error=` from a failed provider round trip. */
+  socialError?: string;
+  providers?: SocialProvider[];
 }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(
-    expired ? "Your session ended. Sign in again to keep going." : null,
+    expired
+      ? "Your session ended. Sign in again to keep going."
+      : socialError
+        ? socialErrorMessage(socialError)
+        : null,
   );
-  const [unverified, setUnverified] = useState<string | null>(null);
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
     defaultValues: { email: "", password: "" },
@@ -53,7 +69,10 @@ export function SignInForm({
     const { error } = await authClient.signIn.email({ ...values, callbackURL: safeNext(next) });
     if (error) {
       if (error.status === 403 || error.code === "EMAIL_NOT_VERIFIED") {
-        setUnverified(values.email);
+        // Better Auth has just emailed a fresh code and link; continue on the code screen.
+        const params = new URLSearchParams({ email: values.email });
+        if (next) params.set("next", safeNext(next));
+        router.push(`/verify-email?${params}`);
         return;
       }
       setFormError(
@@ -67,31 +86,13 @@ export function SignInForm({
     router.refresh();
   }
 
-  if (unverified) {
-    return (
-      <div className="grid gap-4">
-        <FormAlert>Confirm your email before signing in. We just sent you a new link.</FormAlert>
-        <VerifyNotice
-          email={unverified}
-          callbackURL={safeNext(next)}
-          devOutbox={devOutbox}
-          onBack={() => setUnverified(null)}
-        />
-      </div>
-    );
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
         {passwordReset ? (
-          <p
-            role="status"
-            className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-ink"
-          >
-            Password updated. Sign in with the new one.
-          </p>
+          <FormNotice>Password updated. Sign in with the new one.</FormNotice>
         ) : null}
+        <SocialButtons providers={providers} next={next} disabled={form.formState.isSubmitting} />
         <FormAlert>{formError}</FormAlert>
         <FormField
           control={form.control}
@@ -121,7 +122,7 @@ export function SignInForm({
                 </Link>
               </div>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

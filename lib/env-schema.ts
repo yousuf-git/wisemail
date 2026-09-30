@@ -52,12 +52,24 @@ const schema = z.object({
   SYSTEM_RESEND_API_KEY: optionalString,
   SYSTEM_FROM_EMAIL: optionalString,
 
+  /** Social sign-in: each provider is on only when both its id and secret are set. */
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
+  GITHUB_CLIENT_ID: optionalString,
+  GITHUB_CLIENT_SECRET: optionalString,
+
   BILLING_ENABLED: bool.default(false),
   STRIPE_SANDBOX: bool.optional(),
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_PUBLISHABLE_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
   STRIPE_BILLING_WEBHOOK_SECRET: optionalString,
+
+  /**
+   * Comma-separated emails that become platform admins (Better Auth role "admin") when they sign
+   * in with a verified address. Bootstraps the first admin without a database edit.
+   */
+  PLATFORM_ADMIN_EMAILS: optionalString,
 
   /** Enables the test-only `/api/e2e/*` routes (Playwright). Refused in production. */
   E2E: bool.optional(),
@@ -185,6 +197,17 @@ export function parseEnv(source: Source): EnvResult {
     parsed.ENCRYPTION_KEK_PREVIOUS_ID === parsed.ENCRYPTION_KEK_ID
   ) {
     errors.push("ENCRYPTION_KEK_PREVIOUS_ID: must differ from ENCRYPTION_KEK_ID");
+  }
+
+  for (const [label, keys] of [
+    ["Google", ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]],
+    ["GitHub", ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]],
+  ] as const) {
+    const set = keys.filter((key) => parsed[key]);
+    if (set.length === 1) {
+      const missing = keys.find((key) => !parsed[key])!;
+      errors.push(`${missing}: required when ${set[0]} is set (${label} sign-in needs both)`);
+    }
   }
 
   if (production && parsed.E2E) {

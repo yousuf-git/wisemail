@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { CreateOrgForm } from "@/components/auth/create-org-form";
 import { getCurrentUser, getHomePath } from "@/lib/dal";
@@ -19,11 +20,15 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
 
   const firstName = user.name.split(" ")[0];
   return (
-    <AuthShell
-      title={`Welcome, ${firstName}`}
-      description="Let's name your workspace. It's where your Resend accounts, mail and team come together."
-    >
-      <CreateOrgForm />
-    </AuthShell>
+    <>
+      <AuthShell
+        mood="happy"
+        title={`Welcome, ${firstName}`}
+        description="Let's name your workspace. It's where your Resend accounts, mail and team come together."
+      >
+        <CreateOrgForm />
+      </AuthShell>
+      <ImpersonationBanner />
+    </>
   );
 }

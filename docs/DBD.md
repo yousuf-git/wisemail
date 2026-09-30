@@ -110,6 +110,7 @@ Better Auth collections (`user`, `session`, `account`, `verification`, `organiza
 | stripeCustomerId | string | Links to Better Auth's `subscription` collection (`referenceId` = orgId) |
 | timezone | string (IANA) | R, default `UTC`; used for rollup days and digests |
 | ai | `{ enabled: boolean, features: { triage: boolean, drafts: boolean, compose: boolean, anomalies: boolean } }` | Org preference; effective only if the plan includes AI |
+| suspended | `{ at: Date, by: ObjectId, reason: string } \| null` | Platform-admin suspension: members get a "workspace suspended" page, actions and API refuse; ingest and sync keep running |
 | deletedAt | Date \| null | Org soft delete |
 
 The Better Auth Stripe plugin adds a `subscription` collection (plan, status, Stripe ids, period, trial, `cancelAtPeriodEnd`, `seats`, `billingInterval`); `org_settings` holds only what the app needs beyond it.
@@ -584,7 +585,10 @@ Indexes: (`orgId`, `_id`) for replay after reconnect; TTL on `createdAt` (`expir
 | action | string | R, e.g. `connection.created`, `email.sent`, `api_key.deleted`, `member.role_changed` |
 | target | `{ type: string, id: ObjectId \| string }` | R |
 | changes | `{ before?: object, after?: object }` | Secrets never recorded |
+| reason | string | Why a destructive platform-admin action (`admin.*`) was taken |
 | ip, userAgent | string | |
+
+Platform-admin actions (`admin.*`) record the admin as actor. Org-scoped ones use the org's `orgId`; user-scoped ones (ban, sessions) use the platform scope `orgId = 000000000000000000000000`, which no tenant query matches.
 
 Index (`orgId`, `createdAt` desc), (`orgId`, `action`, `createdAt`).
 

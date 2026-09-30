@@ -10,6 +10,7 @@ const PUBLIC_EXACT = new Set([
   "/pricing",
   "/sign-out",
   "/forgot-password",
+  "/verify-email",
   "/reset-password",
   "/dev/outbox", // 404s in production
 ]);
@@ -27,6 +28,10 @@ export function proxy(request: NextRequest) {
     }
     return NextResponse.next();
   }
+
+  // The admin panel answers 404 to anyone who is not a platform admin (visitors included), so
+  // the proxy must not redirect them to sign-in: that would reveal the panel exists.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return NextResponse.next();
 
   const isPublic =
     PUBLIC_EXACT.has(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
