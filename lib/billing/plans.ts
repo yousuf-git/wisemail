@@ -80,7 +80,6 @@ export type PlanCatalogEntry = {
   /** Agency: USD per month for each connection beyond the included ones. */
   extraConnectionUsd: number | null;
   support: string;
-  // TODO(phase 8): Stripe price ids (plan monthly/annual, extra connection, overage meter).
 };
 
 const NONE = {
@@ -176,7 +175,7 @@ export const PLAN_CATALOG: Record<Plan, PlanCatalogEntry> = {
     priceMonthly: 99,
     priceAnnualPerMonth: 82,
     limits: {
-      // TODO(phase 8): a 16th+ connection asks for +$5/month confirmation (Stripe quantity).
+      // Included connections; each one beyond is +$5/month (`org_settings.extraConnections`).
       connections: 15,
       members: null,
       projects: null,
@@ -212,6 +211,11 @@ export const FREE_GRACE_DAYS = 7;
 export const FREE_OVER_ALLOWANCE_RETENTION_DAYS = 7;
 /** Downgrade: notice before the shorter retention applies. */
 export const RETENTION_NOTICE_DAYS = 14;
+/** Payment failure: days a subscription may stay unpaid before the org moves to Free (PRICING §6). */
+export const PAYMENT_GRACE_DAYS = 14;
+/** When the payment grace period of an org that went past due at `pastDueSince` ends. */
+export const paymentGraceEnds = (pastDueSince: Date | null | undefined) =>
+  pastDueSince ? new Date(pastDueSince.getTime() + PAYMENT_GRACE_DAYS * 86_400_000) : null;
 /** Usage thresholds (percent of allowance) that notify Owners and Admins. */
 export const USAGE_THRESHOLDS = [80, 100] as const;
 

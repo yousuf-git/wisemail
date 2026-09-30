@@ -1,11 +1,15 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+// The sandbox cannot download mongod, so it ships one at /opt/mongo. Everywhere else (CI, laptops)
+// mongodb-memory-server downloads its own binary.
+const systemMongod = "/opt/mongo/mongod";
 const shared = {
   setupFiles: ["./tests/setup.ts"],
-  env: { MONGOMS_SYSTEM_BINARY: "/opt/mongo/mongod" },
+  env: existsSync(systemMongod) ? { MONGOMS_SYSTEM_BINARY: systemMongod } : {},
 };
 
 const roots = ["tests/{unit,integration}", "lib", "components", "app"];

@@ -74,6 +74,12 @@ const orgSettingsSchema = new Schema(
       default: null,
     },
     stripeCustomerId: String,
+    /** The org's active Stripe subscription (the plan item plus extra-connection / overage items). */
+    stripeSubscriptionId: String,
+    /** End of the current Stripe billing cycle (the plan item's period; a year for annual plans). */
+    stripePeriodEnd: Date,
+    /** Stripe event time of the subscription state last applied; older events are ignored. */
+    stripeSyncedAt: Date,
     timezone: { type: String, required: true, default: "UTC" },
     ai: {
       type: new Schema(

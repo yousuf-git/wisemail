@@ -44,12 +44,19 @@ export type Entitlements = {
   overagePer10kUsd: number | null;
   billingPeriod: { start: Date; end: Date };
   pendingChange: { toPlan: Plan; effectiveAt: Date; retentionEffectiveAt: Date | null } | null;
-  grace: { overAllowanceSince: Date | null };
+  grace: { overAllowanceSince: Date | null; pastDueSince: Date | null };
 };
 
 type SettingsLike = Pick<
   OrgSettings,
-  "plan" | "planState" | "trial" | "limitOverrides" | "billingPeriod" | "pendingChange" | "grace"
+  | "plan"
+  | "planState"
+  | "trial"
+  | "limitOverrides"
+  | "billingPeriod"
+  | "pendingChange"
+  | "grace"
+  | "extraConnections"
 >;
 
 const DAY = 86_400_000;
@@ -70,6 +77,10 @@ export function computeEntitlements(
   // AI during the trial is capped (PRICING §6); an explicit per-org override wins.
   if (trialing && !trialExpired && settings?.limitOverrides?.aiCreditsPerMonth == null) {
     limits.aiCreditsPerMonth = Math.min(limits.aiCreditsPerMonth, TRIAL_AI_CREDITS);
+  }
+  // Agency: connections paid for beyond the included ones (synced with the Stripe quantity).
+  if (plan === "agency" && settings?.limitOverrides?.connections == null) {
+    limits.connections += Math.max(0, settings?.extraConnections ?? 0);
   }
   const next = getNextTier(plan);
   const pc = settings?.pendingChange;
@@ -103,7 +114,7 @@ export function computeEntitlements(
             retentionEffectiveAt: pc.retentionEffectiveAt ?? null,
           }
         : null,
-    grace: { overAllowanceSince: overSince },
+    grace: { overAllowanceSince: overSince, pastDueSince: settings?.grace?.pastDueSince ?? null },
   };
 }
 

@@ -8,7 +8,7 @@ import type { PlanBannerData } from "@/components/billing/plan-banner";
 import { getAiBalance } from "@/lib/ai/credits";
 import { trackedTotal } from "@/lib/billing/metering";
 import { getEntitlements } from "@/lib/billing/entitlements";
-import { FREE_GRACE_DAYS, overageCostUsd } from "@/lib/billing/plans";
+import { FREE_GRACE_DAYS, overageCostUsd, paymentGraceEnds } from "@/lib/billing/plans";
 import { authorize, type OrgContext } from "@/lib/dal";
 import { connectDb } from "@/lib/db/connect";
 import { AiUsageModel } from "@/lib/db/models/ai-usage";
@@ -56,22 +56,31 @@ export async function getUsageSummary(ctx: OrgContext): Promise<UsageSummary> {
   const overEmails = Math.max(0, total - allowance);
   const paid = e.overagePer10kUsd !== null;
   const usageHref = `/${ctx.org.slug}/settings/usage`;
+  const graceEnds = paymentGraceEnds(e.grace.pastDueSince);
   const banner: PlanBannerData | null =
-    overEmails > 0 && ctx.can("usage:read")
+    e.planState === "past_due" && ctx.can("billing:manage")
       ? {
-          kind: "over_allowance",
-          message: paid
-            ? `You are ${nf.format(overEmails)} tracked emails over this period's allowance. Nothing is dropped; overage is billed at the end of the period.`
-            : `You are ${nf.format(overEmails)} tracked emails over the Free allowance. Nothing is dropped, but after a ${FREE_GRACE_DAYS}-day grace period the extra emails keep 7 days of history.`,
-          action: { label: "View usage", href: usageHref },
+          kind: "payment",
+          message: graceEnds
+            ? `We couldn't charge your payment method. Update it by ${graceEnds.toLocaleDateString("en-US", { month: "long", day: "numeric" })} to keep ${e.planLabel}.`
+            : "We couldn't charge your payment method. Update it to keep your plan.",
+          action: { label: "Update payment method", href: `/${ctx.org.slug}/settings/billing` },
         }
-      : e.trial?.active && ctx.can("billing:manage")
+      : overEmails > 0 && ctx.can("usage:read")
         ? {
-            kind: "trial",
-            message: `Pro trial: ${e.trial.daysLeft} ${e.trial.daysLeft === 1 ? "day" : "days"} left. After that the workspace moves to Free.`,
-            action: { label: "Choose a plan", href: `/${ctx.org.slug}/settings/billing` },
+            kind: "over_allowance",
+            message: paid
+              ? `You are ${nf.format(overEmails)} tracked emails over this period's allowance. Nothing is dropped; overage is billed at the end of the period.`
+              : `You are ${nf.format(overEmails)} tracked emails over the Free allowance. Nothing is dropped, but after a ${FREE_GRACE_DAYS}-day grace period the extra emails keep 7 days of history.`,
+            action: { label: "View usage", href: usageHref },
           }
-        : null;
+        : e.trial?.active && ctx.can("billing:manage")
+          ? {
+              kind: "trial",
+              message: `Pro trial: ${e.trial.daysLeft} ${e.trial.daysLeft === 1 ? "day" : "days"} left. After that the workspace moves to Free.`,
+              action: { label: "Choose a plan", href: `/${ctx.org.slug}/settings/billing` },
+            }
+          : null;
   return {
     banner,
     overageCostUsd: paid && overEmails > 0 ? overageCostUsd(e.plan, overEmails) : null,

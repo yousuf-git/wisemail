@@ -48,6 +48,12 @@ export function AddConnectionDialog({
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(searchParams.get("connect") === "1");
   const [formError, setFormError] = useState<string | null>(null);
+  // Agency, 16th connection onwards: the server asks for confirmation of the extra monthly cost.
+  const [confirming, setConfirming] = useState(false);
+  const [costPrompt, setCostPrompt] = useState<{
+    message: string;
+    values: AddConnectionInput;
+  } | null>(null);
 
   const form = useForm<AddConnectionInput>({
     resolver: zodResolver(addConnectionSchema),
@@ -58,6 +64,7 @@ export function AddConnectionDialog({
     setOpen(next);
     if (!next) {
       setFormError(null);
+      setCostPrompt(null);
       form.reset();
     }
   }
@@ -67,6 +74,10 @@ export function AddConnectionDialog({
     const result = await addConnectionAction(orgSlug, values);
     if (!result.ok) {
       const { fieldErrors, message } = result.error;
+      if (result.error.code === "confirmation_required") {
+        setCostPrompt({ message, values: { name: values.name, apiKey: values.apiKey } });
+        return;
+      }
       let placed = false;
       for (const field of ["name", "apiKey"] as const) {
         const first = fieldErrors?.[field]?.[0];
@@ -78,6 +89,7 @@ export function AddConnectionDialog({
       if (!placed) setFormError(message);
       return;
     }
+    setCostPrompt(null);
     const connection = result.data;
     if (connection.status === "active") {
       toast.success(`Connected “${connection.name}”`);
@@ -125,6 +137,37 @@ export function AddConnectionDialog({
               </DialogDescription>
             </DialogHeader>
           </div>
+        ) : costPrompt ? (
+          <div className="grid gap-4" data-testid="extra-connection-confirm">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Add another connection?</DialogTitle>
+              <DialogDescription>{costPrompt.message}</DialogDescription>
+            </DialogHeader>
+            <FormAlert>{formError}</FormAlert>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCostPrompt(null)}
+                disabled={confirming}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                className="font-bold"
+                disabled={confirming}
+                data-testid="extra-connection-confirm-button"
+                onClick={async () => {
+                  setConfirming(true);
+                  await onSubmit({ ...costPrompt.values, confirmExtraCost: true });
+                  setConfirming(false);
+                }}
+              >
+                {confirming ? "Connecting…" : `Add for $${quota.extraUnitUsd ?? 5}/month`}
+              </Button>
+            </DialogFooter>
+          </div>
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
@@ -139,6 +182,17 @@ export function AddConnectionDialog({
               </DialogHeader>
 
               <FormAlert>{formError}</FormAlert>
+
+              {quota.extraUnitUsd && quota.used >= quota.limit ? (
+                <p
+                  data-testid="extra-connection-notice"
+                  className="rounded-md bg-warning-soft px-3 py-2 text-[0.8125rem] leading-snug text-warning-ink"
+                >
+                  Your plan includes {quota.limit} connections. Connecting another adds{" "}
+                  <b className="font-semibold">${quota.extraUnitUsd}/month</b>; you&apos;ll confirm
+                  before anything is charged.
+                </p>
+              ) : null}
 
               <FormField
                 control={form.control}

@@ -36,6 +36,7 @@ yarn-error.log*
 
 # local data and test output
 /.data/
+/.next-e2e/
 /test-results/
 /playwright-report/
 /playwright/.cache/

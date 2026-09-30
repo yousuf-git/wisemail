@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import {
   cancelPendingChangeAction,
   changePlanAction,
+  openPortalAction,
   previewPlanChangeAction,
+  startCheckoutAction,
   startTrialAction,
 } from "@/app/(app)/[orgSlug]/settings/billing/actions";
 import { FormAlert } from "@/components/auth/auth-shell";
@@ -23,6 +25,15 @@ import {
 } from "@/components/ui/dialog";
 import type { BillingOverviewDTO, PlanChangePreviewDTO } from "@/lib/dto/billing";
 import { cn } from "@/lib/utils";
+import {
+  CreditPackCard,
+  ExtraConnectionsCard,
+  PaymentIssueBanner,
+  ReturnNotice,
+  SubscriptionDetails,
+  usePortal,
+  useReturnPolling,
+} from "./billing-stripe";
 
 const date = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -40,6 +51,11 @@ export function BillingView({
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canManage } = overview;
+  // With billing on, plans are bought through Stripe; otherwise this is the beta switcher.
+  const stripe = overview.billingEnabled ? overview.stripe : null;
+  const [interval, setInterval] = useState<"month" | "year">(stripe?.interval ?? "month");
+  const portal = usePortal(orgSlug);
+  const returning = useReturnPolling(overview);
 
   async function choose(plan: string) {
     setLoading(plan);
@@ -53,7 +69,35 @@ export function BillingView({
     setPreview(result.data);
   }
 
+  async function confirmStripe() {
+    if (!preview) return;
+    setApplying(true);
+    setError(null);
+    if (preview.direction === "downgrade") {
+      // Downgrades and cancellation happen in Stripe's Customer Portal, at period end.
+      const result = await openPortalAction(orgSlug);
+      if (!result.ok) {
+        setApplying(false);
+        setError(result.error.message);
+        return;
+      }
+      window.location.assign(result.data.url);
+      return;
+    }
+    const result = await startCheckoutAction(orgSlug, {
+      plan: preview.toPlan as "pro" | "team" | "agency",
+      interval,
+    });
+    if (!result.ok) {
+      setApplying(false);
+      setError(result.error.message);
+      return;
+    }
+    window.location.assign(result.data.url);
+  }
+
   async function confirm() {
+    if (stripe) return confirmStripe();
     if (!preview) return;
     setApplying(true);
     setError(null);
@@ -99,6 +143,24 @@ export function BillingView({
   const pending = overview.pendingChange;
   return (
     <div className="grid gap-4">
+      {stripe?.fake ? (
+        <p
+          data-testid="stripe-test-mode"
+          className="rounded-xl bg-warning-soft px-4 py-2 text-sm text-warning-ink"
+        >
+          <b className="font-bold">Test mode.</b> Payments run against a built-in fake Stripe; no
+          card is charged.
+        </p>
+      ) : null}
+      {returning.waiting ? <ReturnNotice kind={returning.kind} /> : null}
+      {stripe ? (
+        <PaymentIssueBanner
+          overview={stripe}
+          onManage={portal.open}
+          opening={portal.opening}
+          canManage={canManage}
+        />
+      ) : null}
       {!overview.billingEnabled ? (
         <p
           data-testid="beta-notice"
@@ -124,6 +186,15 @@ export function BillingView({
             Current plan
           </span>
         </div>
+        {stripe ? (
+          <SubscriptionDetails
+            overview={stripe}
+            planLabel={overview.currentLabel}
+            onManage={portal.open}
+            opening={portal.opening}
+            canManage={canManage}
+          />
+        ) : null}
         {overview.trial ? (
           <p className="text-sm text-ink-secondary" data-testid="trial-status">
             {overview.trial.daysLeft} {overview.trial.daysLeft === 1 ? "day" : "days"} left in your
@@ -178,12 +249,46 @@ export function BillingView({
         ) : null}
       </section>
 
+      {stripe ? (
+        <div
+          role="group"
+          aria-label="Billing interval"
+          className="inline-flex w-fit rounded-full bg-canvas-sunken p-1 text-sm"
+        >
+          {(["month", "year"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={interval === value}
+              data-testid={`interval-${value}`}
+              onClick={() => setInterval(value)}
+              className={cn(
+                "rounded-full px-4 py-1.5 font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                interval === value ? "bg-surface text-ink shadow-sm" : "text-ink-muted",
+              )}
+            >
+              {value === "month" ? "Monthly" : "Yearly"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <ul
         className="grid gap-3 min-[720px]:grid-cols-2 min-[1100px]:grid-cols-4"
         aria-label="Plans"
       >
         {overview.plans.map((plan) => {
-          const current = plan.id === overview.currentPlan && !overview.trial;
+          const sameInterval = !stripe || !stripe.interval || stripe.interval === interval;
+          const current =
+            plan.id === overview.currentPlan &&
+            !overview.trial &&
+            (plan.id === "free" || sameInterval);
+          const intervalSwitch =
+            !!stripe &&
+            plan.id === overview.currentPlan &&
+            !overview.trial &&
+            !sameInterval &&
+            plan.id !== "free";
           return (
             <li
               key={plan.id}
@@ -198,11 +303,15 @@ export function BillingView({
                 <p className="text-[0.8125rem] text-ink-muted">{plan.tagline}</p>
               </div>
               <p>
-                <b className="text-2xl font-bold tabular-nums">${plan.priceMonthly}</b>
+                <b className="text-2xl font-bold tabular-nums">
+                  ${stripe && interval === "year" ? plan.priceAnnualPerMonth : plan.priceMonthly}
+                </b>
                 <span className="text-sm text-ink-muted"> / month</span>
                 {plan.priceMonthly > 0 ? (
                   <span className="block text-[0.75rem] text-ink-faint">
-                    ${plan.priceAnnualPerMonth} a month billed yearly
+                    {stripe && interval === "year"
+                      ? `$${plan.priceAnnualPerMonth * 12} billed yearly`
+                      : `$${plan.priceAnnualPerMonth} a month billed yearly`}
                   </span>
                 ) : null}
               </p>
@@ -225,14 +334,29 @@ export function BillingView({
               >
                 {current
                   ? "Current plan"
-                  : overview.trial && plan.id === "pro"
-                    ? "Keep Pro"
-                    : `Switch to ${plan.label}`}
+                  : stripe
+                    ? plan.id === "free"
+                      ? "Cancel in Stripe"
+                      : intervalSwitch
+                        ? `Switch to ${interval === "year" ? "yearly" : "monthly"} billing`
+                        : overview.trial && plan.id === "pro"
+                          ? "Subscribe to Pro"
+                          : `Choose ${plan.label}`
+                    : overview.trial && plan.id === "pro"
+                      ? "Keep Pro"
+                      : `Switch to ${plan.label}`}
               </Button>
             </li>
           );
         })}
       </ul>
+
+      {stripe ? (
+        <div className="grid gap-4 min-[900px]:grid-cols-2">
+          <CreditPackCard orgSlug={orgSlug} overview={stripe} canManage={canManage} />
+          <ExtraConnectionsCard overview={stripe} />
+        </div>
+      ) : null}
 
       <Dialog
         open={!!preview}
@@ -251,9 +375,12 @@ export function BillingView({
                   {preview.direction === "downgrade" ? "Switch" : "Move"} to {preview.toLabel}?
                 </DialogTitle>
                 <DialogDescription>
-                  {preview.direction === "downgrade" && new Date(preview.effectiveAt) > new Date()
-                    ? `Your current plan stays until ${date(preview.effectiveAt)}, then the change applies.`
-                    : "The change applies right away."}
+                  {stripe && preview.direction !== "downgrade"
+                    ? `${preview.toLabel} billed ${interval === "year" ? "yearly" : "monthly"}.`
+                    : preview.direction === "downgrade" &&
+                        new Date(preview.effectiveAt) > new Date()
+                      ? `Your current plan stays until ${date(preview.effectiveAt)}, then the change applies.`
+                      : "The change applies right away."}
                 </DialogDescription>
               </DialogHeader>
               <ul className="grid gap-2 text-sm text-ink-secondary" data-testid="plan-preview">
@@ -282,8 +409,12 @@ export function BillingView({
                 ) : null}
                 {preview.direction !== "downgrade" ? (
                   <li>
-                    Limits and features update immediately. Nothing is charged during the beta.
+                    {stripe
+                      ? "You continue to Stripe to pay. Limits and features update as soon as the payment goes through."
+                      : "Limits and features update immediately. Nothing is charged during the beta."}
                   </li>
+                ) : stripe ? (
+                  <li>You continue to the Stripe billing portal to confirm the change.</li>
                 ) : null}
                 <li>Nothing you already have is deleted.</li>
               </ul>
@@ -293,7 +424,15 @@ export function BillingView({
                   Cancel
                 </Button>
                 <Button onClick={confirm} disabled={applying} className="font-bold">
-                  {applying ? "Applying…" : `Confirm ${preview.toLabel}`}
+                  {applying
+                    ? stripe
+                      ? "Opening Stripe…"
+                      : "Applying…"
+                    : stripe
+                      ? preview.direction === "downgrade"
+                        ? "Continue in Stripe"
+                        : "Continue to checkout"
+                      : `Confirm ${preview.toLabel}`}
                 </Button>
               </DialogFooter>
             </>

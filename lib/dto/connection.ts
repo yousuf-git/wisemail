@@ -36,4 +36,9 @@ export type ConnectionQuota = {
   limit: number;
   planLabel: string;
   nextTierLabel: string | null;
+  /**
+   * Agency with billing on: USD per month for each connection beyond `limit`. When set, being at
+   * the limit is not a wall: the next connection is added after a cost confirmation.
+   */
+  extraUnitUsd?: number | null;
 };

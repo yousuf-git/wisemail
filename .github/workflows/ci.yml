@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Everything runs against the in-memory fakes; no external service is contacted.
+  RESEND_MODE: fake
+  STORAGE_MODE: fake
+  AI_MODE: fake
+  INNGEST_DEV: "true"
+  BILLING_ENABLED: "false"
+
+jobs:
+  check:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # version comes from "packageManager" in package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      # mongodb-memory-server downloads its own mongod here (vitest.config.mts only pins the
+      # sandbox binary when /opt/mongo/mongod exists). Cache it between runs.
+      - name: Cache mongod binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: mongodb-binaries-${{ runner.os }}-
+
+      - run: pnpm test
+
+      - name: Build
+        # Generated per run; nothing here is a real secret.
+        run: |
+          export BETTER_AUTH_SECRET="$(openssl rand -base64 48)"
+          export ENCRYPTION_KEK_CURRENT="$(openssl rand -base64 32)"
+          export ENCRYPTION_KEK_ID=ci-1
+          export MONGODB_URI="mongodb://127.0.0.1:27017/wisemail?replicaSet=rs0"
+          export BETTER_AUTH_URL=http://localhost:3000
+          export APP_URL=http://localhost:3000
+          pnpm build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      E2E_MONGODB_URI: mongodb://127.0.0.1:27017/wisemail_e2e?replicaSet=rs0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: MongoDB replica set
+        uses: supercharge/mongodb-github-action@1.12.0
+        with:
+          mongodb-version: "8.0"
+          mongodb-replica-set: rs0
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Playwright starts the Inngest dev server and `next dev` itself (playwright.config.ts).
+      - run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

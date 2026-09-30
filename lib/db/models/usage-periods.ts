@@ -27,7 +27,7 @@ const usagePeriodSchema = new Schema(
     thresholdsNotified: { type: [Number], default: [] },
     overage: {
       emails: { type: Number, default: 0 },
-      // TODO(phase 8): meter events sent to Stripe.
+      /** Billing Meter units (10k emails, rounded up) already reported to Stripe. */
       reportedToStripe: { type: Number, default: 0 },
       lastReportedAt: Date,
     },

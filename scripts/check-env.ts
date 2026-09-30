@@ -6,6 +6,12 @@ for (const file of [".env.local", ".env"]) {
 
 async function checkStripePrices(secretKey: string, prices: Record<string, string>) {
   const failures: string[] = [];
+  // Every price the integration uses must be configured (`lib/billing/stripe-price-keys.ts`).
+  const { REQUIRED_PRICE_KEYS } = await import("../lib/billing/stripe-price-keys");
+  for (const key of REQUIRED_PRICE_KEYS) {
+    if (!prices[`STRIPE_PRICE_${key}`])
+      failures.push(`STRIPE_PRICE_${key}: required when BILLING_ENABLED=true`);
+  }
   await Promise.all(
     Object.entries(prices).map(async ([name, id]) => {
       const res = await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(id)}`, {
@@ -51,7 +57,8 @@ async function main() {
 
   const failures: string[] = [];
 
-  if (env.BILLING_ENABLED && env.STRIPE_SECRET_KEY) {
+  // Fake Stripe (STRIPE_MODE=fake) has no account to ask: the price check is skipped.
+  if (env.BILLING_ENABLED && env.STRIPE_MODE === "live" && env.STRIPE_SECRET_KEY) {
     failures.push(...(await checkStripePrices(env.STRIPE_SECRET_KEY, env.STRIPE_PRICES)));
   }
 
@@ -73,6 +80,7 @@ async function main() {
 
   const skipped = [
     !env.BILLING_ENABLED && "stripe (billing disabled)",
+    env.BILLING_ENABLED && env.STRIPE_MODE === "fake" && "stripe (fake mode)",
     env.STORAGE_MODE === "fake" && "r2 (fake storage)",
   ].filter(Boolean);
   console.log(

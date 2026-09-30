@@ -15,6 +15,7 @@ import { provisionOrganization } from "@/lib/services/org-settings";
 import { applyInvitationScope, clearMemberScope } from "@/lib/services/project-scope";
 import { deleteTourProgress } from "@/lib/tours/progress";
 import { getEntitlements } from "@/lib/billing/entitlements";
+import { stripePlugin } from "@/lib/billing/stripe-plugin";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/system-email";
 import { ac, roles } from "./permissions";
 
@@ -119,6 +120,8 @@ export const auth = betterAuth({
         },
       },
     }),
+    // Subscriptions with the organization as Stripe customer; only when billing is on.
+    ...(env.BILLING_ENABLED ? [stripePlugin()] : []),
     nextCookies(), // must be last
   ],
 });

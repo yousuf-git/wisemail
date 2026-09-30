@@ -121,6 +121,9 @@ emailSchema.index(
   { unique: true, partialFilterExpression: { resendId: { $type: "string" } } },
 );
 emailSchema.index({ orgId: 1, direction: 1, createdAt: -1 });
+// Unfiltered Activity list: keyset order (createdAt, _id) served by the index, no in-memory sort of
+// the whole org (scripts/perf.ts: the planner otherwise picked an unrelated orgId-prefix index).
+emailSchema.index({ orgId: 1, createdAt: -1, _id: -1 });
 emailSchema.index({ orgId: 1, projectId: 1, createdAt: -1 });
 emailSchema.index({ orgId: 1, recipientAddresses: 1, createdAt: -1 });
 emailSchema.index({ orgId: 1, threadId: 1, createdAt: 1 });

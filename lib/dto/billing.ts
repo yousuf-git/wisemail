@@ -109,4 +109,33 @@ export type BillingOverviewDTO = {
   } | null;
   plans: BillingPlanCardDTO[];
   canManage: boolean;
+  /** Only meaningful with `billingEnabled`: subscription, payment and add-on details. */
+  stripe: {
+    /** Fake Stripe (`STRIPE_MODE=fake`): a test-mode note is shown. */
+    fake: boolean;
+    interval: "month" | "year" | null;
+    hasSubscription: boolean;
+    /** Stripe period end (renewal, or the end of a cancelling plan). */
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+    payment: { pastDue: boolean; graceEndsAt: string | null };
+    /** Agency: connections paid for beyond the included ones. */
+    extraConnections: {
+      quantity: number;
+      included: number;
+      unitUsd: number;
+      monthlyUsd: number;
+    } | null;
+    creditPack: {
+      credits: number;
+      priceUsd: number;
+      /** Free plans cannot buy packs. */
+      available: boolean;
+      /** Pack credits the org has left. */
+      balance: number;
+      maxPacks: number;
+    };
+    /** Overage rate of the current plan, shown next to the allowance. */
+    overage: string | null;
+  } | null;
 };

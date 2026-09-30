@@ -11,7 +11,12 @@ export const apiKeySchema = z
   .trim()
   .regex(/^re_[A-Za-z0-9_-]{3,}$/, "That doesn't look like a Resend key. Keys start with re_.");
 
-export const addConnectionSchema = z.object({ name: connectionNameSchema, apiKey: apiKeySchema });
+export const addConnectionSchema = z.object({
+  name: connectionNameSchema,
+  apiKey: apiKeySchema,
+  /** Agency, 16th connection onwards: the Owner confirmed the extra monthly cost (PRICING §6). */
+  confirmExtraCost: z.boolean().optional(),
+});
 export type AddConnectionInput = z.infer<typeof addConnectionSchema>;
 
 const idSchema = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id.");

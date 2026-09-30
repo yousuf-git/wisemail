@@ -3,6 +3,7 @@ import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
 import { aiTriage } from "@/inngest/functions/ai-triage";
 import { applyPlanChange } from "@/inngest/functions/apply-plan-change";
+import { billingGrace } from "@/inngest/functions/billing-grace";
 import { bulkDelete } from "@/inngest/functions/bulk-delete";
 import { cleanupRules } from "@/inngest/functions/cleanup-rules";
 import { deleteConnectionData } from "@/inngest/functions/delete-connection-data";
@@ -13,6 +14,7 @@ import { fetchInbound } from "@/inngest/functions/fetch-inbound";
 import { importContacts } from "@/inngest/functions/import-contacts";
 import { processEvent } from "@/inngest/functions/process-event";
 import { purgeTrash } from "@/inngest/functions/purge-trash";
+import { reportUsage } from "@/inngest/functions/report-usage";
 import { retention } from "@/inngest/functions/retention";
 import { sendBroadcast } from "@/inngest/functions/send-broadcast";
 import { sendEmail } from "@/inngest/functions/send-email";
@@ -47,5 +49,7 @@ export const { GET, POST, PUT } = serve({
     usageThresholds,
     applyPlanChange,
     trialEnd,
+    reportUsage,
+    billingGrace,
   ],
 });
