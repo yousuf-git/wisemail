@@ -48,7 +48,7 @@ const appEnv = {
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
-  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : ci ? 2 : 4,
+  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : 2,
   forbidOnly: ci,
   retries: ci ? 1 : 0,
   timeout: 180_000,

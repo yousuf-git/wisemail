@@ -22,7 +22,7 @@ test("invite a member, accept in a second browser session, see them in the list 
     page.getByRole("button", { name: "Invite member" }),
     page.getByRole("heading", { name: "Invite a member" }),
   );
-  await page.getByLabel("Email").fill(invitee.email);
+  await page.getByRole("textbox", { name: "Email" }).fill(invitee.email);
   await page.getByRole("button", { name: "Create invite link" }).click();
   await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Done" }).click();
@@ -76,7 +76,7 @@ test("an invitation for another address is refused with a clear message", async 
     page.getByRole("button", { name: "Invite member" }),
     page.getByRole("heading", { name: "Invite a member" }),
   );
-  await page.getByLabel("Email").fill(invitee.email);
+  await page.getByRole("textbox", { name: "Email" }).fill(invitee.email);
   await page.getByRole("button", { name: "Create invite link" }).click();
   await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 20_000 });
   const inviteLink = await outboxLink(page, invitee.email, "invitation");

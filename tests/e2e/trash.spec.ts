@@ -25,6 +25,8 @@ test("trash a conversation, restore it, then delete it permanently", async ({ pa
   await row.click();
   await expect(page.getByTestId("message").first()).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("thread-view").getByRole("button", { name: /Trash/ }).click();
+  // The row leaves the list optimistically; the toast confirms the server has it.
+  await expect(page.getByText("Moved to Trash")).toBeVisible({ timeout: 30_000 });
   await expect(row).toHaveCount(0, { timeout: 20_000 });
 
   // It waits in Trash with a countdown, and can be restored.
@@ -41,6 +43,8 @@ test("trash a conversation, restore it, then delete it permanently", async ({ pa
   await page.getByTestId("thread-row").filter({ hasText: subject }).click();
   await expect(page.getByTestId("message").first()).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("thread-view").getByRole("button", { name: /Trash/ }).click();
+  // The row leaves the list optimistically; the toast confirms the server has it.
+  await expect(page.getByText("Moved to Trash")).toBeVisible({ timeout: 30_000 });
   await page.goto(`/${ws.slug}/inbox/trash`);
   await expect(trashed).toBeVisible({ timeout: 20_000 });
   await clickUntilVisible(

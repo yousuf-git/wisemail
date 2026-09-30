@@ -45,7 +45,7 @@ if (!/perf/i.test(dbName)) {
   process.exit(1);
 }
 
-process.env.NODE_ENV = "test";
+(process.env as Record<string, string>).NODE_ENV = "test";
 process.env.MONGODB_URI = uri;
 process.env.BETTER_AUTH_SECRET ??= "perf-secret-perf-secret-perf-secret-0000";
 process.env.BETTER_AUTH_URL ??= "http://localhost:3000";

@@ -40,7 +40,12 @@ test.describe("mobile smoke", () => {
     );
     await page.getByRole("dialog").getByRole("link", { name: "Inbox" }).click();
     await page.waitForURL(/\/inbox/);
-    await expect(page.getByRole("navigation", { name: "Mail folders" })).toBeVisible();
+    // Folders once an account is connected; this user has none, so the empty state instead.
+    await expect(
+      page
+        .getByRole("navigation", { name: "Mail folders" })
+        .or(page.getByRole("link", { name: "Connect an account" })),
+    ).toBeVisible();
     await noSidewaysScroll("inbox");
 
     for (const path of ["activity", "insights", "alerts", "settings/connections", "compose"]) {

@@ -51,17 +51,26 @@ test("inbound mail reaches the inbox, gets a reply, and receipts arrive through 
     page.getByTestId("inline-reply"),
   );
   const reply = page.getByTestId("inline-reply");
-  await reply.getByRole("textbox").last().click();
+  // The rich-text editor loads lazily; type only once it is on screen, not into the Subject field.
+  const body = reply.locator('[contenteditable="true"]');
+  await expect(body).toBeVisible({ timeout: 20_000 });
+  await body.click();
   await page.keyboard.type("Thanks Jane, it ships tomorrow.");
   await reply.getByRole("button", { name: "Send now" }).click();
-  await expect(page.getByText("Sent.", { exact: true })).toBeVisible({ timeout: 30_000 });
+  // Don't reload while the send is in flight: wait for the confirmation or the reply itself
+  // (a live update can replace the brief "Sent." panel with the new message).
+  await expect(
+    page.getByText("Sent.", { exact: true }).or(page.getByTestId("message").nth(1)),
+  ).toBeVisible({ timeout: 30_000 });
 
   // The reply shows up as our outbound message once the send job has run.
   await expect(async () => {
     await page.reload();
     await expect(page.getByTestId("message")).toHaveCount(2, { timeout: 3_000 });
   }).toPass({ timeout: 60_000 });
-  await expect(page.getByTestId("thread-view")).toContainText("it ships tomorrow");
+  // Bodies render inside the sandboxed iframe.
+  const lastBody = page.getByTestId("thread-view").locator("iframe").last().contentFrame();
+  await expect(lastBody.locator("body")).toContainText("it ships tomorrow");
 
   // Receipts arrive as signed webhooks (what `pnpm webhook:test` posts) and fill the steps.
   const replySubject = `Re: ${subject}`;

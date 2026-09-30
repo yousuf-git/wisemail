@@ -45,7 +45,7 @@ test("an alert rule opens an incident and notifies through the bell", async ({ p
     await page.reload();
     await expect(incident).toBeVisible({ timeout: 3_000 });
   }).toPass({ timeout: 90_000 });
-  await expect(incident).toContainText(/spam complaint/i);
+  await expect(incident).toContainText(/marked .* as spam/i);
 
   await expect(page.getByTestId("notification-count")).toBeVisible({ timeout: 20_000 });
   await page.goto(`/${ws.slug}/notifications`);
