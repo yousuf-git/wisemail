@@ -2,18 +2,19 @@
 
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
 
 import { syncNowAction } from "@/app/(app)/[orgSlug]/settings/connections/actions";
 import { Button } from "@/components/ui/button";
 import type { SyncStatusDTO } from "@/lib/dto/sync";
 import { useLiveStatus, useLiveTopics } from "@/lib/realtime/live-context";
+import { scheduleRouterRefresh } from "@/lib/realtime/schedule-refresh";
 import { topics } from "@/lib/realtime/topics";
 import { timeAgo } from "./status";
 
 /** Re-read of a running sync while the live stream is down; live events do the rest. */
-const POLL_MS = 3000;
+const POLL_MS = 5000;
 
 export function SyncStatus({
   orgSlug,
@@ -33,12 +34,13 @@ export function SyncStatus({
   const running = sync?.state === "running";
   const failed = sync?.state === "failed";
 
-  useLiveTopics([topics.connection(connectionId)], () => startTransition(() => router.refresh()));
+  useLiveTopics([topics.connection(connectionId)], () => scheduleRouterRefresh(router));
   const live = useLiveStatus() === "live";
   useEffect(() => {
     if (!running) return;
     // Slow safety net while live (a missed event heals), faster poll when the stream is down.
-    const id = setInterval(() => router.refresh(), live ? 15_000 : POLL_MS);
+    // Coalesce with LiveRefresh so N connection cards don't each re-run the org layout.
+    const id = setInterval(() => scheduleRouterRefresh(router), live ? 15_000 : POLL_MS);
     return () => clearInterval(id);
   }, [running, live, router]);
 
@@ -47,7 +49,7 @@ export function SyncStatus({
       const result = await syncNowAction(orgSlug, { connectionId });
       if (!result.ok) toast.error(result.error.message);
       else if (result.data.mode === "already_running") toast.info("A sync is already running");
-      router.refresh();
+      scheduleRouterRefresh(router, 0);
     });
   }
 

@@ -1,9 +1,19 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Reply } from "lucide-react";
 
-import { Composer, type ComposerReply, type SenderOptionDTO } from "@/components/composer/composer";
+import type { ComposerReply, SenderOptionDTO } from "@/components/composer/composer";
 import { Button } from "@/components/ui/button";
+
+const Composer = dynamic(() => import("@/components/composer/composer").then((m) => m.Composer), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-lg border border-line px-3 py-6 text-sm text-ink-muted">
+      Opening reply…
+    </div>
+  ),
+});
 
 /** Inline reply under the thread: a quiet "Reply" prompt that opens the composer (`variant="inline"`). */
 export function ReplyBox({

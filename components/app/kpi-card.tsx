@@ -1,8 +1,6 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import { useReducedMotion } from "motion/react";
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 
 import { cn } from "@/lib/utils";
 
@@ -39,8 +37,8 @@ export type KpiCardProps = {
   className?: string;
 };
 
+/** Tiny SVG sparkline — keeps Recharts off the overview/home bundle. */
 function Sparkline({ series, tone }: { series: number[]; tone: KpiTone }) {
-  const reduced = useReducedMotion();
   const color = toneVar[tone];
   if (series.length < 2) {
     return (
@@ -49,40 +47,40 @@ function Sparkline({ series, tone }: { series: number[]; tone: KpiTone }) {
       </div>
     );
   }
-  const data = series.map((v, i) => ({ i, v }));
+
+  const width = 160;
+  const height = 32;
+  const padX = 3;
+  const padY = 3;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const span = max - min || 1;
+  const innerW = width - padX * 2;
+  const innerH = height - padY * 2;
+  const points = series.map((v, i) => {
+    const x = padX + (i / (series.length - 1)) * innerW;
+    const y = padY + (1 - (v - min) / span) * innerH;
+    return { x, y };
+  });
+  const line = points.map((p) => `${p.x},${p.y}`).join(" ");
+  const last = points[points.length - 1]!;
+  const area = `M ${padX},${height - padY} L ${line} L ${width - padX},${height - padY} Z`;
+
   return (
     <div aria-hidden className="h-8 w-full min-w-0">
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-        minWidth={0}
-        initialDimension={{ width: 160, height: 32 }}
-      >
-        <AreaChart
-          data={data}
-          margin={{ top: 3, right: 3, bottom: 2, left: 3 }}
-          accessibilityLayer={false}
-        >
-          <YAxis hide domain={["dataMin", "dataMax"]} />
-          <Area
-            type="monotone"
-            dataKey="v"
-            stroke={color}
-            strokeWidth={1.6}
-            fill={color}
-            fillOpacity={0.12}
-            isAnimationActive={!reduced}
-            animationDuration={600}
-            dot={(props: { cx?: number; cy?: number; index?: number }) =>
-              props.index === data.length - 1 && props.cx != null && props.cy != null ? (
-                <circle key="last" cx={props.cx} cy={props.cy} r={2.6} fill={color} />
-              ) : (
-                <g key={props.index} />
-              )
-            }
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" preserveAspectRatio="none">
+        <path d={area} fill={color} fillOpacity={0.12} />
+        <polyline
+          points={line}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.6}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <circle cx={last.x} cy={last.y} r={2.6} fill={color} />
+      </svg>
     </div>
   );
 }

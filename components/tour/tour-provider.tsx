@@ -2,20 +2,19 @@
 
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { NextStepProvider, useNextStep } from "nextstepjs";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { TourBootstrapDTO } from "@/lib/tours/types";
 import { TOUR_START_EVENT, TourContext } from "./tour-context";
 
-// The runner (NextStepjs overlay, card, Wizi) loads after the page is interactive (TRD §2.11).
-const TourRunner = dynamic(() => import("./tour-runner").then((m) => m.TourRunner), {
+// nextstepjs + runner stay off the critical path (TRD §2.11).
+const TourOverlay = dynamic(() => import("./tour-overlay").then((m) => m.TourOverlay), {
   ssr: false,
 });
 
 /**
  * Mounted in the org layout. Holds what the server knows (progress, the steps this member sees)
- * and lets the Help menu and user menu start a tour; the heavy parts load lazily in `TourRunner`.
+ * and lets the Help menu and user menu start a tour; the heavy parts load lazily in `TourOverlay`.
  */
 export function TourProvider({
   orgSlug,
@@ -26,26 +25,8 @@ export function TourProvider({
   bootstrap: TourBootstrapDTO;
   children: React.ReactNode;
 }) {
-  return (
-    <NextStepProvider>
-      <Inner orgSlug={orgSlug} bootstrap={bootstrap}>
-        {children}
-      </Inner>
-    </NextStepProvider>
-  );
-}
-
-function Inner({
-  orgSlug,
-  bootstrap,
-  children,
-}: {
-  orgSlug: string;
-  bootstrap: TourBootstrapDTO;
-  children: React.ReactNode;
-}) {
-  const { isNextStepVisible } = useNextStep();
   const [pending, setPending] = useState<{ tourId: string; nonce: number } | null>(null);
+  const [running, setRunning] = useState(false);
   const nonce = useRef(0);
   const router = useRouter();
   const pathname = usePathname();
@@ -58,20 +39,21 @@ function Inner({
   }, []);
 
   const api = useMemo(
-    () => ({ tours: bootstrap.tours, start, running: isNextStepVisible }),
-    [bootstrap.tours, start, isNextStepVisible],
+    () => ({ tours: bootstrap.tours, start, running }),
+    [bootstrap.tours, start, running],
   );
 
   return (
     <TourContext.Provider value={api}>
       {children}
-      <TourRunner
+      <TourOverlay
         orgSlug={orgSlug}
         bootstrap={bootstrap}
         request={pending}
         onRequestHandled={() => setPending(null)}
         pathname={pathname}
         navigate={(path) => router.push(path)}
+        onRunningChange={setRunning}
       />
     </TourContext.Provider>
   );

@@ -109,7 +109,8 @@ export class RealtimeHub {
   private activeMode: "changestream" | "poll" | null = null;
 
   constructor(options: HubOptions = {}) {
-    this.options = { mode: "auto", pollMs: 1000, idleCloseMs: 2000, ...options };
+    // 3s is enough for local/dev when change streams are unavailable; 1s was busy for little gain.
+    this.options = { mode: "auto", pollMs: 3000, idleCloseMs: 2000, ...options };
   }
 
   get size(): number {
