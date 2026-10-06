@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 134" width="128" height="134">
+  <defs>
+    <style>
+      .wizi-group {
+        animation: float 3s ease-in-out infinite;
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50%       { transform: translateY(-8px); }
+      }
+      .wizi-eye {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: blink 4s ease-in-out infinite;
+      }
+      @keyframes blink {
+        0%, 86%, 100% { transform: scaleY(1); }
+        91%           { transform: scaleY(0.07); }
+        96%           { transform: scaleY(1); }
+      }
+      .wizi-wave {
+        transform-box: fill-box;
+        transform-origin: 0% 100%;
+        animation: wave 2.5s ease-in-out infinite;
+      }
+      @keyframes wave {
+        0%, 100% { transform: rotate(0deg); }
+        30%      { transform: rotate(-24deg); }
+        70%      { transform: rotate(24deg); }
+      }
+      .wizi-shadow {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: shadow 3s ease-in-out infinite;
+      }
+      @keyframes shadow {
+        0%, 100% { transform: scaleX(1); opacity: .09; }
+        50%      { transform: scaleX(.72); opacity: .04; }
+      }
+    </style>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="64" cy="128" rx="34" ry="5.5" fill="#3c2d14" class="wizi-shadow"/>
+
+  <!-- wizi character -->
+  <g class="wizi-group">
+    <!-- envelope body -->
+    <rect x="17" y="52" width="94" height="62" rx="7" fill="#fff9ee" stroke="#d9c7a2" stroke-width="2"/>
+
+    <!-- inner V-fold lines -->
+    <polyline points="17,52 64,78 111,52" fill="none" stroke="#d9c7a2" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- open flap pointing up -->
+    <path d="M17,52 L64,28 L111,52 Z" fill="#f6e4be" stroke="#d9c7a2" stroke-width="2"
+          stroke-linejoin="round"/>
+
+    <!-- accent dot on flap -->
+    <circle cx="92" cy="38" r="5" fill="#0ea5e9"/>
+    <circle cx="93.5" cy="36.5" r="1.8" fill="white" opacity=".45"/>
+
+    <!-- left arm (static) -->
+    <line x1="17" y1="78" x2="3" y2="70" stroke="#1f1e1c" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- right arm (waving) — pivot at shoulder (111, 78) -->
+    <g class="wizi-wave">
+      <line x1="111" y1="78" x2="125" y2="70" stroke="#1f1e1c" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- legs -->
+    <line x1="50" y1="114" x2="43" y2="125" stroke="#1f1e1c" stroke-width="4" stroke-linecap="round"/>
+    <line x1="78" y1="114" x2="85" y2="125" stroke="#1f1e1c" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- left eye -->
+    <g class="wizi-eye">
+      <circle cx="50" cy="72" r="6" fill="#1f1e1c"/>
+      <circle cx="52" cy="70" r="2.2" fill="white"/>
+    </g>
+
+    <!-- right eye -->
+    <g class="wizi-eye">
+      <circle cx="78" cy="72" r="6" fill="#1f1e1c"/>
+      <circle cx="80" cy="70" r="2.2" fill="white"/>
+    </g>
+
+    <!-- smile -->
+    <path d="M55,84 Q64,92 73,84" fill="none" stroke="#3a342c" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>
