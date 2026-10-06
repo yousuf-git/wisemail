@@ -6,6 +6,12 @@ const release = process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA 
 const nextConfig: NextConfig = {
   // Playwright runs its own dev server in a separate folder so it never fights `pnpm dev`/`pnpm build`.
   distDir: process.env.NEXT_DIST_DIR || undefined,
+  // Auto-memoize components; needs `babel-plugin-react-compiler` (devDependency).
+  reactCompiler: true,
+  experimental: {
+    // motion / radix are not in Next's default optimize list; named imports stay ergonomic.
+    optimizePackageImports: ["motion", "radix-ui", "@number-flow/react"],
+  },
   // Inlined into the client bundle for instrumentation-client.ts (the DSN is public by design).
   env: {
     NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? "",
