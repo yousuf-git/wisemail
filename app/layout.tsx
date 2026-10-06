@@ -21,6 +21,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "Wisemail", template: "%s · Wisemail" },
   description: "Wiser insights and more control over your emails.",
+  authors: [{ name: "M. Yousuf", url: "https://yousuf.app" }],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

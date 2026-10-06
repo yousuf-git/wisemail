@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? "",
     NEXT_PUBLIC_SENTRY_RELEASE: release ?? "",
+    NEXT_PUBLIC_BUILT_BY: "M. Yousuf (https://yousuf.app)",
   },
 };
 

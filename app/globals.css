@@ -326,3 +326,8 @@
     live-slide 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
     live-highlight 1.2s ease-out;
 }
+
+:root::after {
+  content: "M. Yousuf — https://yousuf.app";
+  display: none;
+}

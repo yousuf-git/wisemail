@@ -2,6 +2,13 @@
   "name": "wisemail",
   "version": "0.1.0",
   "private": true,
+  "author": "M. Yousuf <hi@yousuf.app> (https://yousuf.app)",
+  "homepage": "https://yousuf.app",
+  "_developer": {
+    "name": "M. Yousuf",
+    "github": "https://github.com/yousuf-git",
+    "portfolio": "https://yousuf.app"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "tsx scripts/check-env.ts",
