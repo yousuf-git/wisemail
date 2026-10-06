@@ -27,8 +27,11 @@ export default async function InsightsPage({
     ? (parsed.data as { days: InsightRange } & InsightFilters)
     : { days: INSIGHT_RANGES[0] as InsightRange };
 
-  const options = await getInsightFilterOptions(ctx);
-  const initial = options.hasConnection ? await getInsights(ctx, { days, filters }) : null;
+  const [options, insights] = await Promise.all([
+    getInsightFilterOptions(ctx),
+    getInsights(ctx, { days, filters }),
+  ]);
+  const initial = options.hasConnection ? insights : null;
 
   return (
     <>

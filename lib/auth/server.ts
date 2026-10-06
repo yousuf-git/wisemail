@@ -49,6 +49,8 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   // Shared client: enables the adapter's transactions (requires a replica set, see `pnpm db:dev`).
   database: mongodbAdapter(client.db(), { client, transaction: true }),
+  // No session.cookieCache: it skips the DB and would keep revoked sessions (password reset,
+  // ban, sign-out elsewhere) valid until maxAge — not acceptable for a multi-tenant SaaS.
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

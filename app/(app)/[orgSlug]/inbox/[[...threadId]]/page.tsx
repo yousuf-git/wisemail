@@ -18,14 +18,13 @@ export default async function InboxPage({ params }: PageProps<"/[orgSlug]/inbox/
   if (route.folder === "scheduled") redirect(`/${orgSlug}/scheduled`);
 
   const ctx = await requireOrg(orgSlug);
-  const options = await getMailFilterOptions(ctx);
   const canSend = ctx.can("email:send");
   const folder = route.folder;
 
-  const [initialList, initialThread, senders] = await Promise.all([
-    options.hasConnection
-      ? listThreads(ctx, { folder, limit: 30 })
-      : Promise.resolve({ items: [], nextCursor: null }),
+  // Filter options, list, open thread and senders are independent after auth.
+  const [options, initialList, initialThread, senders] = await Promise.all([
+    getMailFilterOptions(ctx),
+    listThreads(ctx, { folder, limit: 30 }),
     route.threadId && folder !== "trash"
       ? getThread(ctx, route.threadId).catch((error) => {
           if (error instanceof ServiceError && error.code === "not_found") return notFound();
@@ -34,13 +33,14 @@ export default async function InboxPage({ params }: PageProps<"/[orgSlug]/inbox/
       : Promise.resolve(null),
     canSend && ctx.can("sender:read") ? listSenders(ctx) : Promise.resolve([]),
   ]);
+  const list = options.hasConnection ? initialList : { items: [], nextCursor: null };
 
   return (
     <InboxView
       key={folder}
       orgSlug={orgSlug}
       folder={folder}
-      initialList={initialList}
+      initialList={list}
       initialThread={initialThread}
       senders={senders}
       canSend={canSend}

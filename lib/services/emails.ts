@@ -512,27 +512,30 @@ export async function getThread(ctx: OrgContext, threadId: string): Promise<Thre
     const content = contentBy.get(id);
     const list = attachmentsBy.get(id) ?? [];
 
-    // Signed inline URLs for every image the HTML references by `cid:`.
+    // Signed inline URLs for cid: images and attachment thumbnails (in parallel).
     const byCid = new Map(list.filter((a) => a.contentId).map((a) => [a.contentId!, a]));
-    const urls = new Map<string, string | null>();
-    for (const [cid, att] of byCid) urls.set(cid, await attachmentInlineUrl(att));
+    const cidEntries = [...byCid.entries()];
+    const thumbTargets = list.filter(
+      (att) =>
+        !att.embedded && isInlineImageType(att.contentType) && att.availability !== "unavailable",
+    );
+    const [cidUrls, thumbUrls] = await Promise.all([
+      Promise.all(cidEntries.map(([, att]) => attachmentInlineUrl(att))),
+      Promise.all(thumbTargets.map((att) => attachmentInlineUrl(att))),
+    ]);
+    const urls = new Map(cidEntries.map(([cid], i) => [cid, cidUrls[i] ?? null]));
     const html =
       content?.html === undefined || content.html === null
         ? null
         : replaceContentIds(content.html, (cid) => urls.get(cid) ?? null);
 
-    const dtos: AttachmentDTO[] = [];
-    for (const att of list) {
+    const thumbById = new Map(thumbTargets.map((att, i) => [att._id.toHexString(), thumbUrls[i]]));
+    const dtos: AttachmentDTO[] = list.map((att) => {
       const dto = toAttachmentDTO(att);
-      if (
-        !att.embedded &&
-        isInlineImageType(att.contentType) &&
-        att.availability !== "unavailable"
-      ) {
-        dto.thumbnailUrl = await attachmentInlineUrl(att);
-      }
-      dtos.push(dto);
-    }
+      const thumb = thumbById.get(att._id.toHexString());
+      if (thumb !== undefined) dto.thumbnailUrl = thumb;
+      return dto;
+    });
 
     messages.push({
       id,

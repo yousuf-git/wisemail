@@ -12,10 +12,14 @@ export async function getOverview(
   ctx: OrgContext,
 ): Promise<{ overview: Overview; insights: InsightsDTO | null; canSeeInsights: boolean }> {
   const canSeeInsights = ctx.can("insights:read");
-  const { hasConnection } = await getInsightFilterOptions(ctx);
-  const insights = canSeeInsights && hasConnection ? await getInsights(ctx, { days: 7 }) : null;
+  // Filter options and rollups are independent; skip rollups only when the member cannot see them.
+  const [options, rawInsights] = await Promise.all([
+    getInsightFilterOptions(ctx),
+    canSeeInsights ? getInsights(ctx, { days: 7 }) : Promise.resolve(null),
+  ]);
+  const insights = options.hasConnection ? rawInsights : null;
   return {
-    overview: buildOverview(insights, hasConnection, canSeeInsights),
+    overview: buildOverview(insights, options.hasConnection, canSeeInsights),
     insights,
     canSeeInsights,
   };

@@ -122,7 +122,9 @@ export async function getInsights(
   const filters = query.filters ?? {};
   const now = query.now ?? new Date();
 
-  const orgZone = await getOrgTimeZone(ctx.org.id);
+  const allowed = scopeAllows(ctx, filters);
+  // Timezone only matters for ≤30 day ranges; skip the settings read for 90-day UTC buckets.
+  const orgZone = days <= 30 && allowed ? await getOrgTimeZone(ctx.org.id) : "UTC";
   const currentGranularity = days <= 30 ? "hour" : "day";
   const timezone = days <= 30 ? orgZone : "UTC";
   const keys = lastDayKeys(now, timezone, days);
@@ -130,7 +132,6 @@ export async function getInsights(
   const prevKeys = lastDayKeys(new Date(from.getTime() - 1), timezone, days);
   const prevFrom = zonedMidnight(prevKeys[0]!, timezone);
 
-  const allowed = scopeAllows(ctx, filters);
   const previousGranularity = days <= 7 ? "hour" : "day";
   const [current, previous] = allowed
     ? await Promise.all([

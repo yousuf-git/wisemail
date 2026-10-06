@@ -115,18 +115,44 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
   const activeOrganizationId =
     (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
 
-  const access = await resolveOrgAccess(userId, orgSlug);
+  // Membership and the switcher list are independent; load them together.
+  const [access, orgs] = await Promise.all([
+    resolveOrgAccess(userId, orgSlug),
+    listUserOrgs(userId),
+  ]);
   if (!access) return { status: "not_member" };
 
-  const orgs = await listUserOrgs(userId);
   const orgOid = new Types.ObjectId(access.org.id);
 
-  // Self-heal: org_settings is created by the org-creation hook; re-provision if it is missing.
-  const settings = await OrgSettingsModel.findOne({ orgId: orgOid }, { suspended: 1 }).lean();
+  // Overlap the active-org write with the settings / scope reads (cookies often cannot be
+  // written during RSC; the session row still updates).
+  const activeOrgPromise =
+    activeOrganizationId !== access.org.id
+      ? headers().then((hdrs) =>
+          auth.api
+            .setActiveOrganization({
+              headers: hdrs,
+              body: { organizationId: access.org.id },
+            })
+            .catch(() => undefined),
+        )
+      : Promise.resolve(undefined);
+
+  // Suspension check and project scope are independent once membership is known.
+  const [settings, projectScope] = await Promise.all([
+    OrgSettingsModel.findOne({ orgId: orgOid }, { suspended: 1 }).lean(),
+    loadProjectScope({
+      orgId: access.org.id,
+      memberId: access.memberId,
+      role: access.role,
+    }),
+  ]);
   if (settings?.suspended) {
+    await activeOrgPromise;
     return { status: "suspended", org: access.org, reason: settings.suspended.reason };
   }
 
+  // Self-heal: org_settings is created by the org-creation hook; re-provision if it is missing.
   if (!settings) {
     await withTransaction((tx) =>
       provisionOrganization(
@@ -141,26 +167,13 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
     );
   }
 
-  if (activeOrganizationId !== access.org.id) {
-    // Best effort: cookies can't always be written while rendering; the session row still updates.
-    try {
-      await auth.api.setActiveOrganization({
-        headers: await headers(),
-        body: { organizationId: access.org.id },
-      });
-    } catch {}
-  }
+  await activeOrgPromise;
 
   tagOrg(access.org.id);
   tagUser(userId);
 
   const { id, name, email, image } = session.user;
   const user: UserDTO = { id, name, email, image: image ?? null };
-  const projectScope = await loadProjectScope({
-    orgId: access.org.id,
-    memberId: access.memberId,
-    role: access.role,
-  });
   return { status: "ok", ctx: buildOrgContext(user, access, orgs, projectScope) };
 });
 
