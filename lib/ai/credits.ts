@@ -7,6 +7,7 @@ import { connectDb } from "@/lib/db/connect";
 import { AiUsageModel, type AiFeature } from "@/lib/db/models/ai-usage";
 import { OrgSettingsModel, calendarMonth } from "@/lib/db/models/org-settings";
 import { withTransaction } from "@/lib/db/transaction";
+import { forgetOrgSettings, getOrgSettings } from "@/lib/services/org-settings";
 import { AiError } from "@/lib/ai/errors";
 import type { AiBalanceDTO } from "@/lib/ai/types";
 
@@ -56,7 +57,7 @@ export async function syncAiPeriod(orgId: Types.ObjectId, now: Date = new Date()
   await connectDb();
   const [entitlements, settings] = await Promise.all([
     getEntitlements(orgId, { now }),
-    OrgSettingsModel.findOne({ orgId }, { aiCredits: 1 }).lean(),
+    getOrgSettings(orgId),
   ]);
   const period =
     entitlements.billingPeriod.end.getTime() > now.getTime()
@@ -78,11 +79,13 @@ export async function syncAiPeriod(orgId: Types.ObjectId, now: Date = new Date()
         },
       },
     );
+    forgetOrgSettings(orgId);
   } else if (credits?.periodAllowance !== allowance) {
     await OrgSettingsModel.updateOne(
       { orgId, "aiCredits.periodAllowance": credits?.periodAllowance ?? 0 },
       { $set: { "aiCredits.periodAllowance": allowance } },
     );
+    forgetOrgSettings(orgId);
   }
   return { entitlements, period, allowance };
 }
@@ -92,7 +95,7 @@ export async function getAiBalance(
   now: Date = new Date(),
 ): Promise<AiBalanceDTO> {
   const { period } = await syncAiPeriod(orgId, now);
-  const settings = await OrgSettingsModel.findOne({ orgId }, { aiCredits: 1 }).lean();
+  const settings = await getOrgSettings(orgId);
   const c = settings?.aiCredits;
   const allowance = c?.periodAllowance ?? 0;
   const used = c?.periodUsed ?? 0;

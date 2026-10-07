@@ -1,4 +1,5 @@
 import type { ClientSession, Types } from "mongoose";
+import { cache } from "react";
 
 import { OrgSettingsModel, calendarMonth } from "@/lib/db/models/org-settings";
 import { writeAuditLog } from "./audit";
@@ -59,6 +60,29 @@ export async function provisionOrganization(
   return { created };
 }
 
-export async function getOrgSettings(orgId: Types.ObjectId) {
-  return OrgSettingsModel.findOne({ orgId }).lean();
+/**
+ * The layout, the DAL, entitlements and AI credits all read the same document while rendering one
+ * page; share one read per request. React `cache` only holds during a server render, so actions,
+ * route handlers and jobs still read fresh on every call. Writers that run during a render call
+ * `forgetOrgSettings` so later readers see their change.
+ */
+const settingsReads = cache(() => new Map<string, ReturnType<typeof readOrgSettings>>());
+
+function readOrgSettings(orgId: Types.ObjectId) {
+  return OrgSettingsModel.findOne({ orgId }).lean().exec();
+}
+
+export function getOrgSettings(orgId: Types.ObjectId) {
+  const reads = settingsReads();
+  const key = orgId.toHexString();
+  let read = reads.get(key);
+  if (!read) {
+    read = readOrgSettings(orgId);
+    reads.set(key, read);
+  }
+  return read;
+}
+
+export function forgetOrgSettings(orgId: Types.ObjectId) {
+  settingsReads().delete(orgId.toHexString());
 }

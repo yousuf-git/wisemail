@@ -23,6 +23,7 @@ import {
   type PlanState,
 } from "@/lib/db/models/org-settings";
 import { ServiceError } from "@/lib/services/errors";
+import { getOrgSettings } from "@/lib/services/org-settings";
 
 /**
  * Entitlements: the plan catalog merged with the org's overrides and its trial (TRD §2.10).
@@ -132,9 +133,10 @@ export async function getEntitlements(
   options: Options = {},
 ): Promise<Entitlements> {
   await connectDb();
-  const settings = await OrgSettingsModel.findOne({ orgId }, null, {
-    session: options.session,
-  }).lean();
+  // Inside a transaction read through it; otherwise share the request's read.
+  const settings = options.session
+    ? await OrgSettingsModel.findOne({ orgId }, null, { session: options.session }).lean()
+    : await getOrgSettings(orgId);
   return computeEntitlements(settings, options.now);
 }
 

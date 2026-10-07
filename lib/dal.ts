@@ -7,7 +7,11 @@ import { cache } from "react";
 import { auth } from "@/lib/auth/server";
 import { tagOrg, tagUser } from "@/lib/observability/context";
 import { roleHasPermission, type Permission, type Role } from "@/lib/auth/permissions";
-import { provisionOrganization } from "@/lib/services/org-settings";
+import {
+  forgetOrgSettings,
+  getOrgSettings,
+  provisionOrganization,
+} from "@/lib/services/org-settings";
 import { loadProjectScope } from "@/lib/services/project-scope";
 import {
   listUserOrgs,
@@ -15,7 +19,6 @@ import {
   type OrgAccess,
   type OrgRef,
 } from "@/lib/services/tenancy";
-import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { withTransaction } from "@/lib/db/transaction";
 import { Types } from "mongoose";
 
@@ -140,7 +143,7 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
 
   // Suspension check and project scope are independent once membership is known.
   const [settings, projectScope] = await Promise.all([
-    OrgSettingsModel.findOne({ orgId: orgOid }, { suspended: 1 }).lean(),
+    getOrgSettings(orgOid),
     loadProjectScope({
       orgId: access.org.id,
       memberId: access.memberId,
@@ -165,6 +168,7 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContextRe
         { session: tx },
       ),
     );
+    forgetOrgSettings(orgOid);
   }
 
   await activeOrgPromise;
