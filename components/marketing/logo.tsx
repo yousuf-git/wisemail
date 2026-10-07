@@ -27,7 +27,7 @@ export function Logo({ className }: { className?: string }) {
       href="/"
       aria-label="Wisemail home"
       className={cn(
-        "inline-flex items-center gap-2 rounded-md text-lg font-extrabold tracking-[-0.02em] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "inline-flex items-center gap-2 rounded-md font-display text-lg font-bold tracking-[-0.03em] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         className,
       )}
     >

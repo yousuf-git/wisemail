@@ -1,85 +1,96 @@
-import { ArrowRight, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
-import { Wizi } from "@/components/mascot/wizi";
 import { Button } from "@/components/ui/button";
-import { HeroMock } from "./hero-mock";
+import { Logomark } from "./logo";
+import { HeroJourney } from "./hero-journey";
 import { Reveal } from "./reveal";
-import { Container } from "./section";
+import { Container, Tone } from "./section";
 
-const facts = [
-  { icon: KeyRound, text: "Uses your own Resend account" },
-  { icon: ShieldCheck, text: "API keys encrypted at rest" },
-  { icon: Sparkles, text: "Free plan, no card" },
-];
-
+/**
+ * Poster hero: brand first, one idea, one live product moment.
+ * Not a left-copy / right-dashboard layout.
+ */
 export function Hero() {
   return (
-    <section className="relative overflow-x-clip pt-14 pb-6 sm:pt-20">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 h-[520px] w-[920px] max-w-full -translate-x-1/2 bg-[radial-gradient(closest-side,var(--glow-soft),transparent)]"
+    <Tone
+      tone="light"
+      as="section"
+      className="relative flex min-h-[100dvh] flex-col overflow-x-clip pt-6 pb-10 sm:pt-8 sm:pb-14"
+    >
+      <Image
+        src="/marketing/hero-atmosphere.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="pointer-events-none object-cover object-[center_20%] opacity-90"
       />
-      <Container className="relative grid gap-12">
-        <div className="grid max-w-3xl gap-6">
-          <Reveal y={10}>
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-ink-secondary shadow-sm">
-              <span className="size-1.5 rounded-full bg-success" aria-hidden />
-              The control room for your Resend accounts
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-canvas/55 via-canvas/25 to-canvas"
+      />
+
+      <Container className="relative flex flex-1 flex-col justify-between gap-16 pt-8 sm:gap-20 sm:pt-10 lg:gap-24">
+        <div className="grid max-w-5xl gap-10 sm:gap-12">
+          <Reveal y={18}>
+            <p className="inline-flex items-center gap-3 font-display text-2xl font-bold tracking-[-0.04em] text-ink sm:text-3xl">
+              <Logomark className="size-9 sm:size-10" />
+              Wisemail
             </p>
           </Reveal>
-          <Reveal delay={0.05} y={14}>
-            <h1 className="text-[2.5rem] leading-[1.03] font-extrabold tracking-[-0.035em] text-balance sm:text-6xl">
-              See what happens after you hit send.
-            </h1>
-          </Reveal>
-          <Reveal delay={0.1} y={14}>
-            <p className="max-w-[58ch] text-lg leading-8 text-pretty text-ink-secondary">
-              Wisemail connects to Resend in a minute and keeps every event. You get an inbox, read
-              receipts, insights and alerts on top of it, without writing a single webhook handler.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15} y={14}>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button asChild size="lg" className="h-12 rounded-md px-7 text-base font-bold">
-                <Link href="/sign-up">
-                  Start free <ArrowRight aria-hidden />
+
+          <div className="grid gap-8">
+            <Reveal delay={0.08} y={28}>
+              <h1 className="max-w-[12ch] font-display text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.88] font-bold tracking-[-0.055em] text-balance">
+                See who
+                <span className="block">opens.</span>
+              </h1>
+            </Reveal>
+
+            <Reveal delay={0.16} y={20}>
+              <p className="max-w-[32ch] text-lg leading-8 text-pretty text-ink-secondary sm:text-xl sm:leading-9">
+                Marketing that talks back — opens, clicks and alerts on your own Resend account.
+              </p>
+            </Reveal>
+
+            <Reveal delay={0.22} y={16}>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="group h-12 rounded-full px-7 text-base font-semibold sm:h-[3.25rem]"
+                >
+                  <Link href="/sign-up">
+                    Start free
+                    <span className="ml-1.5 grid size-8 place-items-center rounded-full bg-accent-ink/15 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
+                      <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden fill="none">
+                        <path
+                          d="M3 8h10M9 4l4 4-4 4"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </Link>
+                </Button>
+                <Link
+                  href="/#how"
+                  className="text-sm font-medium text-ink-muted underline-offset-[6px] transition-colors duration-300 hover:text-ink hover:underline"
+                >
+                  How it works
                 </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 rounded-md px-6 text-base font-semibold"
-              >
-                <Link href="/#how">See how it works</Link>
-              </Button>
-            </div>
-          </Reveal>
-          <Reveal delay={0.2} y={10}>
-            <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-secondary">
-              {facts.map(({ icon: Icon, text }) => (
-                <li key={text} className="inline-flex items-center gap-2">
-                  <Icon className="size-4 text-accent-fill" aria-hidden />
-                  {text}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
+              </div>
+            </Reveal>
+          </div>
         </div>
 
-        <Reveal delay={0.25} y={28} className="relative">
-          <div className="pointer-events-none absolute -top-[68px] right-6 z-10 hidden lg:block">
-            <div className="pointer-events-auto">
-              <Wizi mood="wow" size={92} />
-            </div>
-          </div>
-          <div className="mx-auto w-full max-w-[960px]">
-            <HeroMock />
-            <p className="mt-2 px-1 text-xs text-ink-muted">Illustration with sample data.</p>
-          </div>
+        <Reveal delay={0.28} y={36} className="mt-auto w-full max-w-4xl">
+          <HeroJourney />
         </Reveal>
       </Container>
-    </section>
+    </Tone>
   );
 }

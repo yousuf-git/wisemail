@@ -1,87 +1,133 @@
+"use client";
+
+import gsap from "gsap";
 import { ChevronDown } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 
-import {
-  PLAN_CATALOG,
-  FREE_GRACE_DAYS,
-  FREE_OVER_ALLOWANCE_RETENTION_DAYS,
-  TRIAL_DAYS,
-} from "@/lib/billing/plans";
+import { cn } from "@/lib/utils";
+import { faqItems } from "./faq-items";
 import { Reveal } from "./reveal";
-import { Container, SectionHeading } from "./section";
+import { Container, SectionHeading, Tone } from "./section";
 
-export const faqItems = [
-  {
-    q: "Do I still need Resend?",
-    a: "Yes. Wisemail doesn't send mail itself. It connects to your own Resend account, so you keep sending through Resend and keep paying Resend. Wisemail adds the inbox, history, insights and alerts on top.",
-  },
-  {
-    q: "What does Wisemail need from my Resend account?",
-    a: "A full-access API key, so we can read your domains and register a webhook. Sending-only keys are rejected with an explanation. The webhook uses one of your Resend account's webhook slots.",
-  },
-  {
-    q: "Is my API key safe?",
-    a: "The key is encrypted at rest with AES-256-GCM, using a separate data key for every record. It is decrypted only on the server to talk to Resend, never sent back to your browser, and you only ever see its last four characters.",
-  },
-  {
-    q: "What counts as a tracked email?",
-    a: "Each email you send, each recipient of a broadcast, and each email you receive. Delivered, opened and clicked events for the same email are included. A broadcast to 10,000 contacts counts as 10,000, even though Resend meters marketing by contacts.",
-  },
-  {
-    q: "What happens if I go over my allowance?",
-    a: `We keep collecting events, so nothing is lost. Paid plans are billed for the overage at the end of the period. On Free, after a ${FREE_GRACE_DAYS}-day grace period the emails beyond the allowance are kept for ${FREE_OVER_ALLOWANCE_RETENTION_DAYS} days instead of ${PLAN_CATALOG.free.limits.retentionDays}.`,
-  },
-  {
-    q: "Are open rates accurate?",
-    a: "Open tracking uses a tiny image, and privacy features such as Apple Mail Privacy Protection can inflate it. We label open rates as estimates and treat delivery and bounce data as the solid numbers.",
-  },
-  {
-    q: "Can I delete emails?",
-    a: "Yes. Deleting moves emails to Trash for 30 days with an undo, and Owners and Admins can delete permanently. Wisemail removes its copy and any stored files. Resend keeps its own copy until its retention ends, and the confirmation says so.",
-  },
-  {
-    q: "What happens to my data if I disconnect or cancel?",
-    a: "Removing a connection deletes our webhook in Resend and the encrypted key, and, after you confirm, the data we synced from it. If you cancel a paid plan, it runs until the period ends and then moves to Free.",
-  },
-  {
-    q: "Does AI read my email?",
-    a: "AI is for paid plans, and admins can turn it off for the whole workspace or per feature. Before text goes to the model we strip quoted history and signatures and shorten it, and attachments are never sent. Drafts are never sent automatically.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: `New workspaces get Pro for ${TRIAL_DAYS} days with no card. After that you can pick a plan or stay on Free.`,
-  },
-];
+const landingFaq = faqItems.filter((f) =>
+  [
+    "Do I still need Resend?",
+    "Is my API key safe?",
+    "What counts as a tracked email?",
+    "Does AI read my email?",
+    "Is there a free trial?",
+  ].includes(f.q),
+);
+
+function FaqItem({
+  q,
+  a,
+  open,
+  onToggle,
+}: {
+  q: string;
+  a: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const panelId = useId();
+  const buttonId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    const inner = innerRef.current;
+    if (!panel || !inner) return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const height = open ? inner.scrollHeight : 0;
+
+    if (reduced) {
+      gsap.set(panel, { height: open ? "auto" : 0, opacity: open ? 1 : 0 });
+      return;
+    }
+
+    gsap.to(panel, {
+      height,
+      opacity: open ? 1 : 0,
+      duration: 0.45,
+      ease: "power3.inOut",
+      overwrite: "auto",
+      onComplete: () => {
+        if (open) gsap.set(panel, { height: "auto" });
+      },
+    });
+  }, [open]);
+
+  return (
+    <div className="border-b border-line last:border-b-0">
+      <button
+        type="button"
+        id={buttonId}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <span className="font-display text-base font-semibold tracking-[-0.015em] sm:text-lg">
+          {q}
+        </span>
+        <span
+          className={cn(
+            "grid size-8 shrink-0 place-items-center rounded-full bg-canvas-sunken text-ink-muted transition-transform duration-500 ease-soft",
+            open && "rotate-180 bg-accent-soft text-accent-fill",
+          )}
+        >
+          <ChevronDown className="size-4" aria-hidden />
+        </span>
+      </button>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        ref={panelRef}
+        className="overflow-hidden opacity-0"
+        style={{ height: 0 }}
+      >
+        <div ref={innerRef} className="pr-12 pb-5">
+          <p className="text-[0.9375rem] leading-7 text-ink-secondary">{a}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Faq({
-  items = faqItems,
-  title = "Questions, answered plainly",
+  items,
+  title = "Questions, short answers",
 }: {
   items?: typeof faqItems;
   title?: string;
 }) {
+  const list = items ?? landingFaq;
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
   return (
-    <section id="faq" className="scroll-mt-20 py-20 sm:py-28">
-      <Container className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+    <Tone tone="dark" as="section" id="faq" className="scroll-mt-28 py-24 sm:py-32">
+      <Container className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
         <Reveal>
           <SectionHeading eyebrow="FAQ" title={title} />
         </Reveal>
         <Reveal delay={0.08}>
-          <div className="divide-y divide-line border-y border-line">
-            {items.map((item) => (
-              <details key={item.q} className="group py-1">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md py-4 text-left text-base font-semibold outline-none marker:hidden focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
-                  {item.q}
-                  <ChevronDown
-                    aria-hidden
-                    className="size-4 shrink-0 text-ink-muted transition-transform duration-200 ease-soft group-open:rotate-180"
-                  />
-                </summary>
-                <p className="pr-8 pb-4 text-[0.9375rem] leading-7 text-ink-secondary">{item.a}</p>
-              </details>
+          <div className="rounded-[1.75rem] border border-line/70 bg-surface px-5 shadow-sm sm:px-7">
+            {list.map((item, i) => (
+              <FaqItem
+                key={item.q}
+                q={item.q}
+                a={item.a}
+                open={openIndex === i}
+                onToggle={() => setOpenIndex((cur) => (cur === i ? null : i))}
+              />
             ))}
           </div>
         </Reveal>
       </Container>
-    </section>
+    </Tone>
   );
 }

@@ -1,34 +1,70 @@
 "use client";
 
-import * as m from "motion/react-m";
-
-import { cn } from "@/lib/utils";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef } from "react";
 
 import { MotionProvider } from "@/components/app/motion-provider";
+import { cn } from "@/lib/utils";
 
 export { MotionProvider };
 
-/** Fades and lifts its children in once, when they scroll into view. Reduced motion: fade only. */
+gsap.registerPlugin(ScrollTrigger);
+
+/** Fades and lifts once into view. Reduced motion: visible immediately. */
 export function Reveal({
   children,
   delay = 0,
   className,
-  y = 18,
+  y = 36,
 }: {
   children: React.ReactNode;
   delay?: number;
   className?: string;
   y?: number;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.set(el, { clearProps: "all", opacity: 1, y: 0, filter: "none" });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        el,
+        { opacity: 0, y, filter: "blur(6px)" },
+        {
+          opacity: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 0.95,
+          delay,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 90%",
+            once: true,
+          },
+        },
+      );
+    }, el);
+
+    return () => ctx.revert();
+  }, [delay, y]);
+
   return (
-    <m.div
+    <div
+      ref={ref}
       className={cn("min-w-0", className)}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -8% 0px" }}
-      transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1], delay }}
+      data-reveal
+      style={{ opacity: 0 }}
     >
       {children}
-    </m.div>
+    </div>
   );
 }

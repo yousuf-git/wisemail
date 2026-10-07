@@ -15,9 +15,7 @@ for (const [label, viewport] of [
       page,
     }) => {
       await page.goto("/");
-      await expect(
-        page.getByRole("heading", { level: 1, name: /See what happens after you hit send/ }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: /See who/ })).toBeVisible();
       await expect(page).toHaveTitle(/Wisemail/);
       await expect(page.locator('meta[property="og:title"]')).toHaveCount(1);
 

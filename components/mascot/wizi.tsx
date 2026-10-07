@@ -350,7 +350,7 @@ export function Wizi({
             fontSize="22"
             style={{
               ...fill("ink-muted"),
-              fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+              fontFamily: "var(--font-nunito), system-ui, sans-serif",
             }}
           >
             z
@@ -362,7 +362,7 @@ export function Wizi({
             fontSize="15"
             style={{
               ...fill("ink-muted"),
-              fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+              fontFamily: "var(--font-nunito), system-ui, sans-serif",
             }}
           >
             z

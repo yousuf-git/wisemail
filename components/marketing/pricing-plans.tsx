@@ -47,7 +47,7 @@ export function PricingPlans() {
         </span>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line shadow-md md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-px overflow-hidden rounded-[1.75rem] border border-line/70 bg-line shadow-sm md:grid-cols-2 lg:grid-cols-4">
         {PLAN_ORDER.map((id) => {
           const plan = PLAN_CATALOG[id];
           const price = priceFor(id, interval);
@@ -57,13 +57,16 @@ export function PricingPlans() {
               key={id}
               aria-labelledby={`plan-${id}`}
               className={cn(
-                "relative grid content-start gap-5 p-6",
+                "relative grid content-start gap-5 p-6 sm:p-7",
                 highlighted ? "bg-accent-soft" : "bg-surface",
               )}
             >
               <div className="grid gap-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 id={`plan-${id}`} className="text-lg font-extrabold tracking-[-0.01em]">
+                  <h3
+                    id={`plan-${id}`}
+                    className="font-display text-lg font-bold tracking-[-0.02em]"
+                  >
                     {plan.label}
                   </h3>
                   {highlighted ? (
@@ -82,7 +85,7 @@ export function PricingPlans() {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="text-4xl font-extrabold tracking-[-0.03em] tabular-nums"
+                    className="font-display text-4xl font-bold tracking-[-0.04em] tabular-nums"
                     data-testid={`price-${id}`}
                   >
                     {usd(price)}
@@ -103,7 +106,7 @@ export function PricingPlans() {
               <Button
                 asChild
                 variant={highlighted ? "default" : "outline"}
-                className="h-10 font-bold"
+                className="h-10 rounded-full font-semibold"
               >
                 <Link href="/sign-up">{id === "free" ? "Start free" : `Get ${plan.label}`}</Link>
               </Button>
@@ -121,22 +124,18 @@ export function PricingPlans() {
         })}
       </div>
 
-      <ul className="grid gap-2 text-sm leading-6 text-ink-secondary">
-        <li>
-          Over your allowance? We keep collecting events. Paid plans pay{" "}
-          {PLAN_ORDER.filter((p) => PLAN_CATALOG[p].overagePer10kUsd !== null)
-            .map((p) => `${usd(PLAN_CATALOG[p].overagePer10kUsd!)} (${PLAN_CATALOG[p].label})`)
-            .join(", ")}{" "}
-          per extra 10,000 tracked emails.
-        </li>
-        <li>
-          AI credit packs are {usd(CREDIT_PACK_PRICE_USD)} per{" "}
-          {CREDIT_PACK_CREDITS.toLocaleString("en-US")} credits.
-        </li>
-        <li>
-          A tracked email is each email sent, each broadcast recipient and each email received.
-        </li>
-      </ul>
+      <p className="max-w-[62ch] text-sm leading-6 text-ink-muted">
+        Tracked email = send, broadcast recipient, or receive. Paid overage from{" "}
+        {usd(
+          Math.min(
+            ...PLAN_ORDER.map((p) => PLAN_CATALOG[p].overagePer10kUsd).filter(
+              (v): v is number => v !== null,
+            ),
+          ),
+        )}
+        /10k. AI packs {usd(CREDIT_PACK_PRICE_USD)} /{" "}
+        {CREDIT_PACK_CREDITS.toLocaleString("en-US")} credits.
+      </p>
     </div>
   );
 }

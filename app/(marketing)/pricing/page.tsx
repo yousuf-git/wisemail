@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { Faq, faqItems } from "@/components/marketing/faq";
-import { FinalCta } from "@/components/marketing/final-cta";
+import { Faq } from "@/components/marketing/faq";
+import { faqItems } from "@/components/marketing/faq-items";
 import { PricingPlans } from "@/components/marketing/pricing-plans";
 import { PricingTable } from "@/components/marketing/pricing-table";
 import { Reveal } from "@/components/marketing/reveal";
@@ -30,14 +30,14 @@ const pricingFaq = faqItems.filter((f) =>
 export default function PricingPage() {
   return (
     <>
-      <section className="pt-14 pb-20 sm:pt-20">
+      <section className="pt-16 pb-20 sm:pt-24">
         <Container className="grid gap-12">
           <Reveal>
             <SectionHeading
               as="h1"
               eyebrow="Pricing"
-              title="Priced against your Resend bill, not on top of it"
-              description="One plan covers transactional and marketing email. You pay Resend for sending and Wisemail for everything you learn from it."
+              title="Priced against your Resend bill."
+              description="One plan for transactional and marketing. You pay Resend for sending — Wisemail for what you learn from it."
             />
           </Reveal>
           <PricingPlans />
@@ -48,7 +48,6 @@ export default function PricingPage() {
         </Container>
       </section>
       <Faq items={pricingFaq} title="Pricing questions" />
-      <FinalCta />
     </>
   );
 }

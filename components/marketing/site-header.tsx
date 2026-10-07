@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Suspense } from "react";
 
-import { ActionButtons, HeaderActions } from "./header-actions";
+import { HeaderActions } from "./header-actions";
 import { Logo } from "./logo";
 import { MobileNav } from "./mobile-nav";
 import { navLinks } from "./nav-links";
@@ -9,34 +8,30 @@ import { Container } from "./section";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md supports-[backdrop-filter]:bg-canvas/70">
-      <Container className="relative flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-8">
-          <Logo />
-          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-ink-secondary transition-colors duration-150 hover:bg-canvas-sunken hover:text-ink"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-2">
-          <Suspense fallback={<ActionButtons signedIn={false} variant="bar" />}>
+    <header className="sticky top-0 z-40 pt-4 sm:pt-5">
+      <Container>
+        <div className="flex h-14 items-center justify-between gap-4 rounded-full border border-line/70 bg-surface/80 px-3 shadow-md backdrop-blur-xl supports-[backdrop-filter]:bg-surface/65 sm:px-4">
+          <div className="flex min-w-0 items-center gap-6 pl-1">
+            <Logo className="text-base sm:text-lg" />
+            <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
+              {navLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-secondary transition-colors duration-300 ease-soft hover:bg-canvas-sunken hover:text-ink"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-1.5">
             <HeaderActions variant="bar" />
-          </Suspense>
-          <Suspense fallback={<ActionButtons signedIn={false} variant="compact" />}>
             <HeaderActions variant="compact" />
-          </Suspense>
-          <MobileNav>
-            <Suspense fallback={<ActionButtons signedIn={false} variant="stack" />}>
+            <MobileNav>
               <HeaderActions variant="stack" />
-            </Suspense>
-          </MobileNav>
+            </MobileNav>
+          </div>
         </div>
       </Container>
     </header>

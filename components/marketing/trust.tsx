@@ -1,64 +1,40 @@
-import { FileClock, KeyRound, ShieldCheck, Sparkles, Trash2, UsersRound } from "lucide-react";
+import { KeyRound, ShieldCheck, Trash2 } from "lucide-react";
 
 import { Reveal } from "./reveal";
-import { Container, SectionHeading } from "./section";
+import { Container, SectionHeading, Tone } from "./section";
 
 const items = [
   {
     icon: KeyRound,
-    title: "Keys stay encrypted",
-    body: "Resend keys and webhook secrets are encrypted with AES-256-GCM, each with its own data key. They never go to your browser. You see the last four characters.",
+    title: "Keys encrypted",
+    body: "AES-256-GCM per record. Last four only in the browser.",
   },
   {
     icon: ShieldCheck,
-    title: "Verified webhooks only",
-    body: "Every incoming event is signature-checked against your connection's secret, and duplicates are dropped before they count.",
-  },
-  {
-    icon: UsersRound,
-    title: "Roles and client access",
-    body: "Owner, Admin, Developer, Support and Viewer. On Team and Agency, scope a member to a single project so a client sees only theirs.",
-  },
-  {
-    icon: FileClock,
-    title: "An audit log",
-    body: "Connections, keys, sends, rules and member changes are recorded on Team and Agency.",
+    title: "Signed webhooks",
+    body: "Every event verified. Duplicates dropped before they count.",
   },
   {
     icon: Trash2,
-    title: "You can take it back",
-    body: "Delete emails for good, remove a connection and its synced data, or delete the workspace. Removing a connection also removes our webhook from Resend.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI you control",
-    body: "Off for Free, switchable per workspace and per feature. Quoted history, signatures and attachments are not sent to the model.",
+    title: "You can leave",
+    body: "Delete mail, disconnect, or wipe the workspace anytime.",
   },
 ];
 
 export function Trust() {
   return (
-    <section
-      id="security"
-      className="scroll-mt-20 border-y border-line bg-canvas-sunken py-20 sm:py-28"
-    >
+    <Tone tone="light" as="section" id="security" className="scroll-mt-28 py-24 sm:py-32">
       <Container className="grid gap-12">
         <Reveal>
-          <SectionHeading
-            eyebrow="Security and trust"
-            title="You are handing us a key to your email. We treat it that way."
-            description="A full-access Resend key can do real things, so the basics are built in rather than promised."
-          />
+          <SectionHeading eyebrow="Trust" title="A key to your email. Treated that way." />
         </Reveal>
-        <ul className="grid gap-x-12 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 md:grid-cols-3">
           {items.map((it, i) => (
-            <li key={it.title} className="contents">
-              <Reveal delay={(i % 3) * 0.07}>
-                <div className="grid gap-2 border-t border-line-strong pt-4">
-                  <h3 className="flex items-center gap-2.5 text-base font-bold">
-                    <it.icon className="size-[18px] text-accent-fill" aria-hidden />
-                    {it.title}
-                  </h3>
+            <li key={it.title}>
+              <Reveal delay={i * 0.07} className="h-full">
+                <div className="grid h-full gap-3 rounded-[1.5rem] border border-line/70 bg-surface p-6">
+                  <it.icon className="size-5 text-accent-fill" aria-hidden />
+                  <h3 className="font-display text-lg font-bold tracking-[-0.02em]">{it.title}</h3>
                   <p className="text-sm leading-6 text-ink-secondary">{it.body}</p>
                 </div>
               </Reveal>
@@ -66,6 +42,6 @@ export function Trust() {
           ))}
         </ul>
       </Container>
-    </section>
+    </Tone>
   );
 }
