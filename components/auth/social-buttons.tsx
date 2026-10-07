@@ -85,6 +85,7 @@ export function SocialButtons({
             type="button"
             variant="outline"
             size="lg"
+            className="h-11 rounded-full font-medium"
             disabled={disabled || pending !== null}
             onClick={() => go(provider)}
           >

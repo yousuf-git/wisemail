@@ -128,7 +128,12 @@ export function SignInForm({
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-11 rounded-full font-semibold"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
         <p className="text-center text-sm text-ink-muted">

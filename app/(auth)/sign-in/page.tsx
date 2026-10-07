@@ -13,10 +13,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
     <AuthShell
       mood="idle"
       title="Welcome back"
-      description="Sign in to see what your email has been up to."
+      description="Sign in to your Wisemail workspace."
       footer={
-        <Link href="/" className="hover:underline">
-          Back to Wisemail
+        <Link href="/" className="font-medium text-ink-secondary hover:text-ink hover:underline">
+          ← Back to Wisemail
         </Link>
       }
     >

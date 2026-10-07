@@ -62,7 +62,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-11 rounded-full font-semibold"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? "Saving…" : "Save new password"}
         </Button>
         <p className="text-center text-sm text-ink-muted">

@@ -130,6 +130,7 @@ export function CreateOrgForm() {
         <Button
           type="submit"
           size="lg"
+          className="h-11 rounded-full font-semibold"
           disabled={form.formState.isSubmitting || slugState === "taken"}
         >
           {form.formState.isSubmitting ? "Creating…" : "Create workspace"}

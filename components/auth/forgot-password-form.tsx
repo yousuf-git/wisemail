@@ -71,6 +71,7 @@ export function ForgotPasswordForm() {
         <Button
           type="submit"
           size="lg"
+          className="h-11 rounded-full font-semibold"
           disabled={form.formState.isSubmitting || form.formState.isSubmitSuccessful}
         >
           {form.formState.isSubmitting || form.formState.isSubmitSuccessful

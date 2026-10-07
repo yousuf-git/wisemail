@@ -11,8 +11,8 @@ export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">
   return (
     <AuthShell
       mood="happy"
-      title="Let's get you set up"
-      description="Create your Wisemail account. It only takes a minute."
+      title="Create your account"
+      description="A minute to start. Free plan, no card."
     >
       <SignUpForm
         next={typeof next === "string" ? next : undefined}

@@ -121,7 +121,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
 
 function HomeButton() {
   return (
-    <Button asChild size="lg" className="w-full">
+    <Button asChild size="lg" className="h-11 w-full rounded-full font-semibold">
       <Link href="/sign-in">Go to sign in</Link>
     </Button>
   );

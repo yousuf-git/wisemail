@@ -118,7 +118,12 @@ export function VerifyNotice({
         <p className="text-[0.8125rem] text-ink-muted" data-testid="otp-expiry">
           <ExpiryText seconds={clocks.expiresIn} />
         </p>
-        <Button type="submit" size="lg" disabled={checking || code.length !== OTP_LENGTH}>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-11 rounded-full font-semibold"
+          disabled={checking || code.length !== OTP_LENGTH}
+        >
           {checking ? "Checking…" : "Confirm email"}
         </Button>
       </form>
@@ -126,6 +131,7 @@ export function VerifyNotice({
       <Button
         variant="outline"
         size="lg"
+        className="h-11 rounded-full font-medium"
         onClick={resend}
         disabled={sending || clocks.cooldown > 0}
       >

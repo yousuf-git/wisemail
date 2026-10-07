@@ -145,7 +145,12 @@ export function ResetCodeForm({ email, devOutbox }: { email: string; devOutbox?:
               </FormItem>
             )}
           />
-          <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+          <Button
+            type="submit"
+            size="lg"
+            className="h-11 rounded-full font-semibold"
+            disabled={form.formState.isSubmitting}
+          >
             {form.formState.isSubmitting ? "Saving…" : "Save new password"}
           </Button>
         </form>
@@ -154,6 +159,7 @@ export function ResetCodeForm({ email, devOutbox }: { email: string; devOutbox?:
       <Button
         variant="outline"
         size="lg"
+        className="h-11 rounded-full font-medium"
         onClick={resend}
         disabled={sending || clocks.cooldown > 0}
       >
