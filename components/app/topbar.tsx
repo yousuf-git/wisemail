@@ -51,7 +51,7 @@ function Crumb({ segment, last }: { segment: string; last: boolean }) {
 }
 
 const iconButton =
-  "grid size-9 shrink-0 place-items-center rounded-full bg-surface text-ink-secondary shadow-sm ring-1 ring-line outline-none transition-[transform,background-color] duration-150 ease-soft hover:text-ink focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]";
+  "grid size-8 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary ring-1 ring-line outline-none transition-[transform,background-color] duration-150 ease-soft hover:text-ink focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]";
 
 /**
  * Top bar: mobile menu, breadcrumb, search pill, notifications and theme.
@@ -109,7 +109,7 @@ export function Topbar({
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="w-[min(85vw,300px)] gap-0 border-0 bg-surface p-3 sm:max-w-none"
+          className="w-[min(85vw,var(--shell-dock-width))] gap-0 border-0 bg-surface p-2.5 sm:max-w-none"
         >
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SheetDescription className="sr-only">
@@ -150,15 +150,14 @@ export function Topbar({
         <button
           type="button"
           aria-label="Search (Command K)"
-          className="flex shrink-0 items-center gap-2 rounded-full bg-surface p-[9px] text-[0.8125rem] whitespace-nowrap text-ink-muted shadow-sm ring-1 ring-line transition-colors duration-150 outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent min-[1200px]:px-3 min-[1200px]:py-[7px]"
+          className="flex h-8 shrink-0 items-center gap-2 rounded-control bg-surface px-2.5 text-[0.8125rem] whitespace-nowrap text-ink-muted ring-1 ring-line transition-colors duration-150 outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent min-[1200px]:px-3.5"
         >
-          <Search aria-hidden className="size-[18px]" />
-          <span className="hidden min-[1200px]:inline">Search emails, contacts…</span>
-          <kbd className="hidden rounded-[5px] bg-canvas-sunken px-1.5 py-px font-mono text-[0.6875rem] text-ink-muted min-[1200px]:inline">
+          <Search aria-hidden className="size-4" />
+          <span className="hidden min-[1200px]:inline">Search…</span>
+          <kbd className="hidden rounded-control bg-canvas-sunken px-1.5 py-px font-mono text-[0.6875rem] text-ink-muted min-[1200px]:inline">
             ⌘K
           </kbd>
         </button>
-        {/* The dock shows the live dot from 1000px up; below that it lives in a sheet. */}
         <span className="grid size-6 shrink-0 place-items-center min-[1000px]:hidden">
           <LiveDot />
         </span>

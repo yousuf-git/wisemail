@@ -634,7 +634,7 @@ export function BroadcastEditor({
 
         <section
           aria-label="Preview"
-          className="grid content-start gap-2 rounded-xl bg-surface p-4 shadow-md min-[560px]:p-5"
+          className="flex min-h-[28rem] flex-col gap-2 rounded-[var(--shell-panel-radius)] border border-line bg-surface p-3 min-[560px]:p-4"
         >
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-1.5 text-lg font-semibold tracking-[-0.01em]">
@@ -689,7 +689,7 @@ export function BroadcastEditor({
             dark={dark}
             width={width}
             title="Broadcast preview"
-            className="max-h-[36rem] min-h-72"
+            className="min-h-[min(36rem,70dvh)] flex-1"
           />
         </section>
       </div>

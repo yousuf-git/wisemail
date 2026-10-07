@@ -248,7 +248,7 @@ export function InboxView({
       ) : null}
       <div
         data-tour="inbox-list"
-        className="flex h-[calc(100dvh-7.75rem)] min-h-[520px] overflow-hidden rounded-xl bg-surface shadow-md"
+        className="flex h-[var(--shell-panel-height)] min-h-[520px] overflow-hidden rounded-[var(--shell-panel-radius)] border border-line bg-surface"
       >
         <div
           className={cn(

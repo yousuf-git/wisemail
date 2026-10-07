@@ -45,7 +45,10 @@ export function UsageTile({ usage, className }: { usage?: UsageSummary; classNam
   return (
     <div
       data-slot="usage-tile"
-      className={cn("grid gap-2.5 rounded-lg bg-canvas p-3 text-[0.78rem]", className)}
+      className={cn(
+        "grid gap-2 rounded-control-block border border-line/70 bg-canvas-sunken/60 p-2.5 text-[0.75rem]",
+        className,
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         {connections.length > 0 ? (

@@ -194,7 +194,7 @@ export function TemplateEditor({
   const busyIcon = <Loader2 aria-hidden className="animate-spin" />;
 
   return (
-    <div className="grid gap-4">
+    <div className="flex min-h-0 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {template ? (
           <StatusChip state={status === "published" ? "success" : "neutral"}>
@@ -249,7 +249,7 @@ export function TemplateEditor({
           {editable ? (
             <Button
               type="button"
-              className="font-bold"
+              className="font-semibold"
               disabled={!!busy}
               onClick={() => void save(true)}
             >
@@ -263,7 +263,7 @@ export function TemplateEditor({
       {!editable ? (
         <p
           role="status"
-          className="rounded-xl bg-canvas-sunken px-4 py-3 text-sm text-ink-secondary"
+          className="rounded-control-block bg-canvas-sunken px-4 py-3 text-sm text-ink-secondary"
         >
           {canEdit
             ? "This account isn't accepting changes right now, so the template is view-only."
@@ -274,14 +274,14 @@ export function TemplateEditor({
         <p
           role="alert"
           data-testid="template-error"
-          className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-ink"
+          className="rounded-control-block bg-danger-soft px-3 py-2 text-sm text-danger-ink"
         >
           {banner}
         </p>
       ) : null}
 
-      <div className="grid gap-4 min-[1000px]:grid-cols-2">
-        <div className="grid content-start gap-4 rounded-xl bg-surface p-4 shadow-md min-[560px]:p-5">
+      <div className="grid min-h-0 gap-3 min-[1100px]:h-[var(--shell-panel-height)] min-[1100px]:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)]">
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-[var(--shell-panel-radius)] border border-line bg-surface p-4">
           {isNew && connections.length > 1 ? (
             <ConnectionSelect
               id="template-connection"
@@ -353,15 +353,17 @@ export function TemplateEditor({
               placeholder="Acme <hello@acme.com>"
             />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid min-h-0 flex-1 gap-1.5">
             <span className="text-sm leading-none font-medium">HTML</span>
-            <Suspense fallback={<Skeleton className="h-64 w-full rounded-lg" />}>
+            <Suspense
+              fallback={<Skeleton className="min-h-56 w-full rounded-control-block" />}
+            >
               <HtmlEditor
                 value={html}
                 onChange={setHtml}
                 disabled={!editable}
                 className={cn(
-                  "h-72 max-h-[32rem] rounded-lg bg-canvas-sunken",
+                  "min-h-56 flex-1 rounded-control-block bg-canvas-sunken min-[1100px]:min-h-0",
                   errors.html && "ring-2 ring-danger",
                 )}
               />
@@ -384,75 +386,11 @@ export function TemplateEditor({
               className="mt-2 font-mono text-[13px]"
             />
           </details>
-        </div>
-
-        <div className="grid content-start gap-4">
-          <section
-            aria-label="Preview"
-            className="grid gap-2 rounded-xl bg-surface p-4 shadow-md min-[560px]:p-5"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-1.5 text-lg font-semibold tracking-[-0.01em]">
-                <Eye aria-hidden className="size-4 text-ink-muted" /> Preview
-              </h2>
-              <div className="flex items-center gap-1" role="group" aria-label="Preview options">
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Desktop width"
-                  aria-pressed={width === "desktop"}
-                  onClick={() => setWidth("desktop")}
-                  className={cn(width === "desktop" && "bg-accent-soft")}
-                >
-                  <Monitor aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Mobile width"
-                  aria-pressed={width === "mobile"}
-                  onClick={() => setWidth("mobile")}
-                  className={cn(width === "mobile" && "bg-accent-soft")}
-                >
-                  <Smartphone aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={dark ? "Light preview" : "Dark preview"}
-                  aria-pressed={dark}
-                  onClick={() => setDark((d) => !d)}
-                >
-                  {dark ? <Sun aria-hidden /> : <Moon aria-hidden />}
-                </Button>
-              </div>
-            </div>
-            {previewSubject ? (
-              <p className="truncate text-sm">
-                <span className="text-ink-muted">Subject: </span>
-                <span className="font-semibold">{previewSubject}</span>
-              </p>
-            ) : null}
-            <PreviewFrame
-              html={preview}
-              dark={dark}
-              width={width}
-              title="Template preview"
-              className="max-h-[28rem] min-h-64"
-            />
-          </section>
-
-          <section
-            aria-label="Variables"
-            className="grid gap-2 rounded-xl bg-surface p-4 shadow-md min-[560px]:p-5"
-          >
-            <h2 className="text-lg font-semibold tracking-[-0.01em]">Variables</h2>
-            <p className="text-sm text-ink-muted">
-              A variable without a default must be filled in each time the template is sent. The
-              preview value is only for this page.
+          <section aria-label="Variables" className="grid gap-2 border-t border-line pt-3">
+            <h2 className="text-sm font-semibold tracking-[-0.01em]">Variables</h2>
+            <p className="text-xs text-ink-muted">
+              A variable without a default must be filled in when sending. Preview values are only
+              for this page.
             </p>
             <VariablesEditor
               rows={rows}
@@ -467,6 +405,64 @@ export function TemplateEditor({
             ) : null}
           </section>
         </div>
+
+        <section
+          aria-label="Preview"
+          className="flex min-h-[28rem] flex-col gap-2 rounded-[var(--shell-panel-radius)] border border-line bg-surface p-3 min-[1100px]:min-h-0"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-[-0.01em]">
+              <Eye aria-hidden className="size-4 text-ink-muted" /> Preview
+            </h2>
+            <div className="flex items-center gap-1" role="group" aria-label="Preview options">
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Desktop width"
+                aria-pressed={width === "desktop"}
+                onClick={() => setWidth("desktop")}
+                className={cn(width === "desktop" && "bg-accent-soft")}
+              >
+                <Monitor aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Mobile width"
+                aria-pressed={width === "mobile"}
+                onClick={() => setWidth("mobile")}
+                className={cn(width === "mobile" && "bg-accent-soft")}
+              >
+                <Smartphone aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={dark ? "Light preview" : "Dark preview"}
+                aria-pressed={dark}
+                onClick={() => setDark((d) => !d)}
+              >
+                {dark ? <Sun aria-hidden /> : <Moon aria-hidden />}
+              </Button>
+            </div>
+          </div>
+          {previewSubject ? (
+            <p className="truncate text-sm">
+              <span className="text-ink-muted">Subject: </span>
+              <span className="font-semibold">{previewSubject}</span>
+            </p>
+          ) : null}
+          <PreviewFrame
+            html={preview}
+            dark={dark}
+            width={width}
+            title="Template preview"
+            className="min-h-0 flex-1"
+          />
+        </section>
       </div>
 
       {template ? (

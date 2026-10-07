@@ -84,11 +84,11 @@ function NavLink({ base, item, active }: { base: string; item: NavItem; active: 
       href={`${base}/${item.path}`}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-[0.84rem] font-medium text-ink-secondary transition-colors duration-150 ease-soft outline-none hover:bg-canvas hover:text-ink focus-visible:bg-canvas focus-visible:text-ink focus-visible:ring-2 focus-visible:ring-accent",
+        "flex items-center gap-2 rounded-control px-2.5 py-1.5 text-[0.8125rem] font-medium text-ink-secondary transition-colors duration-150 ease-soft outline-none hover:bg-canvas-sunken hover:text-ink focus-visible:bg-canvas-sunken focus-visible:text-ink focus-visible:ring-2 focus-visible:ring-accent",
         active && "bg-accent-soft font-semibold text-ink hover:bg-accent-soft",
       )}
     >
-      <Icon size={18} className={cn(active && "text-accent-fill")} />
+      <Icon size={16} className={cn(active && "text-accent-fill")} />
       {item.label}
     </Link>
   );
@@ -102,7 +102,7 @@ export function NavLinks({ orgSlug }: { orgSlug: string }) {
     <nav aria-label="Main" className="grid gap-0.5">
       {navGroups.map((group) => (
         <div key={group.label} className="grid gap-0.5">
-          <span className="px-2.5 pt-2.5 pb-1 text-[0.6875rem] font-semibold tracking-[0.06em] text-ink-muted uppercase">
+          <span className="px-2.5 pt-2 pb-0.5 text-[0.625rem] font-semibold tracking-[0.08em] text-ink-muted uppercase">
             {group.label}
           </span>
           {group.items.map((item) => (

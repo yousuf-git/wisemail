@@ -13,12 +13,13 @@ export type PreviewOptions = { dark?: boolean };
 /** The document shown in the preview: a strict CSP first, then the draft's HTML. */
 export function buildPreviewDocument(html: string, { dark = false }: PreviewOptions = {}) {
   const colors = dark ? "background:#1a1917;color:#f2efe9" : "background:#ffffff;color:#1f1e1c";
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>html,body{margin:0}body{${colors};font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px;overflow-wrap:anywhere}img{max-width:100%;height:auto}a{color:${dark ? "#7dd3fc" : "#0369a1"}}blockquote{margin:0 0 0 4px;padding-left:12px;border-left:3px solid #c9c5bb}</style></head><body>${html}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>html,body{margin:0;height:100%}body{${colors};font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px;overflow-wrap:anywhere;overflow:auto}img{max-width:100%;height:auto}a{color:${dark ? "#7dd3fc" : "#0369a1"}}blockquote{margin:0 0 0 4px;padding-left:12px;border-left:3px solid #c9c5bb}</style></head><body>${html}</body></html>`;
 }
 
 /**
  * Sandboxed live preview. No `allow-scripts`, no `allow-same-origin`: scripts in the draft never
  * run and the frame cannot reach this page's cookies or DOM.
+ * Pass a flex height class (e.g. `min-h-0 flex-1`) so the frame fills its panel.
  */
 export function PreviewFrame({
   html,
@@ -37,7 +38,7 @@ export function PreviewFrame({
   return (
     <div
       className={cn(
-        "grid min-h-0 justify-items-center overflow-auto rounded-lg bg-canvas-sunken p-3",
+        "grid min-h-0 justify-items-center overflow-hidden rounded-control-block bg-canvas-sunken p-2",
         className,
       )}
     >
@@ -48,7 +49,7 @@ export function PreviewFrame({
         referrerPolicy="no-referrer"
         srcDoc={srcDoc}
         className={cn(
-          "h-full min-h-72 w-full rounded-md border border-line bg-white transition-[max-width] duration-200 ease-soft",
+          "h-full min-h-0 w-full rounded-control-block border border-line bg-white transition-[max-width] duration-200 ease-soft",
           width === "mobile" ? "max-w-[375px]" : "max-w-full",
         )}
       />
