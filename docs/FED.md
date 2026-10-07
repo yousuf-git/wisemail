@@ -1,7 +1,7 @@
 # FED — Wisemail (Front-End Design)
 
 > **Status:** Draft v0.1, 2026-09-29
-> **Direction:** Warm, tactile minimalism · approachable companion · progressive disclosure · floating utility dock
+> **Direction:** Warm, tactile minimalism · approachable companion · progressive disclosure · edge-flush sidebar
 > **Related:** `PRD.md`, `TRD.md`
 
 ---
@@ -95,7 +95,7 @@ Series order: `accent`, `engaged`, `success`, `glow`, `coral`, `neutral`. Grid l
 
 | Role | Family | Fallback |
 |---|---|---|
-| UI & headings | **Plus Jakarta Sans** (variable, 400–800) | `Inter, system-ui, sans-serif` |
+| UI & headings | **Nunito Sans** (variable, 400–800) | `system-ui, sans-serif` |
 | Numbers & code | **Geist Mono** | `ui-monospace, SFMono-Regular, monospace` |
 
 Loaded with `next/font/google`. All numeric displays use `font-variant-numeric: tabular-nums`. IDs, DNS values, headers, and raw JSON use Geist Mono.
@@ -118,30 +118,30 @@ Headings use `text-wrap: balance`; reading text is capped at 68ch (thread view, 
 
 ## 4. Shape, depth, spacing
 
-- **Radii:** `sm 8px` (inputs inside toolbars, chips' inner), `md 12px` (buttons, inputs), `lg 16px` (cards, table containers), `xl 22px` (hero cards, composer capsule, sidebar dock), `full` (pills, avatars, status chips).
+- **Radii:** `sm 8px` (chips' inner), `md 12px` (legacy nested), `lg` / `--shell-panel-radius` `16px` (panels, textareas via `--radius-control-block`), `xl 22px` (composer capsule, marketing frames), **`--radius-control` / capsule `9999px`** (buttons, single-line inputs, selects, nav pills, avatars).
 - **Shadows** (warm-tinted, never grey-blue):
   - `sm`: `0 1px 2px rgba(60,45,20,0.06)`
   - `md`: `0 1px 0 var(--line), 0 12px 28px -14px rgba(60,45,20,0.14)`
   - `lg`: `0 24px 60px -20px rgba(60,45,20,0.22)`
   - `glow`: `0 0 0 6px var(--glow-soft), 0 12px 32px -12px rgba(245,158,11,0.28)` — composer focus, primary call-to-action cards
-- Borders are used only where shadows would be unclear (inputs, tables). Cards rely on shadow `md` plus a 1 px `--line` edge.
-- **Spacing:** 4 px base; common steps 4, 8, 12, 16, 20, 24, 32, 48. Page gutter 24 px desktop, 16 px mobile. Card padding 20–24 px.
+- Borders are preferred for structural chrome (dock edge, inbox shell); soft shadows for floating menus.
+- **Shell tokens** (one place in `globals.css`): `--shell-dock-width` (220px), `--shell-gutter` / `--shell-gutter-mobile`, `--shell-topbar-height`, `--shell-panel-height`. Change chrome here only.
+- **Spacing:** 4 px base; common steps 4, 8, 12, 16, 20, 24, 32, 48. Main gutter from `--shell-gutter` (16px desktop, 12px mobile). Card padding 16–20 px.
 - **Density:** tables and the thread list use 44 px rows (comfortable) with a compact 36 px option in settings.
 
 ## 5. Layout
 
 ```
-┌────────────┬──────────────────────────────────────────────────────┐
-│  Floating  │  Top bar: breadcrumb · global search (⌘K) · bell · + │
-│  dock      ├──────────────────────────────────────────────────────┤
-│ (surface,  │                                                      │
-│  xl radius,│   Page content on --canvas                           │
-│  12px from │   max-width 1280px (inbox: full width, 3 panes)      │
-│  edges)    │                                                      │
-└────────────┴──────────────────────────────────────────────────────┘
+┌──────────┬────────────────────────────────────────────────────────┐
+│ Edge     │  Top bar: breadcrumb · search (⌘K) · bell · theme     │
+│ dock     ├────────────────────────────────────────────────────────┤
+│ (flush,  │                                                      │
+│ border-r,│   Page content on --canvas (full remaining width)    │
+│ 220px)   │   Full-height panels use --shell-panel-height        │
+└──────────┴────────────────────────────────────────────────────────┘
 ```
 
-**Sidebar dock** (240 px, collapsible to 72 px icon rail), grouped:
+**Sidebar dock** (`--shell-dock-width`, edge-flush; collapsible icon rail later), grouped:
 1. **Top:** org switcher · primary button **Compose** · Inbox (unread count) · Notifications.
 2. **Mail:** Overview · Inbox · Scheduled · Activity.
 3. **Audience:** Contacts · Segments & topics · Broadcasts · Templates · Automations.

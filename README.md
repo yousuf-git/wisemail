@@ -86,6 +86,18 @@ pnpm db:dev                    # MongoDB replica set rs0 on 127.0.0.1:27017
 pnpm dev                       # http://localhost:3000
 ```
 
+#### Port 27017 already in use
+
+If a system `mongod` (for example the `mongod` systemd service) already listens on 27017, it is usually a standalone instance without a replica set. `?replicaSet=rs0` then fails to connect, and `pnpm db:dev` skips starting because the port is busy. Run the project database on another port and point `.env.local` at it:
+
+```bash
+MONGO_PORT=27018 pnpm db:dev
+# .env.local
+MONGODB_URI=mongodb://127.0.0.1:27018/wisemail?replicaSet=rs0
+```
+
+Alternatively stop the system service (`sudo systemctl disable --now mongod`) and use the default port.
+
 Jobs (sync, event processing, sending, alerts) run through Inngest. Start its dev server in a second terminal — no keys required:
 
 ```bash
