@@ -1,8 +1,9 @@
 import type { HydratedDocument, InferSchemaType } from "mongoose";
 import { Schema, model, models } from "mongoose";
 
-export const AI_FEATURES = ["triage", "draft", "compose", "anomaly"] as const;
-export type AiFeature = (typeof AI_FEATURES)[number];
+import { AI_FEATURES, type AiFeature } from "@wisemail/shared/ai";
+
+export { AI_FEATURES, type AiFeature };
 
 /** Retention of usage rows (DBD `ai_usage`). */
 export const AI_USAGE_TTL_DAYS = 400;

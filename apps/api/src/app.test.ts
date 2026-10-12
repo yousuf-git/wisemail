@@ -22,5 +22,6 @@ describe("api smoke", () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/_meta" });
     expect(res.statusCode).toBe(200);
     expect(res.json().plans).toEqual(["free", "pro", "team", "agency"]);
+    expect(res.json().planCount).toBe(4);
   });
 });

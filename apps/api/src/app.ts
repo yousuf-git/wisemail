@@ -1,7 +1,7 @@
 import cookie from "@fastify/cookie";
 import Fastify from "fastify";
 
-import { PLAN_ORDER } from "@wisemail/shared";
+import { DEFAULT_PLAN_CATALOG, PLAN_ORDER } from "@wisemail/shared";
 
 import { healthRoutes } from "./routes/health.js";
 
@@ -18,6 +18,8 @@ export async function buildApp() {
   app.get("/api/v1/_meta", async () => ({
     name: "wisemail-api",
     plans: PLAN_ORDER,
+    catalogVersion: "default",
+    planCount: Object.keys(DEFAULT_PLAN_CATALOG).length,
   }));
 
   return app;

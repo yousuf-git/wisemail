@@ -1,9 +1,10 @@
 import type { HydratedDocument, InferSchemaType } from "mongoose";
 import { Schema, model, models } from "mongoose";
 
-export const PLANS = ["free", "pro", "team", "agency"] as const;
+import { PLANS, type Plan } from "@wisemail/shared/plans";
+
+export { PLANS, type Plan };
 export const PLAN_STATES = ["trialing", "active", "past_due", "canceling", "free"] as const;
-export type Plan = (typeof PLANS)[number];
 export type PlanState = (typeof PLAN_STATES)[number];
 
 /** Calendar month containing `now` (UTC): the billing period for orgs without a Stripe period. */

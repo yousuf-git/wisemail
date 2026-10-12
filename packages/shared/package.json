@@ -13,6 +13,18 @@
     "./plans": {
       "types": "./dist/plans.d.ts",
       "default": "./dist/plans.js"
+    },
+    "./stripe-prices": {
+      "types": "./dist/stripe-prices.d.ts",
+      "default": "./dist/stripe-prices.js"
+    },
+    "./ai": {
+      "types": "./dist/ai.d.ts",
+      "default": "./dist/ai.js"
+    },
+    "./billing-dto": {
+      "types": "./dist/billing-dto.d.ts",
+      "default": "./dist/billing-dto.js"
     }
   },
   "files": ["dist"],
@@ -20,7 +32,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"process.exit(0)\"",
-    "test": "node -e \"process.exit(0)\"",
+    "test": "vitest run",
     "prepare": "pnpm run build"
   },
   "dependencies": {
@@ -28,7 +40,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.2"
   },
   "engines": {
     "node": ">=24"
