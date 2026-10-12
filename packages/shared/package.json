@@ -25,6 +25,10 @@
     "./billing-dto": {
       "types": "./dist/billing-dto.d.ts",
       "default": "./dist/billing-dto.js"
+    },
+    "./env-schema": {
+      "types": "./dist/env-schema.d.ts",
+      "default": "./dist/env-schema.js"
     }
   },
   "files": ["dist"],
