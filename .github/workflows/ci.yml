@@ -38,6 +38,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Shared package prepare builds dist; keep an explicit build for ignore-scripts installs.
+      - run: pnpm --filter @wisemail/shared build
+
       - run: pnpm typecheck
 
       - run: pnpm lint
@@ -82,6 +85,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wisemail/shared build
 
       - name: MongoDB replica set
         uses: supercharge/mongodb-github-action@1.12.0
@@ -90,7 +94,7 @@ jobs:
           mongodb-replica-set: rs0
 
       - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @wisemail/web exec playwright install --with-deps chromium
 
       # Playwright starts the Inngest dev server and `next dev` itself (playwright.config.ts).
       - run: pnpm test:e2e
@@ -100,6 +104,6 @@ jobs:
         with:
           name: playwright-report
           path: |
-            playwright-report/
-            test-results/
+            apps/web/playwright-report/
+            apps/web/test-results/
           retention-days: 7

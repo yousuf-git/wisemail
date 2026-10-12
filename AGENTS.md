@@ -2,7 +2,7 @@
 
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `apps/web/node_modules/next/dist/docs/` (or the pnpm store path linked from there) before writing any Next.js code on this branch. Heed deprecation notices.
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
@@ -20,18 +20,22 @@ Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
 
 ## Commands
 
-- `pnpm dev` / `pnpm build` (runs `scripts/check-env.ts` first) / `pnpm start`
-- `pnpm typecheck` (runs `next typegen` first), `pnpm lint`, `pnpm test`, `pnpm test:watch`, `pnpm format`
+Monorepo (`apps/web` Next.js for now, `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
+
+- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:api` for one
+- `pnpm build` / `pnpm start` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (workspace filters)
 - `pnpm db:dev` starts a single-node MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
+- Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
+- After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build` (package `prepare` does this when scripts are enabled)
 - Every phase ends green on typecheck, lint, test and build.
 
 ## Conventions
 
 - Check `node_modules/next/dist/docs/` for Next.js APIs before using them (nextjs.org may be unreachable).
-- Read env only through `lib/env.ts` (`env`, `parseEnv`); never `process.env` directly. New variables go in the schema and `.env.example`.
-- Use semantic design tokens from `app/globals.css` (`bg-canvas`, `text-ink`, `text-muted`, `bg-accent`, `bg-success-soft`, ...), never raw hex. Theme is `data-theme` on `<html>` (light/dark, absent = system).
-- shadcn/ui components live in `components/ui` and are already mapped to the tokens (`accent` is the brand color, hover surfaces use `canvas-sunken`). Add new ones by hand or from the shadcn registry, then restyle.
-- Tests: `tests/unit`, `tests/integration` (Vitest; `*.test.tsx` runs in jsdom), `tests/e2e` (Playwright).
+- Read env only through `apps/web/lib/env.ts` (`env`, `parseEnv`) or `apps/api/src/env.ts`; never `process.env` directly in app code. New variables go in the schema and `.env.example`.
+- Use semantic design tokens from `apps/web/app/globals.css` (`bg-canvas`, `text-ink`, `text-muted`, `bg-accent`, `bg-success-soft`, ...), never raw hex. Theme is `data-theme` on `<html>` (light/dark, absent = system).
+- shadcn/ui components live in `apps/web/components/ui` and are already mapped to the tokens (`accent` is the brand color, hover surfaces use `canvas-sunken`). Add new ones by hand or from the shadcn registry, then restyle.
+- Shared DTOs/types: `packages/shared`. Tests: `apps/web/tests/unit`, `apps/web/tests/integration` (Vitest; `*.test.tsx` runs in jsdom), `apps/web/tests/e2e` (Playwright).
 
 ## Fake-mode services
 

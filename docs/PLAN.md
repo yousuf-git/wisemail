@@ -14,6 +14,23 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 
 ---
 
+## Migration — React SPA + Fastify (`react-migration` branch)
+
+Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/shared`, Node 24 LTS, OCI VM + Atlas. Catalog / toggles / AI model + system from-address move to Mongo + admin; secrets stay in env. One platform Super Admin (immutable).
+
+- [x] Phase M1 — Monorepo skeleton: `apps/web` (current Next app), `apps/api` (Fastify health), `packages/shared` (plan types)
+- [ ] Phase M2 — Move DTOs / plan helpers into `@wisemail/shared`
+- [ ] Phase M3 — Fastify: auth, REST, webhooks, Inngest, SSE, files
+- [ ] Phase M4 — Replace server actions with REST + typed client
+- [ ] Phase M5 — DB-backed catalog, Stripe lookup keys, price migration job, billing callout
+- [ ] Phase M6 — Admin pricing + platform settings pages; Super Admin seed
+- [ ] Phase M7 — Vite SPA + TanStack Router/Query; port pages
+- [ ] Phase M8 — Remove Next; Sentry; tests/e2e
+- [ ] Phase M9 — OCI PM2 + Nginx + Atlas deploy notes
+- [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN)
+
+---
+
 ## Phase 1 — Foundation
 
 - [x] Next.js 16 (App Router) + React 19 + TypeScript strict, pnpm
