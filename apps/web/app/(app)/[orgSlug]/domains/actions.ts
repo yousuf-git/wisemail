@@ -23,25 +23,25 @@ import {
 } from "@/lib/validation/domain";
 
 const tracking = orgAction(
-  { input: setDomainTrackingSchema, permission: "domain:update" },
+  { id: "domains.tracking", input: setDomainTrackingSchema, permission: "domain:update" },
   ({ ctx, input }) => setDomainTracking(ctx, input),
 );
 const assign = orgAction(
-  { input: assignDomainProjectSchema, permission: "project:update" },
+  { id: "domains.assign", input: assignDomainProjectSchema, permission: "project:update" },
   ({ ctx, input }) => assignDomainProject(ctx, input),
 );
-const verify = orgAction({ input: domainIdSchema, permission: "domain:verify" }, ({ ctx, input }) =>
+const verify = orgAction({ id: "domains.verify", input: domainIdSchema, permission: "domain:verify" }, ({ ctx, input }) =>
   verifyDomain(ctx, input),
 );
-const check = orgAction({ input: checkDnsSchema, permission: "domain:update" }, ({ ctx, input }) =>
+const check = orgAction({ id: "domains.check", input: checkDnsSchema, permission: "domain:update" }, ({ ctx, input }) =>
   checkDnsNow(ctx, input),
 );
 const create = orgAction(
-  { input: createDomainSchema, permission: "domain:create" },
+  { id: "domains.create", input: createDomainSchema, permission: "domain:create" },
   ({ ctx, input }) => createDomain(ctx, input),
 );
 const remove = orgAction(
-  { input: deleteDomainSchema, permission: "domain:delete" },
+  { id: "domains.remove", input: deleteDomainSchema, permission: "domain:delete" },
   ({ ctx, input }) => deleteDomain(ctx, input),
 );
 

@@ -23,25 +23,25 @@ import {
 
 const objectId = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id");
 
-const save = orgAction({ input: saveDraftInput, permission: "email:send" }, ({ ctx, input }) =>
+const save = orgAction({ id: "compose.save", input: saveDraftInput, permission: "email:send" }, ({ ctx, input }) =>
   saveDraft(ctx, input),
 );
 const load = orgAction(
-  { input: z.object({ id: objectId }), permission: "email:send" },
+  { id: "compose.load", input: z.object({ id: objectId }), permission: "email:send" },
   ({ ctx, input }) => getDraft(ctx, input.id),
 );
 const discard = orgAction(
-  { input: z.object({ id: objectId }), permission: "email:send" },
+  { id: "compose.discard", input: z.object({ id: objectId }), permission: "email:send" },
   async ({ ctx, input }) => {
     await deleteDraft(ctx, input.id);
     return { id: input.id };
   },
 );
-const send = orgAction({ input: sendEmailInput, permission: "email:send" }, ({ ctx, input }) =>
+const send = orgAction({ id: "compose.send", input: sendEmailInput, permission: "email:send" }, ({ ctx, input }) =>
   sendEmail(ctx, input),
 );
 const cancel = orgAction(
-  { input: z.object({ emailId: objectId }), permission: "email:send" },
+  { id: "compose.cancel", input: z.object({ emailId: objectId }), permission: "email:send" },
   ({ ctx, input }) => cancelScheduledEmail(ctx, input.emailId),
 );
 
@@ -51,18 +51,18 @@ const uploadInput = z.object({
   size: z.number().int().positive(),
   contentType: z.string().max(200),
 });
-const startUpload = orgAction({ input: uploadInput, permission: "email:send" }, ({ ctx, input }) =>
+const startUpload = orgAction({ id: "compose.startUpload", input: uploadInput, permission: "email:send" }, ({ ctx, input }) =>
   createAttachmentUpload(ctx, input),
 );
 const confirmUpload = orgAction(
-  {
+  { id: "compose.confirmUpload",
     input: z.object({ draftId: objectId, attachmentId: objectId }),
     permission: "email:send",
   },
   ({ ctx, input }) => confirmAttachmentUpload(ctx, input),
 );
 const removeAttachment = orgAction(
-  {
+  { id: "compose.removeAttachment",
     input: z.object({ draftId: objectId, attachmentId: objectId }),
     permission: "email:send",
   },

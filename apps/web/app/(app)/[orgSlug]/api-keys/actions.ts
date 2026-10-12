@@ -11,7 +11,7 @@ import {
 } from "@/lib/validation/domain";
 
 // Sending keys need `apiKey:create` or `apiKey:createSending`; full access needs `apiKey:create`.
-const create = orgAction({ input: createApiKeySchema }, ({ ctx, input }) => {
+const create = orgAction({ id: "api-keys.create", input: createApiKeySchema }, ({ ctx, input }) => {
   const allowed =
     input.permission === "full_access"
       ? ctx.can("apiKey:create")
@@ -20,7 +20,7 @@ const create = orgAction({ input: createApiKeySchema }, ({ ctx, input }) => {
   return createApiKey(ctx, input);
 });
 const remove = orgAction(
-  { input: deleteApiKeySchema, permission: "apiKey:delete" },
+  { id: "api-keys.remove", input: deleteApiKeySchema, permission: "apiKey:delete" },
   ({ ctx, input }) => deleteApiKey(ctx, input),
 );
 

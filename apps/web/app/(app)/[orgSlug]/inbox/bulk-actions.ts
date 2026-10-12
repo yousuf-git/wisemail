@@ -32,16 +32,16 @@ const startInput = z.object({
 });
 const opInput = z.object({ opId: objectId });
 
-const del = orgAction({ input: deleteInput }, ({ ctx, input }) =>
+const del = orgAction({ id: "inbox.bulk.del", input: deleteInput }, ({ ctx, input }) =>
   permanentlyDeleteItems(ctx, input),
 );
-const empty = orgAction({ input: emptyInput }, ({ ctx, input }) => emptyTrash(ctx, input));
-const trashCount = orgAction({ input: z.object({}) }, ({ ctx }) => countTrash(ctx));
-const count = orgAction({ input: countInput }, ({ ctx, input }) =>
+const empty = orgAction({ id: "inbox.bulk.empty", input: emptyInput }, ({ ctx, input }) => emptyTrash(ctx, input));
+const trashCount = orgAction({ id: "inbox.bulk.trashCount", input: z.object({}) }, ({ ctx }) => countTrash(ctx));
+const count = orgAction({ id: "inbox.bulk.count", input: countInput }, ({ ctx, input }) =>
   countMatching(ctx, input.filter),
 );
-const start = orgAction({ input: startInput }, ({ ctx, input }) => startBulkOperation(ctx, input));
-const progress = orgAction({ input: opInput }, ({ ctx, input }) =>
+const start = orgAction({ id: "inbox.bulk.start", input: startInput }, ({ ctx, input }) => startBulkOperation(ctx, input));
+const progress = orgAction({ id: "inbox.bulk.progress", input: opInput }, ({ ctx, input }) =>
   getBulkOperation(ctx, input.opId),
 );
 

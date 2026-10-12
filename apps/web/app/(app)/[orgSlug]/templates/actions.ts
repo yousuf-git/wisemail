@@ -21,19 +21,19 @@ import {
 } from "@/lib/validation/audience";
 
 const create = orgAction(
-  { input: createTemplateInput, permission: "template:create" },
+  { id: "templates.create", input: createTemplateInput, permission: "template:create" },
   ({ ctx, input }) => createTemplate(ctx, input),
 );
 const update = orgAction(
-  { input: updateTemplateInput, permission: "template:update" },
+  { id: "templates.update", input: updateTemplateInput, permission: "template:update" },
   ({ ctx, input }) => updateTemplate(ctx, input),
 );
 const duplicate = orgAction(
-  { input: duplicateTemplateInput, permission: "template:create" },
+  { id: "templates.duplicate", input: duplicateTemplateInput, permission: "template:create" },
   ({ ctx, input }) => duplicateTemplate(ctx, input),
 );
 const remove = orgAction(
-  { input: z.object({ id: objectId }), permission: "template:delete" },
+  { id: "templates.remove", input: z.object({ id: objectId }), permission: "template:delete" },
   async ({ ctx, input }) => {
     await deleteTemplate(ctx, input.id);
     return { id: input.id };

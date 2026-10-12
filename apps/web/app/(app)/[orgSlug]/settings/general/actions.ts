@@ -15,11 +15,11 @@ import {
 } from "@/lib/validation/general-settings";
 
 const update = orgAction(
-  { input: updateGeneralSchema, permission: "organization:update" },
+  { id: "settings.general.update", input: updateGeneralSchema, permission: "organization:update" },
   ({ ctx, input }) => updateGeneralSettings(ctx, input),
 );
 const requestDeletion = orgAction(
-  { input: requestDeletionSchema, permission: "organization:delete" },
+  { id: "settings.general.requestDeletion", input: requestDeletionSchema, permission: "organization:delete" },
   ({ ctx, input }) => requestOrganizationDeletion(ctx, input),
 );
 

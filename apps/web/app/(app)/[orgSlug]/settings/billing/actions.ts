@@ -28,17 +28,17 @@ const checkoutInput = z.object({
 });
 const packInput = z.object({ quantity: z.number().int().min(1).max(MAX_PACKS_PER_PURCHASE) });
 
-const preview = orgAction({ input: planInput, permission: "billing:manage" }, ({ ctx, input }) =>
+const preview = orgAction({ id: "settings.billing.preview", input: planInput, permission: "billing:manage" }, ({ ctx, input }) =>
   previewPlanChange(ctx, input.plan),
 );
-const change = orgAction({ input: planInput, permission: "billing:manage" }, ({ ctx, input }) =>
+const change = orgAction({ id: "settings.billing.change", input: planInput, permission: "billing:manage" }, ({ ctx, input }) =>
   changePlan(ctx, input.plan),
 );
-const cancel = orgAction({ input: noInput, permission: "billing:manage" }, async ({ ctx }) => {
+const cancel = orgAction({ id: "settings.billing.cancel", input: noInput, permission: "billing:manage" }, async ({ ctx }) => {
   await cancelPendingChange(ctx);
   return { cancelled: true as const };
 });
-const trial = orgAction({ input: noInput, permission: "billing:manage" }, async ({ ctx }) => {
+const trial = orgAction({ id: "settings.billing.trial", input: noInput, permission: "billing:manage" }, async ({ ctx }) => {
   await startTrial(ctx);
   return { started: true as const };
 });
@@ -68,13 +68,13 @@ export async function startTrialAction(orgSlug: string): Promise<ActionResult<{ 
 }
 
 const checkout = orgAction(
-  { input: checkoutInput, permission: "billing:manage" },
+  { id: "settings.billing.checkout", input: checkoutInput, permission: "billing:manage" },
   async ({ ctx, input }) => startPlanCheckout(ctx, await headers(), input),
 );
-const portal = orgAction({ input: noInput, permission: "billing:manage" }, async ({ ctx }) =>
+const portal = orgAction({ id: "settings.billing.portal", input: noInput, permission: "billing:manage" }, async ({ ctx }) =>
   openBillingPortal(ctx, await headers()),
 );
-const pack = orgAction({ input: packInput, permission: "billing:manage" }, ({ ctx, input }) =>
+const pack = orgAction({ id: "settings.billing.pack", input: packInput, permission: "billing:manage" }, ({ ctx, input }) =>
   startCreditPackCheckout(ctx, input),
 );
 

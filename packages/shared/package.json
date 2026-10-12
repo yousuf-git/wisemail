@@ -29,6 +29,10 @@
     "./env-schema": {
       "types": "./dist/env-schema.d.ts",
       "default": "./dist/env-schema.js"
+    },
+    "./action-result": {
+      "types": "./dist/action-result.d.ts",
+      "default": "./dist/action-result.js"
     }
   },
   "files": ["dist"],

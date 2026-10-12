@@ -10,11 +10,11 @@ const objectId = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id");
 const cancelInput = z.object({ emailId: objectId });
 const rescheduleInput = z.object({ emailId: objectId, scheduledAt: z.coerce.date() });
 
-const cancel = orgAction({ input: cancelInput, permission: "email:send" }, ({ ctx, input }) =>
+const cancel = orgAction({ id: "scheduled.cancel", input: cancelInput, permission: "email:send" }, ({ ctx, input }) =>
   cancelScheduledEmail(ctx, input.emailId),
 );
 const reschedule = orgAction(
-  { input: rescheduleInput, permission: "email:send" },
+  { id: "scheduled.reschedule", input: rescheduleInput, permission: "email:send" },
   ({ ctx, input }) => rescheduleEmail(ctx, input),
 );
 

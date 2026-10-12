@@ -19,21 +19,21 @@ import type { CleanupPreviewDTO, CleanupRuleDTO } from "@/lib/dto/deletion";
 const objectId = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id");
 type RuleInput = z.input<typeof cleanupRuleInput>;
 
-const create = orgAction({ input: cleanupRuleInput }, ({ ctx, input }) =>
+const create = orgAction({ id: "settings.cleanup.create", input: cleanupRuleInput }, ({ ctx, input }) =>
   createCleanupRule(ctx, input),
 );
 const updateInput = z.object({ id: objectId, rule: cleanupRuleInput });
-const update = orgAction({ input: updateInput }, ({ ctx, input }) =>
+const update = orgAction({ id: "settings.cleanup.update", input: updateInput }, ({ ctx, input }) =>
   updateCleanupRule(ctx, input.id, input.rule),
 );
-const preview = orgAction({ input: cleanupRuleInput }, ({ ctx, input }) =>
+const preview = orgAction({ id: "settings.cleanup.preview", input: cleanupRuleInput }, ({ ctx, input }) =>
   previewCleanupRule(ctx, input),
 );
 const toggle = orgAction(
-  { input: z.object({ id: objectId, enabled: z.boolean() }) },
+  { id: "settings.cleanup.toggle", input: z.object({ id: objectId, enabled: z.boolean() }) },
   ({ ctx, input }) => setCleanupRuleEnabled(ctx, input.id, input.enabled),
 );
-const remove = orgAction({ input: z.object({ id: objectId }) }, ({ ctx, input }) =>
+const remove = orgAction({ id: "settings.cleanup.remove", input: z.object({ id: objectId }) }, ({ ctx, input }) =>
   deleteCleanupRule(ctx, input.id),
 );
 

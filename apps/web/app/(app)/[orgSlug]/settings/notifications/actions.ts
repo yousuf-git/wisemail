@@ -9,7 +9,7 @@ import {
   type NotificationPreferencesInput,
 } from "@/lib/validation/alert";
 
-const update = orgAction({ input: notificationPreferencesSchema }, ({ ctx, input }) =>
+const update = orgAction({ id: "settings.notifications.update", input: notificationPreferencesSchema }, ({ ctx, input }) =>
   updateNotificationPreferences(ctx, input),
 );
 

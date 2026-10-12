@@ -17,16 +17,16 @@ const itemsInput = z
   .refine((v) => (v.threadIds?.length ?? 0) + (v.emailIds?.length ?? 0) > 0, "Nothing selected");
 const emailInput = z.object({ emailId: objectId });
 
-const read = orgAction({ input: threadInput, permission: "thread:read" }, ({ ctx, input }) =>
+const read = orgAction({ id: "inbox.read", input: threadInput, permission: "thread:read" }, ({ ctx, input }) =>
   markThreadRead(ctx, input.threadId),
 );
-const unread = orgAction({ input: threadInput, permission: "thread:read" }, ({ ctx, input }) =>
+const unread = orgAction({ id: "inbox.unread", input: threadInput, permission: "thread:read" }, ({ ctx, input }) =>
   markThreadUnread(ctx, input.threadId),
 );
-const trash = orgAction({ input: itemsInput }, ({ ctx, input }) => trashItems(ctx, input));
-const restore = orgAction({ input: itemsInput }, ({ ctx, input }) => restoreItems(ctx, input));
+const trash = orgAction({ id: "inbox.trash", input: itemsInput }, ({ ctx, input }) => trashItems(ctx, input));
+const restore = orgAction({ id: "inbox.restore", input: itemsInput }, ({ ctx, input }) => restoreItems(ctx, input));
 const retry = orgAction(
-  { input: emailInput, permission: "thread:read" },
+  { id: "inbox.retry", input: emailInput, permission: "thread:read" },
   async ({ ctx, input }) => {
     await retryInboundFetch(ctx, input.emailId);
     return { emailId: input.emailId };

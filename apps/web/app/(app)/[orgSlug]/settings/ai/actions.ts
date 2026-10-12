@@ -7,7 +7,7 @@ import { updateAiSettings } from "@/lib/services/ai-settings";
 import { aiSettingsSchema, type AiSettingsInput } from "@/lib/validation/ai";
 
 const update = orgAction(
-  { input: aiSettingsSchema, permission: "ai:configure" },
+  { id: "settings.ai.update", input: aiSettingsSchema, permission: "ai:configure" },
   ({ ctx, input }) => updateAiSettings(ctx, input),
 );
 

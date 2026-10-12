@@ -30,32 +30,32 @@ import {
 } from "@/lib/validation/connection";
 
 const add = orgAction(
-  { input: addConnectionSchema, permission: "connection:create" },
+  { id: "settings.connections.add", input: addConnectionSchema, permission: "connection:create" },
   ({ ctx, input }) => addConnection(ctx, input),
 );
 const rename = orgAction(
-  { input: renameConnectionSchema, permission: "connection:update" },
+  { id: "settings.connections.rename", input: renameConnectionSchema, permission: "connection:update" },
   ({ ctx, input }) => renameConnection(ctx, input),
 );
 const remove = orgAction(
-  { input: removeConnectionSchema, permission: "connection:delete" },
+  { id: "settings.connections.remove", input: removeConnectionSchema, permission: "connection:delete" },
   ({ ctx, input }) => removeConnection(ctx, input),
 );
 const retry = orgAction(
-  { input: retryConnectionSchema, permission: "connection:update" },
+  { id: "settings.connections.retry", input: retryConnectionSchema, permission: "connection:update" },
   ({ ctx, input }) => retryConnectionSetup(ctx, input),
 );
 
 const sync = orgAction(
-  { input: syncConnectionSchema, permission: "connection:update" },
+  { id: "settings.connections.sync", input: syncConnectionSchema, permission: "connection:update" },
   ({ ctx, input }) => syncNow(ctx, input),
 );
 const tracking = orgAction(
-  { input: trackingFixSchema, permission: "domain:update" },
+  { id: "settings.connections.tracking", input: trackingFixSchema, permission: "domain:update" },
   ({ ctx, input }) => enableTracking(ctx, input),
 );
 const webhook = orgAction(
-  { input: reregisterWebhookSchema, permission: "connection:update" },
+  { id: "settings.connections.webhook", input: reregisterWebhookSchema, permission: "connection:update" },
   ({ ctx, input }) => reregisterWebhook(ctx, input),
 );
 

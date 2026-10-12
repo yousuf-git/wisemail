@@ -35,6 +35,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
           "/api/stream",
           "/api/files/:attachmentId",
           "/api/inngest",
+          "/api/v1/actions/:id",
           "/api/v1/*",
         ],
   }));
@@ -48,6 +49,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const { streamRoutes } = await import("./routes/stream.js");
   const { fileRoutes } = await import("./routes/files.js");
   const { inngestRoutes } = await import("./routes/inngest.js");
+  const { actionRoutes } = await import("./routes/actions.js");
   const { v1Routes } = await import("./routes/v1.js");
 
   app.addHook("onReady", async () => {
@@ -60,6 +62,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(streamRoutes);
   await app.register(fileRoutes);
   await app.register(inngestRoutes);
+  await app.register(actionRoutes);
   await app.register(v1Routes);
 
   return app;

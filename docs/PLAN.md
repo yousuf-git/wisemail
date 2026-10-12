@@ -22,7 +22,8 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M2 — `@wisemail/shared`: plan catalog + helpers, Stripe price keys, AI credit constants, billing DTOs; web re-exports keep old import paths
 - [x] Phase M3 — Fastify core: `createAuth` (no nextCookies), `dal-request` / `dal-types`, mounts for auth / ingest / Stripe webhook / SSE / files / `GET /api/v1/threads` (reuses web services via `@/` alias). Inngest adapter deferred to follow-up in M3/M4.
 - [x] Phase M3b — Fastify Inngest (`/api/inngest`) + all `/api/v1/*` routes bridged from Next handlers; shared `inngest/functions.ts`
-- [ ] Phase M4 — Replace server actions with REST + typed client
+- [x] Phase M4 — Org actions over HTTP: `orgAction({ id })` registry (105 ids), `POST /api/v1/actions/:id` on Next + Fastify, `callOrgAction` / `apiActions` client. Existing `"use server"` exports kept for Next UI; SPA should use `lib/api/actions.ts`. Admin/userAction RPC still open.
+- [ ] Phase M4b — Point Next UI call sites at `apiActions` (or drop server actions); register `userAction` / `adminAction`
 - [ ] Phase M5 — DB-backed catalog, Stripe lookup keys, price migration job, billing callout
 - [ ] Phase M6 — Admin pricing + platform settings pages; Super Admin seed
 - [ ] Phase M7 — Vite SPA + TanStack Router/Query; port pages

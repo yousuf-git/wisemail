@@ -57,19 +57,19 @@ import {
 const idInput = z.object({ id: objectId });
 const removed = (id: string) => ({ id });
 
-const create = orgAction({ input: createContactInput }, ({ ctx, input }) =>
+const create = orgAction({ id: "audience.create", input: createContactInput }, ({ ctx, input }) =>
   createContact(ctx, input),
 );
-const update = orgAction({ input: updateContactInput }, ({ ctx, input }) =>
+const update = orgAction({ id: "audience.update", input: updateContactInput }, ({ ctx, input }) =>
   updateContact(ctx, input),
 );
-const segmentsOf = orgAction({ input: setContactSegmentsInput }, ({ ctx, input }) =>
+const segmentsOf = orgAction({ id: "audience.segmentsOf", input: setContactSegmentsInput }, ({ ctx, input }) =>
   setContactSegments(ctx, input),
 );
-const topicsOf = orgAction({ input: setContactTopicsInput }, ({ ctx, input }) =>
+const topicsOf = orgAction({ id: "audience.topicsOf", input: setContactTopicsInput }, ({ ctx, input }) =>
   setContactTopics(ctx, input),
 );
-const removeContact = orgAction({ input: idInput }, async ({ ctx, input }) => {
+const removeContact = orgAction({ id: "audience.removeContact", input: idInput }, async ({ ctx, input }) => {
   await deleteContact(ctx, input.id);
   return removed(input.id);
 });
@@ -108,27 +108,27 @@ export async function deleteContactAction(
 /* ---- CSV import ---- */
 
 const batch = orgAction(
-  { input: importBatchInput, permission: "contact:import" },
+  { id: "audience.batch", input: importBatchInput, permission: "contact:import" },
   ({ ctx, input }) => importContactsBatch(ctx, input),
 );
 const startUpload = orgAction(
-  { input: createImportInput, permission: "contact:import" },
+  { id: "audience.startUpload", input: createImportInput, permission: "contact:import" },
   ({ ctx, input }) => createContactImport(ctx, input),
 );
 const appendRows = orgAction(
-  { input: appendImportRowsInput, permission: "contact:import" },
+  { id: "audience.appendRows", input: appendImportRowsInput, permission: "contact:import" },
   ({ ctx, input }) => appendImportRows(ctx, input),
 );
 const start = orgAction(
-  { input: z.object({ importId: objectId }), permission: "contact:import" },
+  { id: "audience.start", input: z.object({ importId: objectId }), permission: "contact:import" },
   ({ ctx, input }) => startContactImport(ctx, input.importId),
 );
 const status = orgAction(
-  { input: z.object({ importId: objectId }), permission: "contact:import" },
+  { id: "audience.status", input: z.object({ importId: objectId }), permission: "contact:import" },
   ({ ctx, input }) => getContactImport(ctx, input.importId),
 );
 const finished = orgAction(
-  {
+  { id: "audience.finished",
     input: z.object({
       connectionId: objectId,
       created: z.number().int().min(0),
@@ -190,33 +190,33 @@ export async function importFinishedAction(
 /* ---- segments, topics, properties ---- */
 
 const manage = "audience:manage" as const;
-const segCreate = orgAction({ input: createSegmentInput, permission: manage }, ({ ctx, input }) =>
+const segCreate = orgAction({ id: "audience.segCreate", input: createSegmentInput, permission: manage }, ({ ctx, input }) =>
   createSegment(ctx, input),
 );
-const segRename = orgAction({ input: renameSegmentInput, permission: manage }, ({ ctx, input }) =>
+const segRename = orgAction({ id: "audience.segRename", input: renameSegmentInput, permission: manage }, ({ ctx, input }) =>
   renameSegment(ctx, input),
 );
-const segDelete = orgAction({ input: idInput, permission: manage }, async ({ ctx, input }) => {
+const segDelete = orgAction({ id: "audience.segDelete", input: idInput, permission: manage }, async ({ ctx, input }) => {
   await deleteSegment(ctx, input.id);
   return removed(input.id);
 });
-const topCreate = orgAction({ input: createTopicInput, permission: manage }, ({ ctx, input }) =>
+const topCreate = orgAction({ id: "audience.topCreate", input: createTopicInput, permission: manage }, ({ ctx, input }) =>
   createTopic(ctx, input),
 );
-const topUpdate = orgAction({ input: updateTopicInput, permission: manage }, ({ ctx, input }) =>
+const topUpdate = orgAction({ id: "audience.topUpdate", input: updateTopicInput, permission: manage }, ({ ctx, input }) =>
   updateTopic(ctx, input),
 );
-const topDelete = orgAction({ input: idInput, permission: manage }, async ({ ctx, input }) => {
+const topDelete = orgAction({ id: "audience.topDelete", input: idInput, permission: manage }, async ({ ctx, input }) => {
   await deleteTopic(ctx, input.id);
   return removed(input.id);
 });
-const propCreate = orgAction({ input: createPropertyInput, permission: manage }, ({ ctx, input }) =>
+const propCreate = orgAction({ id: "audience.propCreate", input: createPropertyInput, permission: manage }, ({ ctx, input }) =>
   createContactProperty(ctx, input),
 );
-const propUpdate = orgAction({ input: updatePropertyInput, permission: manage }, ({ ctx, input }) =>
+const propUpdate = orgAction({ id: "audience.propUpdate", input: updatePropertyInput, permission: manage }, ({ ctx, input }) =>
   updateContactProperty(ctx, input),
 );
-const propDelete = orgAction({ input: idInput, permission: manage }, async ({ ctx, input }) => {
+const propDelete = orgAction({ id: "audience.propDelete", input: idInput, permission: manage }, async ({ ctx, input }) => {
   await deleteContactProperty(ctx, input.id);
   return removed(input.id);
 });

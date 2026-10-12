@@ -25,27 +25,27 @@ import {
 import { setMemberScopeSchema, type SetMemberScopeInput } from "@/lib/validation/project";
 
 const invite = orgAction(
-  { input: inviteMemberSchema, permission: "invitation:create" },
+  { id: "settings.members.invite", input: inviteMemberSchema, permission: "invitation:create" },
   ({ ctx, input }) => inviteMember(ctx, input),
 );
 const cancel = orgAction(
-  { input: cancelInvitationSchema, permission: "invitation:cancel" },
+  { id: "settings.members.cancel", input: cancelInvitationSchema, permission: "invitation:cancel" },
   ({ ctx, input }) => cancelInvitation(ctx, input),
 );
 const resend = orgAction(
-  { input: cancelInvitationSchema, permission: "invitation:create" },
+  { id: "settings.members.resend", input: cancelInvitationSchema, permission: "invitation:create" },
   ({ ctx, input }) => resendInvitation(ctx, input),
 );
 const changeRole = orgAction(
-  { input: changeMemberRoleSchema, permission: "member:update" },
+  { id: "settings.members.changeRole", input: changeMemberRoleSchema, permission: "member:update" },
   ({ ctx, input }) => changeMemberRole(ctx, input),
 );
 const remove = orgAction(
-  { input: removeMemberSchema, permission: "member:delete" },
+  { id: "settings.members.remove", input: removeMemberSchema, permission: "member:delete" },
   ({ ctx, input }) => removeMember(ctx, input),
 );
 const scope = orgAction(
-  { input: setMemberScopeSchema, permission: "member:update" },
+  { id: "settings.members.scope", input: setMemberScopeSchema, permission: "member:update" },
   ({ ctx, input }) => setMemberScope(ctx, input),
 );
 

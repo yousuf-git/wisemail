@@ -21,19 +21,19 @@ import {
 const objectId = z.string().regex(/^[0-9a-f]{24}$/i, "Invalid id");
 
 const create = orgAction(
-  { input: createSenderInput, permission: "sender:create" },
+  { id: "settings.senders.create", input: createSenderInput, permission: "sender:create" },
   ({ ctx, input }) => createSender(ctx, input),
 );
 const update = orgAction(
-  { input: updateSenderInput, permission: "sender:update" },
+  { id: "settings.senders.update", input: updateSenderInput, permission: "sender:update" },
   ({ ctx, input }) => updateSender(ctx, input),
 );
 const disable = orgAction(
-  { input: z.object({ id: objectId, disabled: z.boolean() }), permission: "sender:update" },
+  { id: "settings.senders.disable", input: z.object({ id: objectId, disabled: z.boolean() }), permission: "sender:update" },
   ({ ctx, input }) => setSenderDisabled(ctx, input),
 );
 const remove = orgAction(
-  { input: z.object({ id: objectId }), permission: "sender:delete" },
+  { id: "settings.senders.remove", input: z.object({ id: objectId }), permission: "sender:delete" },
   async ({ ctx, input }) => {
     await deleteSender(ctx, input.id);
     return { id: input.id };

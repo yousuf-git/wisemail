@@ -103,3 +103,11 @@ export {
   type Env,
   type EnvResult,
 } from "./env-schema.js";
+
+export {
+  fail,
+  ok,
+  type ActionError,
+  type ActionErrorCode,
+  type ActionResult,
+} from "./action-result.js";

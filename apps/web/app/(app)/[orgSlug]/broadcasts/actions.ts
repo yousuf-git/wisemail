@@ -28,31 +28,31 @@ import {
 const idInput = z.object({ id: objectId });
 
 const create = orgAction(
-  { input: createBroadcastInput, permission: "broadcast:create" },
+  { id: "broadcasts.create", input: createBroadcastInput, permission: "broadcast:create" },
   ({ ctx, input }) => createBroadcast(ctx, input),
 );
 const update = orgAction(
-  { input: updateBroadcastInput, permission: "broadcast:create" },
+  { id: "broadcasts.update", input: updateBroadcastInput, permission: "broadcast:create" },
   ({ ctx, input }) => updateBroadcast(ctx, input),
 );
 const send = orgAction(
-  { input: sendBroadcastInput, permission: "broadcast:send" },
+  { id: "broadcasts.send", input: sendBroadcastInput, permission: "broadcast:send" },
   ({ ctx, input }) => sendBroadcast(ctx, input),
 );
-const cancel = orgAction({ input: idInput, permission: "broadcast:send" }, ({ ctx, input }) =>
+const cancel = orgAction({ id: "broadcasts.cancel", input: idInput, permission: "broadcast:send" }, ({ ctx, input }) =>
   cancelBroadcast(ctx, input.id),
 );
-const remove = orgAction({ input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
+const remove = orgAction({ id: "broadcasts.remove", input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
   deleteBroadcast(ctx, input.id),
 );
 const test = orgAction(
-  { input: sendBroadcastTestInput, permission: "broadcast:send" },
+  { id: "broadcasts.test", input: sendBroadcastTestInput, permission: "broadcast:send" },
   ({ ctx, input }) => sendBroadcastTest(ctx, input),
 );
-const audience = orgAction({ input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
+const audience = orgAction({ id: "broadcasts.audience", input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
   getBroadcastAudience(ctx, input.id),
 );
-const refresh = orgAction({ input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
+const refresh = orgAction({ id: "broadcasts.refresh", input: idInput, permission: "broadcast:read" }, ({ ctx, input }) =>
   refreshBroadcast(ctx, input.id),
 );
 

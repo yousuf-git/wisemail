@@ -21,23 +21,23 @@ import {
 } from "@/lib/validation/alert";
 
 const create = orgAction(
-  { input: alertRuleInputSchema, permission: "alertRule:create" },
+  { id: "alerts.create", input: alertRuleInputSchema, permission: "alertRule:create" },
   ({ ctx, input }) => createAlertRule(ctx, input),
 );
 const update = orgAction(
-  { input: updateAlertRuleSchema, permission: "alertRule:update" },
+  { id: "alerts.update", input: updateAlertRuleSchema, permission: "alertRule:update" },
   ({ ctx, input }) => updateAlertRule(ctx, input),
 );
 const enable = orgAction(
-  { input: setRuleEnabledSchema, permission: "alertRule:update" },
+  { id: "alerts.enable", input: setRuleEnabledSchema, permission: "alertRule:update" },
   ({ ctx, input }) => setAlertRuleEnabled(ctx, input),
 );
 const remove = orgAction(
-  { input: alertRuleIdSchema, permission: "alertRule:delete" },
+  { id: "alerts.remove", input: alertRuleIdSchema, permission: "alertRule:delete" },
   ({ ctx, input }) => deleteAlertRule(ctx, input.id),
 );
 const acknowledge = orgAction(
-  { input: incidentIdSchema, permission: "alertRule:update" },
+  { id: "alerts.acknowledge", input: incidentIdSchema, permission: "alertRule:update" },
   ({ ctx, input }) => acknowledgeIncident(ctx, input.incidentId),
 );
 

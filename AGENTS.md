@@ -28,6 +28,7 @@ Monorepo (`apps/web` Next.js for now, `apps/api` Fastify, `packages/shared`). Br
 - Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
 - After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build` (package `prepare` does this when scripts are enabled)
 - Fastify reuses `apps/web` server modules via tsconfig paths (`@/*` → `apps/web/*`) during the migration; HTTP APIs use `lib/dal-request.ts` (not Next `headers()`)
+- Org mutations: `orgAction({ id: "domain.name", ... })` registers for `POST /api/v1/actions/:id` (`{ orgSlug, input }` → `ActionResult`). Browser/SPA: `callOrgAction` / `apiActions` in `lib/api/`. Next UI may still import `"use server"` wrappers.
 - Every phase ends green on typecheck, lint, test and build.
 
 ## Conventions

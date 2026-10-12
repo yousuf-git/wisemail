@@ -6,10 +6,10 @@ import { markAllNotificationsRead, markNotificationsRead } from "@/lib/services/
 import { markReadSchema } from "@/lib/validation/alert";
 import { z } from "zod";
 
-const markRead = orgAction({ input: markReadSchema }, ({ ctx, input }) =>
+const markRead = orgAction({ id: "notifications.markRead", input: markReadSchema }, ({ ctx, input }) =>
   markNotificationsRead(ctx, input.ids),
 );
-const markAll = orgAction({ input: z.object({}) }, ({ ctx }) => markAllNotificationsRead(ctx));
+const markAll = orgAction({ id: "notifications.markAll", input: z.object({}) }, ({ ctx }) => markAllNotificationsRead(ctx));
 
 export async function markNotificationsReadAction(
   orgSlug: string,

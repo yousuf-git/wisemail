@@ -14,15 +14,15 @@ import {
 } from "@/lib/validation/project";
 
 const create = orgAction(
-  { input: createProjectSchema, permission: "project:create" },
+  { id: "settings.projects.create", input: createProjectSchema, permission: "project:create" },
   ({ ctx, input }) => createProject(ctx, input),
 );
 const update = orgAction(
-  { input: updateProjectSchema, permission: "project:update" },
+  { id: "settings.projects.update", input: updateProjectSchema, permission: "project:update" },
   ({ ctx, input }) => updateProject(ctx, input),
 );
 const remove = orgAction(
-  { input: deleteProjectSchema, permission: "project:delete" },
+  { id: "settings.projects.remove", input: deleteProjectSchema, permission: "project:delete" },
   ({ ctx, input }) => softDeleteProject(ctx, input),
 );
 
