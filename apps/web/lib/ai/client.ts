@@ -7,6 +7,7 @@ import { AiError } from "@/lib/ai/errors";
 import { estimateTokens, fakeInputText, fakeOutput, FAKE_FAIL_MARKER } from "@/lib/ai/fake";
 import type { PromptBundle } from "@/lib/ai/prompts/types";
 import { env } from "@/lib/env";
+import { getPlatformCatalog } from "@/lib/services/catalog";
 
 /**
  * The single door to a model (TRD §2.9). Chat Completions against any OpenAI-compatible
@@ -217,6 +218,27 @@ export function getAiClient(): AiClient {
       maxRetries: 2,
     }),
     { main: model, fast: env.AI_MODEL_FAST ?? model },
+  );
+  return cached;
+}
+
+/** Live client prefers model / base URL from the DB catalog (falls back to env). */
+export async function getAiClientAsync(): Promise<AiClient> {
+  if (override) return override;
+  if (env.AI_MODE === "fake") return getAiClient();
+  if (cached) return cached;
+  const catalog = await getPlatformCatalog();
+  const model = catalog.ai.model ?? env.AI_MODEL;
+  if (!model) throw new AiError("ai_unavailable");
+  const baseURL = catalog.ai.baseUrl ?? env.AI_BASE_URL;
+  cached = new OpenAiCompatibleClient(
+    new OpenAI({
+      apiKey: env.AI_API_KEY!,
+      baseURL,
+      timeout: TIMEOUT_MS.main,
+      maxRetries: 2,
+    }),
+    { main: model, fast: catalog.ai.modelFast ?? env.AI_MODEL_FAST ?? model },
   );
   return cached;
 }

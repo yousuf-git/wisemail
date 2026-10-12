@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types, type PipelineStage } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AttachmentModel } from "@/lib/db/models/attachments";
 import { DomainModel } from "@/lib/db/models/domains";

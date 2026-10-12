@@ -1,9 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { z } from "zod";
 
-import { orgAction } from "@/lib/actions/action";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import {
   openBillingPortal,
@@ -13,6 +12,7 @@ import {
 import { MAX_PACKS_PER_PURCHASE } from "@/lib/billing/stripe-prices";
 import { PLANS } from "@/lib/db/models/org-settings";
 import type { PlanChangePreviewDTO, PlanChangeResultDTO } from "@/lib/dto/billing";
+import { getRequestHeaders } from "@/lib/request-context";
 import {
   cancelPendingChange,
   changePlan,
@@ -69,10 +69,10 @@ export async function startTrialAction(orgSlug: string): Promise<ActionResult<{ 
 
 const checkout = orgAction(
   { id: "settings.billing.checkout", input: checkoutInput, permission: "billing:manage" },
-  async ({ ctx, input }) => startPlanCheckout(ctx, await headers(), input),
+  async ({ ctx, input }) => startPlanCheckout(ctx, await getRequestHeaders(), input),
 );
 const portal = orgAction({ id: "settings.billing.portal", input: noInput, permission: "billing:manage" }, async ({ ctx }) =>
-  openBillingPortal(ctx, await headers()),
+  openBillingPortal(ctx, await getRequestHeaders()),
 );
 const pack = orgAction({ id: "settings.billing.pack", input: packInput, permission: "billing:manage" }, ({ ctx, input }) =>
   startCreditPackCheckout(ctx, input),

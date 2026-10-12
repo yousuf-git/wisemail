@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { ApiKeyModel } from "@/lib/db/models/api-keys";
 import { ConnectionModel } from "@/lib/db/models/connections";

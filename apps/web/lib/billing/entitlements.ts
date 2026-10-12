@@ -3,15 +3,17 @@ import "server-only";
 import type { ClientSession, Types } from "mongoose";
 
 import {
+  DEFAULT_PLAN_CATALOG,
   FEATURE_LABELS,
-  PLAN_CATALOG,
   PLAN_LABELS,
   TRIAL_AI_CREDITS,
   getNextTier,
   getPlanLimits,
   minPlanFor,
+  planLabels,
   type CountedResource,
   type Feature,
+  type PlanCatalog,
   type PlanFeatures,
   type PlanLimits,
 } from "@/lib/billing/plans";
@@ -22,6 +24,7 @@ import {
   type Plan,
   type PlanState,
 } from "@/lib/db/models/org-settings";
+import { getPlanCatalog, getPlatformCatalog } from "@/lib/services/catalog";
 import { ServiceError } from "@/lib/services/errors";
 import { getOrgSettings } from "@/lib/services/org-settings";
 
@@ -62,11 +65,24 @@ type SettingsLike = Pick<
 
 const DAY = 86_400_000;
 
+type ComputeOptions = {
+  now?: Date;
+  catalog?: PlanCatalog;
+  trialAiCredits?: number;
+};
+
 /** Pure merge, exported for tests. `settings` null = an org without settings (Free). */
 export function computeEntitlements(
   settings: Partial<SettingsLike> | null,
-  now: Date = new Date(),
+  nowOrOptions: Date | ComputeOptions = new Date(),
 ): Entitlements {
+  const options: ComputeOptions =
+    nowOrOptions instanceof Date ? { now: nowOrOptions } : nowOrOptions;
+  const now = options.now ?? new Date();
+  const catalog = options.catalog ?? DEFAULT_PLAN_CATALOG;
+  const trialAiCredits = options.trialAiCredits ?? TRIAL_AI_CREDITS;
+  const labels = planLabels(catalog);
+
   const storedPlan = (settings?.plan ?? "free") as Plan;
   const planState = (settings?.planState ?? "free") as PlanState;
   const trialDoc = settings?.trial?.startedAt && settings.trial.endsAt ? settings.trial : null;
@@ -74,10 +90,10 @@ export function computeEntitlements(
   const trialExpired = trialing && trialDoc!.endsAt!.getTime() <= now.getTime();
   const plan: Plan = trialExpired ? "free" : storedPlan;
 
-  const limits = getPlanLimits(plan, settings?.limitOverrides as never);
+  const limits = getPlanLimits(plan, settings?.limitOverrides as never, catalog);
   // AI during the trial is capped (PRICING §6); an explicit per-org override wins.
   if (trialing && !trialExpired && settings?.limitOverrides?.aiCreditsPerMonth == null) {
-    limits.aiCreditsPerMonth = Math.min(limits.aiCreditsPerMonth, TRIAL_AI_CREDITS);
+    limits.aiCreditsPerMonth = Math.min(limits.aiCreditsPerMonth, trialAiCredits);
   }
   // Agency: connections paid for beyond the included ones (synced with the Stripe quantity).
   if (plan === "agency" && settings?.limitOverrides?.connections == null) {
@@ -89,10 +105,10 @@ export function computeEntitlements(
   return {
     plan,
     storedPlan,
-    planLabel: PLAN_LABELS[plan],
+    planLabel: labels[plan],
     planState: trialExpired ? "free" : planState,
     nextTier: next,
-    nextTierLabel: next ? PLAN_LABELS[next] : null,
+    nextTierLabel: next ? labels[next] : null,
     trial: trialDoc
       ? {
           active: trialing && !trialExpired,
@@ -102,8 +118,8 @@ export function computeEntitlements(
         }
       : null,
     limits,
-    features: { ...PLAN_CATALOG[plan].features },
-    overagePer10kUsd: PLAN_CATALOG[plan].overagePer10kUsd,
+    features: { ...catalog[plan].features },
+    overagePer10kUsd: catalog[plan].overagePer10kUsd,
     billingPeriod: settings?.billingPeriod
       ? { start: settings.billingPeriod.start, end: settings.billingPeriod.end }
       : calendarPeriod(now),
@@ -133,11 +149,18 @@ export async function getEntitlements(
   options: Options = {},
 ): Promise<Entitlements> {
   await connectDb();
-  // Inside a transaction read through it; otherwise share the request's read.
-  const settings = options.session
-    ? await OrgSettingsModel.findOne({ orgId }, null, { session: options.session }).lean()
-    : await getOrgSettings(orgId);
-  return computeEntitlements(settings, options.now);
+  const [settings, catalog, platform] = await Promise.all([
+    options.session
+      ? OrgSettingsModel.findOne({ orgId }, null, { session: options.session }).lean()
+      : getOrgSettings(orgId),
+    getPlanCatalog(),
+    getPlatformCatalog(),
+  ]);
+  return computeEntitlements(settings, {
+    now: options.now,
+    catalog,
+    trialAiCredits: platform.trial.aiCredits,
+  });
 }
 
 /** History retention in days for the org's plan (override, else catalog). */

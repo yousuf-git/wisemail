@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types } from "mongoose";
 
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/runtime";
 import { tagOrg, tagUser } from "@/lib/observability/context";
 import {
   forgetOrgSettings,

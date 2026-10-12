@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types, type ClientSession } from "mongoose";
 
-import type { OrgContext } from "@/lib/dal";
+import type { OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { ContactModel, type ContactDoc } from "@/lib/db/models/contacts";

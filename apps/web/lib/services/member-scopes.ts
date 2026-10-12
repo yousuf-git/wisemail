@@ -2,7 +2,7 @@ import "server-only";
 
 import mongoose, { Types } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { assertFeature } from "@/lib/billing/entitlements";
 import { connectDb } from "@/lib/db/connect";
 import { assertRefs, RefError } from "@/lib/db/refs";

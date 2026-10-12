@@ -82,6 +82,11 @@ function stubModule(id: string, exports: unknown) {
 
 /** What the next `headers()` call (Better Auth calls through the services) sees. */
 const requestHeaders = { current: new Headers() };
+let setRequestHeadersFallback: ((h: Headers | null) => void) | null = null;
+function setSeedHeaders(h: Headers) {
+  requestHeaders.current = h;
+  setRequestHeadersFallback?.(h);
+}
 
 // `server-only` throws outside the Next.js bundle; `next/headers` needs a request scope.
 stubModule("server-only", {});
@@ -266,6 +271,7 @@ async function main() {
   const dal = await import("@/lib/dal");
   const { applyPlanChange } = await import("@/lib/services/plan-changes");
   const { createProject } = await import("@/lib/services/projects");
+  ({ setRequestHeadersFallback } = await import("@/lib/request-context"));
   const { inviteMember } = await import("@/lib/services/members");
   const { addConnection } = await import("@/lib/services/connections");
   const { runSyncInline } = await import("@/lib/services/sync");
@@ -330,7 +336,7 @@ async function main() {
 
   /** The real org context for `person` in `slug` (same lookup the app does per request). */
   async function ctxFor(person: Person, slug: string) {
-    requestHeaders.current = await session(person);
+    setSeedHeaders(await session(person));
     const result = await dal.getOrgContext(slug);
     if (result.status !== "ok") throw new Error(`no access to ${slug} as ${person.email}`);
     return result.ctx;
@@ -398,7 +404,7 @@ async function main() {
     const rand = rng(ws.slug);
 
     // Organization, plan, members.
-    requestHeaders.current = await session(ws.owner);
+    setSeedHeaders(await session(ws.owner));
     const org = await auth.api.createOrganization({
       headers: requestHeaders.current,
       body: { name: ws.name, slug: ws.slug },
@@ -436,7 +442,7 @@ async function main() {
       );
     }
     if (ws.invite) {
-      requestHeaders.current = await session(ws.owner);
+      setSeedHeaders(await session(ws.owner));
       await inviteMember(owner, { email: ws.invite.email, role: ws.invite.role, projectIds: [] });
     }
 
@@ -452,7 +458,7 @@ async function main() {
     };
     const healthy: Conn[] = [];
     for (const spec of ws.connections) {
-      requestHeaders.current = await session(ws.owner);
+      setSeedHeaders(await session(ws.owner));
       const dto = await addConnection(owner, { name: spec.name, apiKey: spec.key });
       const oid = new Types.ObjectId(dto.id);
       if (spec.broken) {

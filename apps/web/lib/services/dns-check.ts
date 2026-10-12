@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { checkDomainDns, type DnsCheckResult } from "@/lib/dns/check";
 import { createNodeResolver, type DnsResolver } from "@/lib/dns/resolver";
 import { connectDb } from "@/lib/db/connect";

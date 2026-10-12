@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { orgAction } from "@/lib/actions/action";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import { retryInboundFetch } from "@/lib/services/emails";
 import { markThreadRead, markThreadUnread, restoreItems, trashItems } from "@/lib/services/threads";

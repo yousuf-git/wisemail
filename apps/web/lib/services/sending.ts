@@ -3,7 +3,7 @@ import "server-only";
 import { ZodError, type ZodType } from "zod";
 import { Types } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { connectDb } from "@/lib/db/connect";
 import { parseId } from "@/lib/db/ids";

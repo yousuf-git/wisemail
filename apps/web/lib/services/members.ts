@@ -2,11 +2,11 @@ import "server-only";
 
 import { APIError } from "better-auth/api";
 import { createHash, randomBytes } from "node:crypto";
-import { headers } from "next/headers";
 import mongoose, { Types } from "mongoose";
 
-import { authorize, type OrgContext, type UserDTO } from "@/lib/dal";
-import { auth } from "@/lib/auth/server";
+import { authorize, type OrgContext, type UserDTO } from "@/lib/dal-types";
+import { auth } from "@/lib/auth/runtime";
+import { getRequestHeaders } from "@/lib/request-context";
 import { isRole, type Role } from "@/lib/auth/permissions";
 import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
 import { connectDb } from "@/lib/db/connect";
@@ -106,7 +106,7 @@ export async function listMembers(ctx: OrgContext): Promise<MemberDTO[]> {
   await connectDb();
   const orgId = orgOid(ctx);
   const result = await auth.api.listMembers({
-    headers: await headers(),
+    headers: await getRequestHeaders(),
     query: { organizationId: ctx.org.id, limit: 500 },
   });
   const scopes = await MemberScopeModel.find({ orgId }).lean();
@@ -239,7 +239,7 @@ export async function inviteMember(
   let invitationId: string;
   try {
     const created = await auth.api.createInvitation({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: {
         email: input.email,
         role: input.role,
@@ -314,7 +314,7 @@ export async function cancelInvitation(
   if (!row) throw new ServiceError("not_found", "We couldn't find that invitation.");
   try {
     await auth.api.cancelInvitation({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: { invitationId: input.invitationId },
     });
   } catch (error) {
@@ -376,7 +376,7 @@ export async function changeMemberRole(
 
   try {
     await auth.api.updateMemberRole({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: { memberId: input.memberId, role: input.role, organizationId: ctx.org.id },
     });
   } catch (error) {
@@ -420,7 +420,7 @@ export async function removeMember(
     .findOne({ _id: target.userId }, { projection: { email: 1 } });
   try {
     await auth.api.removeMember({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: { memberIdOrEmail: input.memberId, organizationId: ctx.org.id },
     });
   } catch (error) {
@@ -517,7 +517,7 @@ export async function acceptInvitation(
   let organizationId: string;
   try {
     const res = await auth.api.acceptInvitation({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: { invitationId: row._id.toHexString() },
     });
     organizationId = (res as { invitation: { organizationId: string } }).invitation.organizationId;

@@ -7,7 +7,7 @@ import { paragraphsToHtml, paragraphsToText } from "@/lib/ai/format";
 import { buildDraftPrompt, type DraftThreadMessage } from "@/lib/ai/prompts/draft";
 import { runAi } from "@/lib/ai/run";
 import type { Tone } from "@/lib/ai/types";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { EmailContentModel } from "@/lib/db/models/email-contents";
 import { EmailModel } from "@/lib/db/models/emails";

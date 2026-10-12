@@ -8,6 +8,13 @@ vi.mock("next/headers", () => ({
   headers: async () => headerState.current,
   cookies: async () => ({ set() {}, get() {}, delete() {}, getAll: () => [] }),
 }));
+vi.mock("@/lib/request-context", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/request-context")>();
+  return {
+    ...actual,
+    getRequestHeaders: async () => headerState.current,
+  };
+});
 
 let stop: () => Promise<void>;
 let auth: typeof import("@/lib/auth/server").auth;

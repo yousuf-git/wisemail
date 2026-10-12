@@ -1,6 +1,6 @@
 "use server";
 
-import { orgAction } from "@/lib/actions/action";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import { markAllNotificationsRead, markNotificationsRead } from "@/lib/services/notifications";
 import { markReadSchema } from "@/lib/validation/alert";

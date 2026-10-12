@@ -1,6 +1,7 @@
 "use server";
 
-import { ActionFailure, orgAction } from "@/lib/actions/action";
+import { ActionFailure } from "@/lib/actions/action-core";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import type { CreatedApiKeyDTO } from "@/lib/dto/domain";
 import { createApiKey, deleteApiKey } from "@/lib/services/api-keys";

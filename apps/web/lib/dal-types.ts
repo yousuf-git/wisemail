@@ -23,6 +23,11 @@ export class ForbiddenError extends Error {
   }
 }
 
+/** Throws `ForbiddenError` unless the context's role grants `permission`. */
+export function authorize(ctx: Pick<OrgContext, "can">, permission: Permission): void {
+  if (!ctx.can(permission)) throw new ForbiddenError(permission);
+}
+
 export function buildOrgContext(
   user: UserDTO,
   access: OrgAccess,

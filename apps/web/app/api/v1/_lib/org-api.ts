@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getOrgContextFromHeaders } from "@/lib/dal-request";
 import { ForbiddenError, type OrgContext } from "@/lib/dal-types";
 import { RefError } from "@/lib/db/refs";
+import { runWithRequestHeadersAsync } from "@/lib/request-context";
 import { ServiceError } from "@/lib/services/errors";
 
 /**
@@ -56,39 +57,41 @@ export async function orgRoute(request: Request, handler: OrgRouteHandler): Prom
   const orgSlug = searchParams.get("orgSlug");
   if (!orgSlug) return errorResponse(400, "validation", "orgSlug is required.");
 
-  try {
-    const result = await getOrgContextFromHeaders(orgSlug, request.headers);
-    if (result.status === "unauthenticated") {
-      return errorResponse(401, "unauthenticated", "Please sign in again.");
+  return runWithRequestHeadersAsync(request.headers, async () => {
+    try {
+      const result = await getOrgContextFromHeaders(orgSlug, request.headers);
+      if (result.status === "unauthenticated") {
+        return errorResponse(401, "unauthenticated", "Please sign in again.");
+      }
+      if (result.status === "not_member") {
+        return errorResponse(404, "not_found", "We couldn't find that workspace.");
+      }
+      if (result.status === "suspended") {
+        return errorResponse(
+          403,
+          "workspace_suspended",
+          "This workspace is suspended. Contact Wisemail support.",
+        );
+      }
+      const body = await handler({ ctx: result.ctx, searchParams });
+      // A handler may answer with its own Response (e.g. a CSV download).
+      return body instanceof Response ? body : json(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) return validationResponse(error);
+      if (error instanceof ForbiddenError) {
+        return errorResponse(403, "forbidden", error.message);
+      }
+      if (error instanceof ServiceError) {
+        return errorResponse(
+          STATUS_BY_CODE[error.code] ?? 400,
+          error.code,
+          error.message,
+          error.fieldErrors ? { fieldErrors: error.fieldErrors } : undefined,
+        );
+      }
+      if (error instanceof RefError) return errorResponse(404, "not_found", error.message);
+      console.error("[api/v1] unexpected error", error);
+      return errorResponse(500, "internal", "Something went wrong on our side.");
     }
-    if (result.status === "not_member") {
-      return errorResponse(404, "not_found", "We couldn't find that workspace.");
-    }
-    if (result.status === "suspended") {
-      return errorResponse(
-        403,
-        "workspace_suspended",
-        "This workspace is suspended. Contact Wisemail support.",
-      );
-    }
-    const body = await handler({ ctx: result.ctx, searchParams });
-    // A handler may answer with its own Response (e.g. a CSV download).
-    return body instanceof Response ? body : json(body);
-  } catch (error) {
-    if (error instanceof z.ZodError) return validationResponse(error);
-    if (error instanceof ForbiddenError) {
-      return errorResponse(403, "forbidden", error.message);
-    }
-    if (error instanceof ServiceError) {
-      return errorResponse(
-        STATUS_BY_CODE[error.code] ?? 400,
-        error.code,
-        error.message,
-        error.fieldErrors ? { fieldErrors: error.fieldErrors } : undefined,
-      );
-    }
-    if (error instanceof RefError) return errorResponse(404, "not_found", error.message);
-    console.error("[api/v1] unexpected error", error);
-    return errorResponse(500, "internal", "Something went wrong on our side.");
-  }
+  });
 }

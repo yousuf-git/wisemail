@@ -22,7 +22,7 @@ import {
   getPlanLimits,
   type Feature,
 } from "@/lib/billing/plans";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { OrgSettingsModel, PLANS, type Plan } from "@/lib/db/models/org-settings";

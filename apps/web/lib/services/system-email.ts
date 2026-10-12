@@ -87,9 +87,15 @@ async function deliver(
   const { html, text } = await renderMessage(element);
 
   if (env.RESEND_MODE === "live") {
+    const { getPlatformCatalog } = await import("@/lib/services/catalog");
+    const from =
+      (await getPlatformCatalog()).systemEmail.fromEmail ?? env.SYSTEM_FROM_EMAIL;
+    if (!from) {
+      throw new SystemEmailError("System from-address is not configured.");
+    }
     const resend = new Resend(env.SYSTEM_RESEND_API_KEY);
     const { error } = await resend.emails.send({
-      from: env.SYSTEM_FROM_EMAIL!,
+      from,
       to,
       subject,
       html,

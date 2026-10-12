@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { orgAction } from "@/lib/actions/action";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import { getBulkOperation, countMatching, startBulkOperation } from "@/lib/deletion/bulk";
 import { bulkFilterSchema } from "@/lib/deletion/filters";

@@ -8,7 +8,7 @@ import { buildRewritePrompt, buildSubjectsPrompt } from "@/lib/ai/prompts/compos
 import { htmlToPlain } from "@/lib/ai/prompts/text";
 import { runAi } from "@/lib/ai/run";
 import type { ComposeAction, Tone } from "@/lib/ai/types";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 
 export type ComposeAssistResult =
   | { kind: "subjects"; suggestions: string[]; model: string }

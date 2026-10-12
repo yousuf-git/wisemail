@@ -6,7 +6,7 @@ import { APIError } from "better-auth/api";
 
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { auth } from "@/lib/auth/server";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";
 import { env } from "@/lib/env";

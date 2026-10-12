@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types, type ClientSession } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { ConnectionModel, type ConnectionStatus } from "@/lib/db/models/connections";
 import { DomainModel, type DomainStatus } from "@/lib/db/models/domains";

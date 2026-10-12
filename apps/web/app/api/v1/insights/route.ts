@@ -1,4 +1,4 @@
-import { authorize } from "@/lib/dal";
+import { authorize } from "@/lib/dal-types";
 import { getInsights } from "@/lib/services/insights";
 import { insightsQuery } from "../_lib/insights-query";
 import { orgRoute } from "../_lib/org-api";

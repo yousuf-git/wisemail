@@ -111,3 +111,5 @@ export {
   type ActionErrorCode,
   type ActionResult,
 } from "./action-result.js";
+
+export type { CatalogPlan, PlatformCatalog } from "./catalog.js";

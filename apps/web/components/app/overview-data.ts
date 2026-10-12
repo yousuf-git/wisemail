@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { OrgContext } from "@/lib/dal";
+import type { OrgContext } from "@/lib/dal-types";
 import type { InsightsDTO } from "@/lib/dto/insights";
 import { getInsightFilterOptions, getInsights } from "@/lib/services/insights";
 import { buildOverview, type Overview } from "./overview-model";

@@ -5,7 +5,7 @@ import { Types } from "mongoose";
 import { AiError } from "@/lib/ai/errors";
 import { buildAnomalyPrompt, type AnomalyFacts } from "@/lib/ai/prompts/anomaly";
 import { runAi } from "@/lib/ai/run";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AlertIncidentModel } from "@/lib/db/models/alert-incidents";
 import { EmailModel } from "@/lib/db/models/emails";

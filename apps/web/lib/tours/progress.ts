@@ -3,7 +3,7 @@ import "server-only";
 import { Types } from "mongoose";
 import { z } from "zod";
 
-import type { OrgContext } from "@/lib/dal";
+import type { OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { ConnectionModel } from "@/lib/db/models/connections";
 import { TourProgressModel } from "@/lib/db/models/tour-progress";

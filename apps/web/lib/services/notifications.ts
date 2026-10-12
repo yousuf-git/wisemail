@@ -4,7 +4,7 @@ import mongoose, { Types, type ClientSession } from "mongoose";
 
 import { roleHasPermission, type Permission } from "@/lib/auth/permissions";
 import { assertFeature, getEntitlements } from "@/lib/billing/entitlements";
-import type { OrgContext } from "@/lib/dal";
+import type { OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { MemberScopeModel } from "@/lib/db/models/member-scopes";
 import {

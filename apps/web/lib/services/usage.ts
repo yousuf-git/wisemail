@@ -9,7 +9,7 @@ import { getAiBalance } from "@/lib/ai/credits";
 import { trackedTotal } from "@/lib/billing/metering";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { FREE_GRACE_DAYS, overageCostUsd, paymentGraceEnds } from "@/lib/billing/plans";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AiUsageModel } from "@/lib/db/models/ai-usage";
 import { AlertRuleModel } from "@/lib/db/models/alert-rules";

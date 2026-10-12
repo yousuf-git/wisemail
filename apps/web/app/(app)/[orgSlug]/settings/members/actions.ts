@@ -1,6 +1,6 @@
 "use server";
 
-import { orgAction } from "@/lib/actions/action";
+import { orgAction } from "@/lib/actions/org-action";
 import type { ActionResult } from "@/lib/actions/result";
 import type { InvitationDTO } from "@/lib/dto/member";
 import type { Role } from "@/lib/auth/permissions";

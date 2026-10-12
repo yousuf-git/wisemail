@@ -2,7 +2,7 @@ import "server-only";
 
 import { Types, type ClientSession } from "mongoose";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { BulkOperationModel, type BulkOperationDoc } from "@/lib/db/models/bulk-operations";
 import { EmailModel, TRASH_RETENTION_DAYS } from "@/lib/db/models/emails";

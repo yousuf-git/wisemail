@@ -1,4 +1,2 @@
-import { createAuth } from "@/lib/auth/create-auth";
-
-/** Fastify Better Auth instance — no `nextCookies` (Node handler sets cookies on the response). */
-export const auth = createAuth();
+/** Re-export the Node/HTTP Better Auth instance (no Next.js). */
+export { auth } from "@/lib/auth/runtime";

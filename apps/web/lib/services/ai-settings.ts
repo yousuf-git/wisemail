@@ -6,7 +6,7 @@ import { getAiSwitches, type AiSwitches } from "@/lib/ai/access";
 import { getAiBalance } from "@/lib/ai/credits";
 import type { AiStatusDTO } from "@/lib/ai/types";
 import { getEntitlements } from "@/lib/billing/entitlements";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AiUsageModel, type AiFeature } from "@/lib/db/models/ai-usage";
 import { OrgSettingsModel } from "@/lib/db/models/org-settings";

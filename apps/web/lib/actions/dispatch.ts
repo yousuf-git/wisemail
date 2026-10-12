@@ -30,18 +30,26 @@ export async function dispatchOrgAction(
       body: fail("validation", "orgSlug and input are required."),
     };
   }
-  const result = await action(parsed.data.orgSlug, parsed.data.input, headers);
-  const status =
-    result.ok
-      ? 200
-      : result.error.code === "unauthenticated"
-        ? 401
-        : result.error.code === "forbidden" || result.error.code === "workspace_suspended"
-          ? 403
-          : result.error.code === "not_found"
-            ? 404
-            : result.error.code === "validation"
-              ? 400
-              : 400;
-  return { status, body: result };
+  try {
+    const result = await action(parsed.data.orgSlug, parsed.data.input, headers);
+    const status =
+      result.ok
+        ? 200
+        : result.error.code === "unauthenticated"
+          ? 401
+          : result.error.code === "forbidden" || result.error.code === "workspace_suspended"
+            ? 403
+            : result.error.code === "not_found"
+              ? 404
+              : result.error.code === "validation"
+                ? 400
+                : 400;
+    return { status, body: result };
+  } catch (error) {
+    console.error("[actions] unexpected error", error);
+    return {
+      status: 500,
+      body: fail("internal", "Something went wrong on our side. Try again in a moment."),
+    };
+  }
 }

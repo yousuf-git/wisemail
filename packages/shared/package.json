@@ -33,6 +33,10 @@
     "./action-result": {
       "types": "./dist/action-result.d.ts",
       "default": "./dist/action-result.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "default": "./dist/catalog.js"
     }
   },
   "files": ["dist"],

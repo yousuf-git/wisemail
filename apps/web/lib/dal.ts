@@ -6,7 +6,6 @@ import { cache } from "react";
 
 import { auth } from "@/lib/auth/server";
 import { tagOrg, tagUser } from "@/lib/observability/context";
-import { type Permission } from "@/lib/auth/permissions";
 import {
   forgetOrgSettings,
   getOrgSettings,
@@ -27,6 +26,7 @@ import {
 
 export {
   ForbiddenError,
+  authorize,
   buildOrgContext,
   type OrgContext,
   type OrgContextResult,
@@ -144,7 +144,3 @@ export async function requireOrg(orgSlug: string): Promise<OrgContext> {
   return result.ctx;
 }
 
-/** Throws `ForbiddenError` unless the context's role grants `permission`. */
-export function authorize(ctx: Pick<OrgContext, "can">, permission: Permission): void {
-  if (!ctx.can(permission)) throw new ForbiddenError(permission);
-}

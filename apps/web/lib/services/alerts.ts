@@ -4,7 +4,7 @@ import { Types } from "mongoose";
 
 import type { AlertKind } from "@/lib/alerts/kinds";
 import { assertLimitFor, getEntitlements } from "@/lib/billing/entitlements";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AlertIncidentModel, type AlertIncidentDoc } from "@/lib/db/models/alert-incidents";
 import { AlertRuleModel, type AlertRuleDoc } from "@/lib/db/models/alert-rules";

@@ -4,7 +4,7 @@ import { Types, type QueryFilter } from "mongoose";
 import mongoose from "mongoose";
 
 import { assertFeatureFor, getEntitlements } from "@/lib/billing/entitlements";
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import { AuditLogModel, type AuditLog } from "@/lib/db/models/audit-log";
 import type { AuditEntryDTO, AuditFiltersDTO, AuditPageDTO } from "@/lib/dto/audit";

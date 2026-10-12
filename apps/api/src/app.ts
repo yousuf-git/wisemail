@@ -22,7 +22,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   app.get("/api/v1/_meta", async () => ({
     name: "wisemail-api",
     plans: PLAN_ORDER,
-    catalogVersion: "default",
+    catalogVersion: "db",
     planCount: Object.keys(DEFAULT_PLAN_CATALOG).length,
     lite: Boolean(options.lite),
     routes: options.lite
@@ -35,6 +35,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
           "/api/stream",
           "/api/files/:attachmentId",
           "/api/inngest",
+          "/api/v1/catalog",
           "/api/v1/actions/:id",
           "/api/v1/*",
         ],
@@ -43,6 +44,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   if (options.lite) return app;
 
   const { connectDb } = await import("@/lib/db/connect");
+  const { getPlatformCatalog } = await import("@/lib/services/catalog");
   const { authRoutes } = await import("./routes/auth.js");
   const { ingestRoutes } = await import("./routes/ingest.js");
   const { stripeWebhookRoutes } = await import("./routes/stripe-webhook.js");
@@ -50,10 +52,12 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const { fileRoutes } = await import("./routes/files.js");
   const { inngestRoutes } = await import("./routes/inngest.js");
   const { actionRoutes } = await import("./routes/actions.js");
+  const { catalogRoutes } = await import("./routes/catalog.js");
   const { v1Routes } = await import("./routes/v1.js");
 
   app.addHook("onReady", async () => {
     await connectDb();
+    await getPlatformCatalog();
   });
 
   await app.register(authRoutes);
@@ -62,6 +66,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(streamRoutes);
   await app.register(fileRoutes);
   await app.register(inngestRoutes);
+  await app.register(catalogRoutes);
   await app.register(actionRoutes);
   await app.register(v1Routes);
 

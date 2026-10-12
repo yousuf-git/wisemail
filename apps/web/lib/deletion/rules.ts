@@ -3,7 +3,7 @@ import "server-only";
 import { Types } from "mongoose";
 import { z } from "zod";
 
-import { authorize, type OrgContext } from "@/lib/dal";
+import { authorize, type OrgContext } from "@/lib/dal-types";
 import { connectDb } from "@/lib/db/connect";
 import {
   CLEANUP_ACTIONS,

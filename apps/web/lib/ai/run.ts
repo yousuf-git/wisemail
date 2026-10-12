@@ -3,12 +3,13 @@ import "server-only";
 import type { Types } from "mongoose";
 
 import { assertAiAccess } from "@/lib/ai/access";
-import { getAiClient, type AiCompletion } from "@/lib/ai/client";
+import { getAiClientAsync, type AiCompletion } from "@/lib/ai/client";
 import { commitCredits, releaseCredits, reserveCredits, type UsageRecord } from "@/lib/ai/credits";
 import { AiError } from "@/lib/ai/errors";
 import type { PromptBundle } from "@/lib/ai/prompts/types";
-import { AI_CREDIT_COST } from "@/lib/ai/types";
+import { DEFAULT_AI_CREDIT_COST } from "@/lib/ai/types";
 import { connectDb } from "@/lib/db/connect";
+import { getPlatformCatalog } from "@/lib/services/catalog";
 
 /**
  * One metered AI call: plan gate and opt-out -> reserve credits -> model -> commit (or release
@@ -23,10 +24,12 @@ export async function runAi<T>(input: {
   const { orgId, userId, bundle, refs } = input;
   await connectDb();
   await assertAiAccess(orgId, bundle.feature);
-  const reservation = await reserveCredits(orgId, AI_CREDIT_COST[bundle.feature]);
+  const catalog = await getPlatformCatalog();
+  const cost = catalog.ai.creditCost[bundle.feature] ?? DEFAULT_AI_CREDIT_COST[bundle.feature];
+  const reservation = await reserveCredits(orgId, cost);
   let completion: AiCompletion<T>;
   try {
-    completion = await getAiClient().complete(bundle);
+    completion = await (await getAiClientAsync()).complete(bundle);
   } catch (error) {
     await releaseCredits(reservation).catch((e) => console.error("[ai] release failed", e));
     throw error instanceof AiError ? error : new AiError("ai_unavailable");
