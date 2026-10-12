@@ -2,8 +2,8 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { buildApp } from "./app.js";
 
-describe("api smoke", () => {
-  const appPromise = buildApp();
+describe("api smoke (lite)", () => {
+  const appPromise = buildApp({ lite: true });
 
   afterAll(async () => {
     const app = await appPromise;
@@ -17,11 +17,12 @@ describe("api smoke", () => {
     expect(res.json()).toEqual({ ok: true, service: "wisemail-api" });
   });
 
-  it("GET /api/v1/_meta resolves shared package", async () => {
+  it("GET /api/v1/_meta", async () => {
     const app = await appPromise;
     const res = await app.inject({ method: "GET", url: "/api/v1/_meta" });
     expect(res.statusCode).toBe(200);
     expect(res.json().plans).toEqual(["free", "pro", "team", "agency"]);
     expect(res.json().planCount).toBe(4);
+    expect(res.json().lite).toBe(true);
   });
 });

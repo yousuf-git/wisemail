@@ -1,5 +1,9 @@
-import { buildApp } from "./app.js";
-import { loadApiEnv } from "./env.js";
+import { loadRootEnv } from "./load-root-env.js";
+
+loadRootEnv();
+
+const { loadApiEnv } = await import("./env.js");
+const { buildApp } = await import("./app.js");
 
 const env = loadApiEnv();
 const app = await buildApp();
