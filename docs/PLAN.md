@@ -20,7 +20,8 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 
 - [x] Phase M1 — Monorepo skeleton: `apps/web` (current Next app), `apps/api` (Fastify health), `packages/shared` (plan types)
 - [x] Phase M2 — `@wisemail/shared`: plan catalog + helpers, Stripe price keys, AI credit constants, billing DTOs; web re-exports keep old import paths
-- [ ] Phase M3 — Fastify: auth, REST, webhooks, Inngest, SSE, files
+- [x] Phase M3 — Fastify core: `createAuth` (no nextCookies), `dal-request` / `dal-types`, mounts for auth / ingest / Stripe webhook / SSE / files / `GET /api/v1/threads` (reuses web services via `@/` alias). Inngest adapter deferred to follow-up in M3/M4.
+- [ ] Phase M3b — Fastify Inngest adapter + remaining `/api/v1/*` routes
 - [ ] Phase M4 — Replace server actions with REST + typed client
 - [ ] Phase M5 — DB-backed catalog, Stripe lookup keys, price migration job, billing callout
 - [ ] Phase M6 — Admin pricing + platform settings pages; Super Admin seed

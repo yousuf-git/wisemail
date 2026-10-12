@@ -22,11 +22,12 @@ Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
 
 Monorepo (`apps/web` Next.js for now, `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
 
-- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:api` for one
+- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:api` for one (API default `:4000`)
 - `pnpm build` / `pnpm start` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (workspace filters)
 - `pnpm db:dev` starts a single-node MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
 - Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
 - After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build` (package `prepare` does this when scripts are enabled)
+- Fastify reuses `apps/web` server modules via tsconfig paths (`@/*` → `apps/web/*`) during the migration; HTTP APIs use `lib/dal-request.ts` (not Next `headers()`)
 - Every phase ends green on typecheck, lint, test and build.
 
 ## Conventions

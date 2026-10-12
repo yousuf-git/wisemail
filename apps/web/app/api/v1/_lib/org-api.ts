@@ -2,7 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
-import { ForbiddenError, getOrgContext, type OrgContext } from "@/lib/dal";
+import { getOrgContextFromHeaders } from "@/lib/dal-request";
+import { ForbiddenError, type OrgContext } from "@/lib/dal-types";
 import { RefError } from "@/lib/db/refs";
 import { ServiceError } from "@/lib/services/errors";
 
@@ -56,7 +57,7 @@ export async function orgRoute(request: Request, handler: OrgRouteHandler): Prom
   if (!orgSlug) return errorResponse(400, "validation", "orgSlug is required.");
 
   try {
-    const result = await getOrgContext(orgSlug);
+    const result = await getOrgContextFromHeaders(orgSlug, request.headers);
     if (result.status === "unauthenticated") {
       return errorResponse(401, "unauthenticated", "Please sign in again.");
     }

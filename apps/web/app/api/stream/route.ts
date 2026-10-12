@@ -1,4 +1,4 @@
-import { getOrgContext } from "@/lib/dal";
+import { getOrgContextFromHeaders } from "@/lib/dal-request";
 import { isClientDisconnect, openEventStream } from "@/lib/realtime/stream";
 import { loadProjectScope, roleIsScopable } from "@/lib/services/project-scope";
 import { resolveOrgAccess } from "@/lib/services/tenancy";
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const orgSlug = url.searchParams.get("orgSlug");
   if (!orgSlug) return problem(400, "validation", "orgSlug is required.");
 
-  const result = await getOrgContext(orgSlug);
+  const result = await getOrgContextFromHeaders(orgSlug, request.headers);
   if (result.status === "unauthenticated") {
     return problem(401, "unauthenticated", "Please sign in again.");
   }

@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/dal";
+import { getSessionFromHeaders } from "@/lib/dal-request";
 import { openAttachmentForUser } from "@/lib/services/attachments";
 import { contentDisposition } from "@/lib/storage/disposition";
 
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
  * stays put. Free-plan files up to 4 MB are streamed from here instead. Anything the caller may
  * not read answers 404, never revealing that the id exists.
  */
-export async function GET(_request: Request, ctx: { params: Promise<{ attachmentId: string }> }) {
-  const session = await getSession();
+export async function GET(request: Request, ctx: { params: Promise<{ attachmentId: string }> }) {
+  const session = await getSessionFromHeaders(request.headers);
   if (!session) return new Response("Unauthorized", { status: 401 });
 
   const { attachmentId } = await ctx.params;
