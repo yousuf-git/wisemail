@@ -2,7 +2,7 @@ import "server-only";
 
 import type { z } from "zod";
 
-import type { OrgContext } from "@/lib/dal";
+import type { OrgContext } from "@/lib/dal-types";
 import { errorResponse, orgRoute } from "../_lib/org-api";
 
 /**
