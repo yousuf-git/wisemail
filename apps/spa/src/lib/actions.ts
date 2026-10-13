@@ -21,14 +21,114 @@ export function sendEmail(
     subject: string;
     html?: string;
     text?: string;
+    scheduledAt?: string;
+    inReplyToEmailId?: string;
+    attachmentIds?: string[];
+    draftId?: string;
   },
 ): Promise<ActionResult<{ emailId: string } | { id: string } | unknown>> {
   return callOrgAction("compose.send", orgSlug, {
     ...input,
     cc: input.cc ?? [],
     bcc: input.bcc ?? [],
-    attachmentIds: [],
+    attachmentIds: input.attachmentIds ?? [],
   });
+}
+
+export function saveDraft(
+  orgSlug: string,
+  input: {
+    id?: string;
+    version?: number;
+    senderId?: string | null;
+    to?: string[];
+    subject?: string;
+    bodyHtml?: string;
+    bodyText?: string;
+    mode?: "rich" | "html" | "template";
+  },
+) {
+  return callOrgAction<{ id: string; version: number }>("compose.save", orgSlug, input);
+}
+
+export function startAttachmentUpload(
+  orgSlug: string,
+  input: { draftId: string; filename: string; size: number; contentType: string },
+) {
+  return callOrgAction<{
+    attachmentId: string;
+    uploadUrl: string;
+    headers: Record<string, string>;
+  }>("compose.startUpload", orgSlug, input);
+}
+
+export function confirmAttachmentUpload(
+  orgSlug: string,
+  input: { draftId: string; attachmentId: string },
+) {
+  return callOrgAction<{ id: string; filename: string }>("compose.confirmUpload", orgSlug, input);
+}
+
+export function removeDraftAttachment(
+  orgSlug: string,
+  input: { draftId: string; attachmentId: string },
+) {
+  return callOrgAction<{ id: string }>("compose.removeAttachment", orgSlug, input);
+}
+
+export function markNotificationsRead(orgSlug: string, ids: string[]) {
+  return callOrgAction<{ updated: number; unreadCount: number }>(
+    "notifications.markRead",
+    orgSlug,
+    { ids },
+  );
+}
+
+export function markAllNotificationsRead(orgSlug: string) {
+  return callOrgAction<{ updated: number; unreadCount: number }>(
+    "notifications.markAll",
+    orgSlug,
+    {},
+  );
+}
+
+export function trashThreads(orgSlug: string, threadIds: string[]) {
+  return callOrgAction<{ threads: number; emails: number }>("inbox.trash", orgSlug, {
+    threadIds,
+  });
+}
+
+export function restoreThreads(orgSlug: string, threadIds: string[]) {
+  return callOrgAction<{ threads: number; emails: number }>("inbox.restore", orgSlug, {
+    threadIds,
+  });
+}
+
+export function markThreadRead(orgSlug: string, threadId: string) {
+  return callOrgAction<{ threadId: string; unread: boolean }>("inbox.read", orgSlug, {
+    threadId,
+  });
+}
+
+export function markThreadUnread(orgSlug: string, threadId: string) {
+  return callOrgAction<{ threadId: string; unread: boolean }>("inbox.unread", orgSlug, {
+    threadId,
+  });
+}
+
+export function addConnection(
+  orgSlug: string,
+  input: { name: string; apiKey: string; confirmExtraCost?: boolean },
+) {
+  return callOrgAction("settings.connections.add", orgSlug, input);
+}
+
+export function setAlertRuleEnabled(orgSlug: string, id: string, enabled: boolean) {
+  return callOrgAction("alerts.enable", orgSlug, { id, enabled });
+}
+
+export function deleteAlertRule(orgSlug: string, id: string) {
+  return callOrgAction("alerts.remove", orgSlug, { id });
 }
 
 export function setDefaultSender(orgSlug: string, senderId: string, version: number) {
@@ -37,4 +137,73 @@ export function setDefaultSender(orgSlug: string, senderId: string, version: num
     version,
     isDefault: true,
   });
+}
+
+export function syncConnection(orgSlug: string, connectionId: string) {
+  return callOrgAction("settings.connections.sync", orgSlug, { connectionId });
+}
+
+export function retryConnection(orgSlug: string, connectionId: string) {
+  return callOrgAction("settings.connections.retry", orgSlug, { connectionId });
+}
+
+export function inviteMember(
+  orgSlug: string,
+  input: { email: string; role: string; projectIds?: string[] },
+) {
+  return callOrgAction("settings.members.invite", orgSlug, {
+    email: input.email,
+    role: input.role,
+    projectIds: input.projectIds ?? [],
+  });
+}
+
+export function cancelInvitation(orgSlug: string, invitationId: string) {
+  return callOrgAction("settings.members.cancel", orgSlug, { invitationId });
+}
+
+export function resendInvitation(orgSlug: string, invitationId: string) {
+  return callOrgAction("settings.members.resend", orgSlug, { invitationId });
+}
+
+export function acknowledgeIncident(orgSlug: string, incidentId: string) {
+  return callOrgAction("alerts.acknowledge", orgSlug, { incidentId });
+}
+
+export function createAlertRule(
+  orgSlug: string,
+  input: {
+    name: string;
+    kind: string;
+    condition: {
+      operator: "gt" | "lt";
+      threshold: number;
+      windowMinutes: number;
+      minVolume: number;
+    };
+  },
+) {
+  return callOrgAction("alerts.create", orgSlug, {
+    name: input.name,
+    kind: input.kind,
+    scope: { connectionIds: [], projectIds: [], domainIds: [] },
+    condition: input.condition,
+    channels: { inApp: true, emailMembers: true, email: [] },
+    enabled: true,
+  });
+}
+
+export function startBillingCheckout(
+  orgSlug: string,
+  input: { plan: "pro" | "team" | "agency"; interval: "month" | "year" },
+) {
+  return callOrgAction<{ url: string }>("settings.billing.checkout", orgSlug, input);
+}
+
+export function openBillingPortal(orgSlug: string) {
+  return callOrgAction<{ url: string }>("settings.billing.portal", orgSlug, {});
+}
+
+export function startBillingTrial(orgSlug: string) {
+  return callOrgAction<{ started: true }>("settings.billing.trial", orgSlug, {});
 }

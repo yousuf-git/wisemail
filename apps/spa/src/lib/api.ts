@@ -31,6 +31,16 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   } catch {
     throw new Error(`${path} invalid JSON`);
   }
+  if (!res.ok) {
+    const msg =
+      parsed &&
+      typeof parsed === "object" &&
+      "message" in parsed &&
+      typeof (parsed as { message: unknown }).message === "string"
+        ? (parsed as { message: string }).message
+        : `${path} ${res.status}`;
+    throw new Error(msg);
+  }
   return parsed as T;
 }
 
@@ -53,6 +63,7 @@ export async function getCatalog() {
 export type MailListRow = {
   kind: "thread" | "email";
   id: string;
+  threadId: string | null;
   subject: string;
   snippet: string;
   people: string[];
@@ -60,6 +71,34 @@ export type MailListRow = {
   lastMessageAt: string;
   unread: boolean;
 };
+
+export type ThreadMessage = {
+  id: string;
+  direction: "inbound" | "outbound";
+  status: string;
+  from: { address: string; name?: string };
+  to: { address: string; name?: string }[];
+  subject: string;
+  snippet: string;
+  at: string;
+  html: string | null;
+  text: string | null;
+};
+
+export type ThreadDetail = {
+  id: string;
+  subject: string;
+  mailboxAddress: string;
+  participants: string[];
+  messageCount: number;
+  unread: boolean;
+  messages: ThreadMessage[];
+};
+
+export async function getThread(orgSlug: string, threadId: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<ThreadDetail>(`/api/v1/threads/${encodeURIComponent(threadId)}?${q}`);
+}
 
 export type ThreadListPage = {
   items: MailListRow[];
@@ -216,6 +255,21 @@ export async function listIncidents(orgSlug: string, status: "active" | "all" = 
   return getJson<IncidentRow[]>(`/api/v1/incidents?${q}`);
 }
 
+export type AlertRuleRow = {
+  id: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  activeIncidents: number;
+  condition: { operator: string; threshold: number; windowMinutes: number };
+  createdAt: string;
+};
+
+export async function listAlertRules(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<AlertRuleRow[]>(`/api/v1/alert-rules?${q}`);
+}
+
 export type InsightsSummary = {
   days: number;
   hasData: boolean;
@@ -265,4 +319,175 @@ export type TemplateRow = {
 export async function listTemplates(orgSlug: string) {
   const q = new URLSearchParams({ orgSlug });
   return getJson<TemplateRow[]>(`/api/v1/templates?${q}`);
+}
+
+export type ProjectRow = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  description: string;
+  domainCount: number;
+  scopedMemberCount: number;
+};
+
+export async function listProjects(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<ProjectRow[]>(`/api/v1/projects?${q}`);
+}
+
+export type NotificationPrefs = {
+  channels: Record<string, { inApp: boolean; email: boolean }>;
+  quietHours: { start: string; end: string; timezone: string } | null;
+  digest: "none" | "daily";
+  orgTimezone: string;
+  digestAllowed: boolean;
+  planLabel: string;
+};
+
+export async function getNotificationPrefs(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<NotificationPrefs>(`/api/v1/settings/notifications?${q}`);
+}
+
+export type BillingPlanCard = {
+  id: string;
+  label: string;
+  tagline: string;
+  priceMonthly: number;
+  priceAnnualPerMonth: number;
+};
+
+export type BillingOverview = {
+  billingEnabled: boolean;
+  currentPlan: string;
+  currentLabel: string;
+  planState: string;
+  trial: { active: boolean; endsAt: string; daysLeft: number } | null;
+  trialAvailable: boolean;
+  canManage: boolean;
+  plans: BillingPlanCard[];
+  priceMigration: { message: string } | null;
+  stripe: {
+    interval: "month" | "year" | null;
+    hasSubscription: boolean;
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+};
+
+export async function getBillingOverview(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<BillingOverview>(`/api/v1/settings/billing?${q}`);
+}
+
+export type AiStatus = {
+  planIncluded: boolean;
+  enabled: boolean;
+  features: { triage: boolean; drafts: boolean; compose: boolean; anomalies: boolean };
+  canUse: boolean;
+  canConfigure: boolean;
+  credits: {
+    allowance: number;
+    used: number;
+    reserved: number;
+    packs: number;
+    available: number;
+    resetsAt: string;
+  };
+  planLabel: string;
+};
+
+export async function getAiStatus(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<AiStatus>(`/api/v1/ai/status?${q}`);
+}
+
+export type AiComposeResult =
+  | { kind: "subjects"; suggestions: string[]; model: string }
+  | { kind: "text"; html: string; text: string; model: string };
+
+export async function aiComposeAssist(
+  orgSlug: string,
+  input: {
+    action: "subjects" | "rewrite" | "shorten" | "grammar";
+    subject?: string;
+    bodyHtml: string;
+    tone?: "friendly" | "professional" | "concise" | "empathetic";
+  },
+) {
+  const q = new URLSearchParams({ orgSlug });
+  return postJson<AiComposeResult>(`/api/v1/ai/compose?${q}`, input);
+}
+
+export type AiDraftResult = { html: string; text: string; model: string };
+
+export async function aiDraftReply(
+  orgSlug: string,
+  input: {
+    threadId: string;
+    tone?: "friendly" | "professional" | "concise" | "empathetic";
+    instructions?: string;
+  },
+) {
+  const q = new URLSearchParams({ orgSlug });
+  return postJson<AiDraftResult>(`/api/v1/ai/draft?${q}`, {
+    tone: "friendly",
+    ...input,
+  });
+}
+
+export type NotificationRow = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationsPage = {
+  items: NotificationRow[];
+  unreadCount: number;
+  nextCursor: string | null;
+};
+
+export async function listNotifications(orgSlug: string, unreadOnly = false) {
+  const q = new URLSearchParams({ orgSlug, limit: "30" });
+  if (unreadOnly) q.set("unread", "1");
+  return getJson<NotificationsPage>(`/api/v1/notifications?${q}`);
+}
+
+export async function getUnreadNotificationCount(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<{ unreadCount: number }>(`/api/v1/notifications/unread?${q}`);
+}
+
+/** Rewrite absolute APP_URL fake-storage uploads to same-origin for the Vite proxy. */
+export function sameOriginUploadUrl(uploadUrl: string): string {
+  try {
+    const u = new URL(uploadUrl, window.location.origin);
+    if (u.pathname.startsWith("/api/dev-storage/")) {
+      return `${u.pathname}${u.search}`;
+    }
+  } catch {
+    /* keep as-is */
+  }
+  return uploadUrl;
+}
+
+export type AuditRow = {
+  id: string;
+  createdAt: string;
+  action: string;
+  actor: { type: string; id: string | null; name: string };
+  target: { type: string; id: string };
+};
+
+export type AuditPage = { items: AuditRow[]; nextCursor: string | null };
+
+export async function listAuditLog(orgSlug: string, limit = 50) {
+  const q = new URLSearchParams({ orgSlug, limit: String(limit) });
+  return getJson<AuditPage>(`/api/v1/audit?${q}`);
 }

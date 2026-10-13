@@ -10,7 +10,9 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Mail",
     items: [
       { label: "Inbox", path: "inbox" },
+      { label: "Sent", path: "sent" },
       { label: "Scheduled", path: "scheduled" },
+      { label: "Trash", path: "trash" },
       { label: "Activity", path: "activity" },
     ],
   },

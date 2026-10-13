@@ -7,11 +7,22 @@ const SETTINGS_EXTRA: NavItem[] = [
   { label: "Connections", path: "settings/connections", alsoActiveFor: ["settings/connections"] },
   { label: "Senders", path: "settings/senders", alsoActiveFor: ["settings/senders"] },
   { label: "Members", path: "settings/members", alsoActiveFor: ["settings/members"] },
+  { label: "Projects", path: "settings/projects", alsoActiveFor: ["settings/projects"] },
+  {
+    label: "Notifications",
+    path: "settings/notifications",
+    alsoActiveFor: ["settings/notifications"],
+  },
+  { label: "Billing", path: "settings/billing", alsoActiveFor: ["settings/billing"] },
+  { label: "AI", path: "settings/ai", alsoActiveFor: ["settings/ai"] },
+  { label: "Audit log", path: "settings/audit", alsoActiveFor: ["settings/audit"] },
 ];
 
 type LinkTarget =
   | { to: "/$orgSlug/inbox"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/sent"; params: { orgSlug: string } }
   | { to: "/$orgSlug/scheduled"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/trash"; params: { orgSlug: string } }
   | { to: "/$orgSlug/activity"; params: { orgSlug: string } }
   | { to: "/$orgSlug/audience/contacts"; params: { orgSlug: string } }
   | { to: "/$orgSlug/broadcasts"; params: { orgSlug: string } }
@@ -24,12 +35,19 @@ type LinkTarget =
   | { to: "/$orgSlug/settings/connections"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/senders"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/members"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/projects"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/notifications"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/billing"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/ai"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/audit"; params: { orgSlug: string } }
   | { to: "/$orgSlug/$"; params: { orgSlug: string; _splat: string } };
 
 function itemTo(orgSlug: string, item: NavItem): LinkTarget {
   const map: Record<string, LinkTarget["to"]> = {
     inbox: "/$orgSlug/inbox",
+    sent: "/$orgSlug/sent",
     scheduled: "/$orgSlug/scheduled",
+    trash: "/$orgSlug/trash",
     activity: "/$orgSlug/activity",
     "audience/contacts": "/$orgSlug/audience/contacts",
     broadcasts: "/$orgSlug/broadcasts",
@@ -42,6 +60,11 @@ function itemTo(orgSlug: string, item: NavItem): LinkTarget {
     "settings/connections": "/$orgSlug/settings/connections",
     "settings/senders": "/$orgSlug/settings/senders",
     "settings/members": "/$orgSlug/settings/members",
+    "settings/projects": "/$orgSlug/settings/projects",
+    "settings/notifications": "/$orgSlug/settings/notifications",
+    "settings/billing": "/$orgSlug/settings/billing",
+    "settings/ai": "/$orgSlug/settings/ai",
+    "settings/audit": "/$orgSlug/settings/audit",
   };
   const to = map[item.path];
   if (to && to !== "/$orgSlug/$") {

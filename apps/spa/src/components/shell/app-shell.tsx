@@ -4,6 +4,8 @@ import { LogOut, PenLine } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
 import { NavLinks } from "@/components/shell/nav-links";
+import { NotificationBell } from "@/components/shell/notification-bell";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export type ShellOrg = { id: string; name: string; slug: string };
 export type ShellUser = { name: string; email: string; image?: string | null };
@@ -35,8 +37,12 @@ export function AppShell({
           <Dock org={org} orgs={orgs} user={user} />
         </aside>
         <div className="flex min-h-dvh min-w-0 flex-col">
-          <div className="sticky top-0 z-30 flex h-[var(--shell-topbar-height)] items-center border-b border-line/80 bg-canvas/90 px-[var(--shell-gutter-mobile)] backdrop-blur-md min-[1000px]:px-[var(--shell-gutter)]">
+          <div className="sticky top-0 z-30 flex h-[var(--shell-topbar-height)] items-center justify-between gap-3 border-b border-line/80 bg-canvas/90 px-[var(--shell-gutter-mobile)] backdrop-blur-md min-[1000px]:px-[var(--shell-gutter)]">
             <p className="truncate text-sm font-semibold">{org.name}</p>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <NotificationBell orgSlug={org.slug} />
+            </div>
           </div>
           <main
             id="main"
