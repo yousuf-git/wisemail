@@ -1,6 +1,6 @@
 # Deploy Wisemail **SPA** on Vercel
 
-Frontend-only. The API stays on OCI — see [`DEPLOY-OCI.md`](./DEPLOY-OCI.md).
+Frontend-only. The API stays on OCI — see [`OCI.md`](./OCI.md).
 
 | Host | Service |
 |---|---|
@@ -14,7 +14,7 @@ Frontend-only. The API stays on OCI — see [`DEPLOY-OCI.md`](./DEPLOY-OCI.md).
 1. [vercel.com](https://vercel.com) → **Add New Project** → import this Git repo.
 2. **Root Directory:** `apps/spa` (important for the monorepo).
 3. Framework: **Vite** (auto from `vercel.json`).
-4. Install / build / output are already in [`apps/spa/vercel.json`](../apps/spa/vercel.json):
+4. Install / build / output are already in [`apps/spa/vercel.json`](../../apps/spa/vercel.json):
    - install from repo root with pnpm
    - build `@wisemail/shared` then `@wisemail/spa`
    - publish `dist`

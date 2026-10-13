@@ -2,7 +2,7 @@
 
 This guide deploys the **backend only** (Fastify + jobs + webhooks) on an **Oracle Cloud Infrastructure (OCI) VM**.
 
-The **SPA frontend** goes on **Vercel** — see [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md).
+The **SPA frontend** goes on **Vercel** — see [`VERCEL.md`](./VERCEL.md).
 
 | Piece | Role | Closest AWS name |
 |---|---|---|
@@ -256,7 +256,7 @@ pnpm --filter @wisemail/api build
 
 ## 6. PM2
 
-Config: [`docs/deploy/ecosystem.config.cjs`](./deploy/ecosystem.config.cjs).
+Config: [`docs/deploy/ecosystem.config.cjs`](./ecosystem.config.cjs).
 
 ```bash
 cd /var/www/wisemail
@@ -272,7 +272,7 @@ pm2 startup    # run the printed sudo command
 
 ## 7. Nginx + TLS
 
-Config: [`docs/deploy/nginx-wisemail.conf`](./deploy/nginx-wisemail.conf) (API-only; no static SPA).
+Config: [`docs/deploy/nginx-wisemail.conf`](./nginx-wisemail.conf) (API-only; no static SPA).
 
 ```bash
 sudo cp /var/www/wisemail/docs/deploy/nginx-wisemail.conf /etc/nginx/sites-available/wisemail
@@ -301,7 +301,7 @@ curl -sS https://api.example.com/api/v1/_meta
 | **Stripe** (if billing) | `https://api.example.com/api/auth/stripe/webhook` and `.../api/billing/stripe-webhook` |
 | **Atlas allowlist** | VM public IP `/32` only |
 
-Then deploy the SPA on Vercel with `VITE_API_URL=https://api.example.com` ([`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md)).
+Then deploy the SPA on Vercel with `VITE_API_URL=https://api.example.com` ([`VERCEL.md`](./VERCEL.md)).
 
 ---
 

@@ -49,7 +49,7 @@ All scoped to multi-tenant organizations, with roles (Owner / Admin / Developer 
 | Testing | Vitest (unit + integration), Playwright (e2e) |
 | Errors | Sentry (optional) |
 
-Full stack rationale in [`docs/TRD.md`](docs/TRD.md). Deploy: [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md), [`docs/DEPLOY-OCI.md`](docs/DEPLOY-OCI.md).
+Full stack rationale in [`docs/TRD.md`](docs/TRD.md). Deploy: [`docs/deploy/VERCEL.md`](docs/deploy/VERCEL.md), [`docs/deploy/OCI.md`](docs/deploy/OCI.md).
 
 ## Architecture
 
