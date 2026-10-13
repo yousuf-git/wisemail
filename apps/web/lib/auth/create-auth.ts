@@ -59,6 +59,21 @@ export function createAuth(options: { trailingPlugins?: BetterAuthPlugin[] } = {
       appName: "Wisemail",
       baseURL: env.BETTER_AUTH_URL,
       secret: env.BETTER_AUTH_SECRET,
+      // SPA (Vite :5173) + Next (:3000) during M7; production keeps APP_URL / BETTER_AUTH_URL.
+      trustedOrigins: [
+        env.APP_URL,
+        env.BETTER_AUTH_URL,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+      ].filter((v, i, a) => a.indexOf(v) === i),
+      // Local SPA (:5173) + API (:4000) need Lax cookies over http; Secure only on https.
+      advanced: {
+        defaultCookieAttributes: {
+          sameSite: "lax",
+          secure: env.BETTER_AUTH_URL.startsWith("https://"),
+          path: "/",
+        },
+      },
       database: mongodbAdapter(client.db(), { client, transaction: true }),
       emailAndPassword: {
         enabled: true,

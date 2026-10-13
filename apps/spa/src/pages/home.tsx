@@ -1,35 +1,69 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link, Navigate } from "@tanstack/react-router";
 
+import { authClient } from "@/lib/auth/client";
 import { getCatalog } from "@/lib/api";
 
-/** Lazy-loaded home page (code-split via router `PAGE_MODULES`). */
+/** Landing: signed-in users go to first org inbox; visitors see catalog + sign-in. */
 export function HomePage() {
+  const session = authClient.useSession();
+  const orgs = authClient.useListOrganizations();
   const catalog = useQuery({
     queryKey: ["catalog"],
     queryFn: getCatalog,
+    enabled: !session.data?.user,
   });
 
-  return (
-    <section style={{ maxWidth: "40rem" }}>
-      <h1 style={{ margin: "0 0 0.5rem", fontSize: "1.75rem", letterSpacing: "-0.03em" }}>
-        Wisemail
-      </h1>
-      <p style={{ margin: "0 0 1.25rem", opacity: 0.75 }}>
-        SPA shell (M7). Reads go through TanStack Query (request dedupe); mutations will use
-        Fastify `/api/v1/actions/:id`.
-      </p>
-      {catalog.isPending ? (
-        <p>Loading catalog…</p>
-      ) : catalog.isError ? (
-        <p role="alert">Catalog unreachable — start the API (`pnpm --filter @wisemail/api dev`) and refresh.</p>
-      ) : (
-        <p>
-          Catalog OK
-          {typeof catalog.data === "object" && catalog.data && "plans" in catalog.data
-            ? ` · ${(catalog.data as { plans?: unknown[] }).plans?.length ?? 0} plans`
-            : null}
+  if (session.isPending || orgs.isPending) {
+    return <p className="text-sm text-ink-muted">Loading…</p>;
+  }
+
+  if (session.data?.user) {
+    const first = orgs.data?.[0];
+    if (first?.slug) {
+      return <Navigate to="/$orgSlug/inbox" params={{ orgSlug: first.slug }} />;
+    }
+    return (
+      <section className="mx-auto max-w-lg py-10">
+        <h1 className="text-2xl font-semibold tracking-tight">No workspace yet</h1>
+        <p className="mt-2 text-sm text-ink-muted">
+          Signed in as {session.data.user.email}. Create a workspace on the Next app for now, then
+          refresh.
         </p>
-      )}
+        <button
+          type="button"
+          className="mt-4 h-9 rounded-control border border-line px-3 text-sm"
+          onClick={() => authClient.signOut()}
+        >
+          Sign out
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-lg py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">Wisemail</h1>
+      <p className="mt-2 text-sm text-ink-muted">
+        SPA shell (M7). Sign in to open a workspace inbox against Fastify.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          to="/sign-in"
+          className="inline-flex h-9 items-center rounded-control bg-accent-fill px-4 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover"
+        >
+          Sign in
+        </Link>
+      </div>
+      <p className="mt-6 text-sm text-ink-muted">
+        {catalog.isPending
+          ? "Checking catalog…"
+          : catalog.isError
+            ? "API catalog unreachable — start `pnpm dev:api`."
+            : typeof catalog.data === "object" && catalog.data && "plans" in catalog.data
+              ? `Catalog OK · ${(catalog.data as { plans?: unknown[] }).plans?.length ?? 0} plans`
+              : "Catalog OK"}
+      </p>
     </section>
   );
 }

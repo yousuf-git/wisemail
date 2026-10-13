@@ -27,7 +27,7 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M4b — Client call sites → `@/lib/api/actions/<domain>` (HTTP, no barrel); `userAction` / `adminAction` registered; `POST /api/v1/{actions,user-actions,admin-actions}/:id` on Next + Fastify; `lucide-react` in `optimizePackageImports`
 - [x] Phase M5 — DB-backed catalog, Stripe lookup keys, `price_changes` + `price-migration` job (next-renewal schedules), Settings → Billing callout, `GET /api/v1/catalog`
 - [x] Phase M6 — Admin `/admin/pricing` + `/admin/settings`; Super Admin (`platform_settings.superAdminUserId`, immutable) + `pnpm admin:create`
-- [~] Phase M7 — `apps/spa` Vite + React 19 + TanStack Router/Query shell (lazy `PAGE_MODULES`, Query dedupe, `/api` → Fastify). Port product pages next.
+- [~] Phase M7 — `apps/spa`: auth, shell, mail, audience (contacts/broadcasts/templates), health, settings lists + general/senders mutations; Vite cookie rewrite + Fastify SPA CORS + Better Auth Lax cookies for :5173. Remaining: more mutations/dialogs, rich composer.
 - [ ] Phase M8 — Remove Next; Sentry; tests/e2e
 - [ ] Phase M9 — OCI PM2 + Nginx + Atlas deploy notes
 - [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN)

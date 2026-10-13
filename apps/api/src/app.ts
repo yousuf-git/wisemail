@@ -3,6 +3,7 @@ import Fastify from "fastify";
 
 import { DEFAULT_PLAN_CATALOG, PLAN_ORDER } from "@wisemail/shared";
 
+import { spaCors } from "./cors.js";
 import { healthRoutes } from "./routes/health.js";
 
 export type BuildAppOptions = {
@@ -17,6 +18,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
 
   await app.register(cookie);
+  await app.register(spaCors);
   await app.register(healthRoutes);
 
   app.get("/api/v1/_meta", async () => ({

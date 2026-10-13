@@ -22,7 +22,7 @@ Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
 
 Monorepo (`apps/web` Next.js for now, `apps/spa` Vite SPA (M7), `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
 
-- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:spa` / `pnpm dev:api` for one (API default `:4000`; SPA `:5173`, proxies `/api`)
+- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:spa` / `pnpm dev:api` for one (API default `:4000`; SPA `:5173`, proxies `/api` with cookie rewrite). SPA auth trusts `http://localhost:5173` via Better Auth `trustedOrigins`.
 - `pnpm build` / `pnpm start` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (workspace filters)
 - `pnpm db:dev` starts a single-node MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
 - Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
