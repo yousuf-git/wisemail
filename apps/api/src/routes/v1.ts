@@ -8,6 +8,7 @@ import { POST as postAiExplain } from "@/app/api/v1/ai/explain/route";
 import { GET as getAiStatus } from "@/app/api/v1/ai/status/route";
 import { GET as getAuditExport } from "@/app/api/v1/audit/export/route";
 import { GET as getAudit } from "@/app/api/v1/audit/route";
+import { GET as getAlertRules } from "@/app/api/v1/alert-rules/route";
 import { GET as getApiKeys } from "@/app/api/v1/api-keys/route";
 import { GET as getBroadcasts } from "@/app/api/v1/broadcasts/route";
 import { GET as getConnections } from "@/app/api/v1/connections/route";
@@ -16,11 +17,14 @@ import { GET as getDomains } from "@/app/api/v1/domains/route";
 import { GET as getIncidents } from "@/app/api/v1/incidents/route";
 import { GET as getInsights } from "@/app/api/v1/insights/route";
 import { GET as getMembers } from "@/app/api/v1/members/route";
+import { GET as getProjects } from "@/app/api/v1/projects/route";
 import { GET as getTemplates } from "@/app/api/v1/templates/route";
 import { GET as getNotificationsUnread } from "@/app/api/v1/notifications/unread/route";
 import { GET as getNotifications } from "@/app/api/v1/notifications/route";
 import { GET as getSenders } from "@/app/api/v1/senders/route";
+import { GET as getSettingsBilling } from "@/app/api/v1/settings/billing/route";
 import { GET as getSettingsGeneral } from "@/app/api/v1/settings/general/route";
+import { GET as getSettingsNotifications } from "@/app/api/v1/settings/notifications/route";
 import { GET as getThread } from "@/app/api/v1/threads/[threadId]/route";
 import { GET as getThreads } from "@/app/api/v1/threads/route";
 
@@ -71,6 +75,9 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
 
   app.get("/api/v1/insights", (req, reply) => bridge(req, reply, getInsights as AnyRouteHandler));
   app.get("/api/v1/incidents", (req, reply) => bridge(req, reply, getIncidents as AnyRouteHandler));
+  app.get("/api/v1/alert-rules", (req, reply) =>
+    bridge(req, reply, getAlertRules as AnyRouteHandler),
+  );
   app.get("/api/v1/contacts", (req, reply) => bridge(req, reply, getContacts as AnyRouteHandler));
   app.get("/api/v1/broadcasts", (req, reply) =>
     bridge(req, reply, getBroadcasts as AnyRouteHandler),
@@ -83,8 +90,15 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
   app.get("/api/v1/members", (req, reply) => bridge(req, reply, getMembers as AnyRouteHandler));
   app.get("/api/v1/api-keys", (req, reply) => bridge(req, reply, getApiKeys as AnyRouteHandler));
   app.get("/api/v1/senders", (req, reply) => bridge(req, reply, getSenders as AnyRouteHandler));
+  app.get("/api/v1/projects", (req, reply) => bridge(req, reply, getProjects as AnyRouteHandler));
   app.get("/api/v1/settings/general", (req, reply) =>
     bridge(req, reply, getSettingsGeneral as AnyRouteHandler),
+  );
+  app.get("/api/v1/settings/notifications", (req, reply) =>
+    bridge(req, reply, getSettingsNotifications as AnyRouteHandler),
+  );
+  app.get("/api/v1/settings/billing", (req, reply) =>
+    bridge(req, reply, getSettingsBilling as AnyRouteHandler),
   );
 
   app.get("/api/v1/audit", (req, reply) => bridge(req, reply, getAudit as AnyRouteHandler));

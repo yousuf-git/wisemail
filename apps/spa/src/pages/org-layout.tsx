@@ -1,12 +1,15 @@
 import { Navigate, Outlet, useParams } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { useOrgStream } from "@/hooks/use-org-stream";
 import { authClient } from "@/lib/auth/client";
 
 export function OrgLayoutPage() {
   const { orgSlug } = useParams({ from: "/$orgSlug" });
   const session = authClient.useSession();
   const orgsQuery = authClient.useListOrganizations();
+
+  useOrgStream(orgSlug, session.data?.user?.id);
 
   if (session.isPending || orgsQuery.isPending) {
     return (

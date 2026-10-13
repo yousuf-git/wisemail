@@ -36,6 +36,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
           "/api/billing/stripe-webhook",
           "/api/stream",
           "/api/files/:attachmentId",
+          "/api/dev-storage/:token",
           "/api/inngest",
           "/api/v1/catalog",
           "/api/v1/actions/:id",
@@ -52,6 +53,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const { stripeWebhookRoutes } = await import("./routes/stripe-webhook.js");
   const { streamRoutes } = await import("./routes/stream.js");
   const { fileRoutes } = await import("./routes/files.js");
+  const { devStorageRoutes } = await import("./routes/dev-storage.js");
   const { inngestRoutes } = await import("./routes/inngest.js");
   const { actionRoutes } = await import("./routes/actions.js");
   const { catalogRoutes } = await import("./routes/catalog.js");
@@ -67,6 +69,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(stripeWebhookRoutes);
   await app.register(streamRoutes);
   await app.register(fileRoutes);
+  await app.register(devStorageRoutes);
   await app.register(inngestRoutes);
   await app.register(catalogRoutes);
   await app.register(actionRoutes);
