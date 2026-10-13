@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteSenderAction } from "@/app/(app)/[orgSlug]/settings/senders/actions";
+import { deleteSenderAction } from "@/lib/api/actions/settings-senders";
 import { friendlyError } from "@/components/composer/errors";
 import { Button } from "@/components/ui/button";
 import {

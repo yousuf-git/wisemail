@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  deleteAlertRuleAction,
-  setAlertRuleEnabledAction,
-} from "@/app/(app)/[orgSlug]/alerts/actions";
+import { deleteAlertRuleAction, setAlertRuleEnabledAction } from "@/lib/api/actions/alerts";
 import { EmptyState } from "@/components/app/empty-state";
 import { relativeTime, useNow } from "@/components/inbox/format";
 import { Wizi } from "@/components/mascot/wizi";

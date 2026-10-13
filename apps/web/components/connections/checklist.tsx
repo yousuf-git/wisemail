@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  enableTrackingAction,
-  reregisterWebhookAction,
-} from "@/app/(app)/[orgSlug]/settings/connections/actions";
+import { enableTrackingAction, reregisterWebhookAction } from "@/lib/api/actions/settings-connections";
 import { StatusChip, type StatusState } from "@/components/app/status-chip";
 import { Button } from "@/components/ui/button";
 import type { ChecklistFixKind, ChecklistItemDTO, ChecklistStatus } from "@/lib/dto/checklist";

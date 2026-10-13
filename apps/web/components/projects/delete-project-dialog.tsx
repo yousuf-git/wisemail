@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteProjectAction } from "@/app/(app)/[orgSlug]/settings/projects/actions";
+import { deleteProjectAction } from "@/lib/api/actions/settings-projects";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

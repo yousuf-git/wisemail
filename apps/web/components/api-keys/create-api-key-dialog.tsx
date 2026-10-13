@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createApiKeyAction } from "@/app/(app)/[orgSlug]/api-keys/actions";
+import { createApiKeyAction } from "@/lib/api/actions/api-keys";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { CopyButton } from "@/components/domains/copy-button";
 import { Button } from "@/components/ui/button";

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteApiKeyAction } from "@/app/(app)/[orgSlug]/api-keys/actions";
+import { deleteApiKeyAction } from "@/lib/api/actions/api-keys";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

@@ -4,7 +4,7 @@ import { MotionConfig, useReducedMotion } from "motion/react";
 import { NextStep, useNextStep, type Tour } from "nextstepjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { recordTourEventAction } from "@/app/(app)/[orgSlug]/tour-actions";
+import { recordTourEventAction } from "@/lib/api/actions/tour";
 import { getTour, shouldAutoStart, type TourStateDTO, type TourStepDef } from "@/lib/tours";
 import type { TourBootstrapDTO } from "@/lib/tours/types";
 import { TourCard } from "./tour-card";

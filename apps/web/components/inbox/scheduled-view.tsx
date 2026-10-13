@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { cancelScheduledAction, rescheduleAction } from "@/app/(app)/[orgSlug]/scheduled/actions";
+import { cancelScheduledAction, rescheduleAction } from "@/lib/api/actions/scheduled";
 import { statusLabel, statusState } from "@/components/activity/status";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusChip } from "@/components/app/status-chip";

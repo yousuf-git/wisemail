@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { checkDnsAction, verifyDomainAction } from "@/app/(app)/[orgSlug]/domains/actions";
+import { checkDnsAction, verifyDomainAction } from "@/lib/api/actions/domains";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusChip } from "@/components/app/status-chip";
 import { friendlyError } from "@/components/composer/errors";

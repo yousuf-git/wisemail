@@ -30,7 +30,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                 href={`/admin/users/${u.id}`}
                 aside={
                   <>
-                    {u.isAdmin ? <StatusChip state="engaged">Admin</StatusChip> : null}
+                    {u.isSuperAdmin ? (
+                      <StatusChip state="engaged">Super Admin</StatusChip>
+                    ) : u.isAdmin ? (
+                      <StatusChip state="engaged">Admin</StatusChip>
+                    ) : null}
                     {u.banned ? <StatusChip state="danger">Banned</StatusChip> : null}
                     {u.emailVerified ? null : <StatusChip state="warning">Unverified</StatusChip>}
                     <span className="text-xs text-ink-muted">

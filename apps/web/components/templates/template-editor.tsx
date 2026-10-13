@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  createTemplateAction,
-  deleteTemplateAction,
-  duplicateTemplateAction,
-  updateTemplateAction,
-} from "@/app/(app)/[orgSlug]/templates/actions";
+import { createTemplateAction, deleteTemplateAction, duplicateTemplateAction, updateTemplateAction } from "@/lib/api/actions/templates";
 import { ConfirmDeleteDialog } from "@/components/audience/confirm-delete-dialog";
 import { ConnectionSelect, firstWritable } from "@/components/audience/connection-select";
 import { audienceError, fieldErrorMap } from "@/components/audience/errors";

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const actions = vi.hoisted(() => ({ getBulkOperationAction: vi.fn(), startBulkAction: vi.fn() }));
-vi.mock("@/app/(app)/[orgSlug]/inbox/bulk-actions", () => actions);
+vi.mock("@/lib/api/actions/inbox-bulk", () => actions);
 const toast = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 

@@ -4,7 +4,7 @@ import { Loader2, Paperclip } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { retryInboundAction } from "@/app/(app)/[orgSlug]/inbox/actions";
+import { retryInboundAction } from "@/lib/api/actions/inbox";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AddressDTO, MessageDTO } from "@/lib/dto/mail";

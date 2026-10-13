@@ -17,6 +17,7 @@
     "webhook:test": "tsx --conditions=react-server scripts/send-test-webhook.ts",
     "mail:check": "tsx scripts/mail-check.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "admin:create": "tsx scripts/admin-create.ts",
     "stripe:simulate": "tsx --conditions=react-server scripts/stripe-simulate.ts"
   },
   "dependencies": {

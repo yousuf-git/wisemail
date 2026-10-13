@@ -3,12 +3,20 @@ import "server-only";
 import { z } from "zod";
 
 import { ForbiddenError } from "@/lib/dal-types";
-import { getOrgContextFromHeaders } from "@/lib/dal-request";
-import type { OrgContext } from "@/lib/dal-types";
+import { getOrgContextFromHeaders, getSessionFromHeaders } from "@/lib/dal-request";
+import type { OrgContext, UserDTO } from "@/lib/dal-types";
+import { getPlatformAdminFromHeaders, type AdminActor } from "@/lib/admin/guard";
 import { roleHasPermission, type Permission } from "@/lib/auth/permissions";
 import { RefError } from "@/lib/db/refs";
 import { ServiceError } from "@/lib/services/errors";
-import { registerOrgAction, type OrgActionFn } from "@/lib/actions/registry";
+import {
+  registerAdminAction,
+  registerOrgAction,
+  registerUserAction,
+  type AdminActionFn,
+  type OrgActionFn,
+  type UserActionFn,
+} from "@/lib/actions/registry";
 import { runWithRequestHeadersAsync } from "@/lib/request-context";
 import { fail, ok, type ActionResult } from "./result";
 
@@ -100,4 +108,56 @@ export function orgActionHttp<S extends z.ZodType, R>(
 
   if (options.id) registerOrgAction(options.id, fn);
   return fn as (orgSlug: string, raw: z.input<S>, headers: Headers) => Promise<ActionResult<R>>;
+}
+
+type UserOptions<S extends z.ZodType> = { id?: string; input: S };
+
+/** Session-scoped mutation for HTTP (onboarding, invite). Registers on `id` when set. */
+export function userActionHttp<S extends z.ZodType, R>(
+  options: UserOptions<S>,
+  run: (args: { input: z.output<S>; user: UserDTO }) => Promise<R>,
+) {
+  const fn: UserActionFn = async (raw, hdrs) => {
+    if (!hdrs) return fail("internal", "Action requires request headers.");
+    return runWithRequestHeadersAsync(hdrs, () =>
+      guardedHttp(async () => {
+        const session = await getSessionFromHeaders(hdrs);
+        if (!session) return fail("unauthenticated", "Please sign in again.");
+        const parsed = parse(options.input, raw);
+        if (!parsed.ok) return parsed.result;
+        const { id, name, email, image } = session.user;
+        return ok(
+          await run({
+            input: parsed.data as z.output<S>,
+            user: { id, name, email, image: image ?? null },
+          }),
+        );
+      }),
+    );
+  };
+  if (options.id) registerUserAction(options.id, fn);
+  return fn as (raw: z.input<S>, headers: Headers) => Promise<ActionResult<R>>;
+}
+
+type AdminOptions<S extends z.ZodType> = { id?: string; input: S };
+
+/** Platform-admin mutation for HTTP. Registers on `id` when set. Non-admins get not_found. */
+export function adminActionHttp<S extends z.ZodType, R>(
+  options: AdminOptions<S>,
+  run: (args: { input: z.output<S>; admin: AdminActor }) => Promise<R>,
+) {
+  const fn: AdminActionFn = async (raw, hdrs) => {
+    if (!hdrs) return fail("internal", "Action requires request headers.");
+    return runWithRequestHeadersAsync(hdrs, () =>
+      guardedHttp(async () => {
+        const admin = await getPlatformAdminFromHeaders(hdrs);
+        if (!admin) return fail("not_found", "Not found.");
+        const parsed = parse(options.input, raw);
+        if (!parsed.ok) return parsed.result;
+        return ok(await run({ input: parsed.data as z.output<S>, admin }));
+      }),
+    );
+  };
+  if (options.id) registerAdminAction(options.id, fn);
+  return fn as (raw: z.input<S>, headers: Headers) => Promise<ActionResult<R>>;
 }

@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  createSenderAction,
-  updateSenderAction,
-} from "@/app/(app)/[orgSlug]/settings/senders/actions";
+import { createSenderAction, updateSenderAction } from "@/lib/api/actions/settings-senders";
 import { AddressField } from "@/components/composer/address-field";
 import { fieldMessages, friendlyError } from "@/components/composer/errors";
 import { Button } from "@/components/ui/button";

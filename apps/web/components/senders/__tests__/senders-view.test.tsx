@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-vi.mock("@/app/(app)/[orgSlug]/settings/senders/actions", () => ({
+vi.mock("@/lib/api/actions/settings-senders", () => ({
   createSenderAction: vi.fn(),
   updateSenderAction: vi.fn(),
   setSenderDisabledAction: vi.fn(),

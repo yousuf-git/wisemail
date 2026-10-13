@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { retryConnectionAction } from "@/app/(app)/[orgSlug]/settings/connections/actions";
+import { retryConnectionAction } from "@/lib/api/actions/settings-connections";
 import { StatusChip } from "@/components/app/status-chip";
 import { Button } from "@/components/ui/button";
 import {

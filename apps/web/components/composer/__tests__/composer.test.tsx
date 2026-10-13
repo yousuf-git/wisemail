@@ -24,7 +24,7 @@ vi.mock("sonner", () => ({
     dismiss: vi.fn(),
   }),
 }));
-vi.mock("@/app/(app)/[orgSlug]/compose/actions", () => ({
+vi.mock("@/lib/api/actions/compose", () => ({
   saveDraftAction: mocks.saveDraftAction,
   sendEmailAction: mocks.sendEmailAction,
   getDraftAction: mocks.getDraftAction,

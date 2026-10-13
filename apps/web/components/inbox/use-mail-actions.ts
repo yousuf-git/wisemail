@@ -5,12 +5,7 @@ import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
 import type { MailListRowDTO, Page, ThreadDetailDTO } from "@/lib/dto/mail";
-import {
-  markThreadReadAction,
-  markThreadUnreadAction,
-  restoreItemsAction,
-  trashItemsAction,
-} from "@/app/(app)/[orgSlug]/inbox/actions";
+import { markThreadReadAction, markThreadUnreadAction, restoreItemsAction, trashItemsAction } from "@/lib/api/actions/inbox";
 import { threadKey } from "./api";
 
 type Rows = InfiniteData<Page<MailListRowDTO>, string | null>;

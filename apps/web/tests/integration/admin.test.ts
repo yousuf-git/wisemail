@@ -230,6 +230,36 @@ describe("ban", () => {
     });
   });
 
+  it("marks and protects the single Super Admin", async () => {
+    const boss = await signUp("Sue");
+    await makeAdmin(boss);
+    const catalog = await import("@/lib/services/catalog");
+    const superAdmin = await import("@/lib/admin/super-admin");
+    await catalog.getPlatformCatalog();
+    await superAdmin.claimSuperAdmin(boss.id);
+    expect(await superAdmin.getSuperAdminUserId()).toBe(boss.id);
+
+    const detail = await users.getUserDetail(boss.id);
+    expect(detail?.isSuperAdmin).toBe(true);
+
+    const other = await signUp("Oth");
+    await makeAdmin(other);
+    as(other);
+    await expect(
+      users.banUser(adminActor(other), { userId: boss.id, reason: "cannot touch" }),
+    ).rejects.toMatchObject({ code: "forbidden", message: expect.stringMatching(/Super Admin/i) });
+    await expect(
+      users.startImpersonation(adminActor(other), {
+        userId: boss.id,
+        reason: "cannot touch",
+      }),
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    await expect(superAdmin.claimSuperAdmin(other.id)).rejects.toMatchObject({
+      code: "conflict",
+    });
+  });
+
   it("revokes sessions and audits it", async () => {
     const boss = await signUp("Rae");
     await makeAdmin(boss);

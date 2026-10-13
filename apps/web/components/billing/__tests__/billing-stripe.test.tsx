@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   search: new URLSearchParams(),
 }));
 
-vi.mock("@/app/(app)/[orgSlug]/settings/billing/actions", () => ({
+vi.mock("@/lib/api/actions/settings-billing", () => ({
   previewPlanChangeAction: mocks.preview,
   startCheckoutAction: mocks.checkout,
   openPortalAction: mocks.portal,

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
-import { acknowledgeIncidentAction } from "@/app/(app)/[orgSlug]/alerts/actions";
+import { acknowledgeIncidentAction } from "@/lib/api/actions/alerts";
 import { ExplainIncident } from "@/components/ai/explain-incident";
 import { absoluteTime, relativeTime, useNow } from "@/components/inbox/format";
 import { Button } from "@/components/ui/button";

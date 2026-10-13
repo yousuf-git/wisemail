@@ -7,10 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  markAllNotificationsReadAction,
-  markNotificationsReadAction,
-} from "@/app/(app)/[orgSlug]/notifications/actions";
+import { markAllNotificationsReadAction, markNotificationsReadAction } from "@/lib/api/actions/notifications";
 import { EmptyState } from "@/components/app/empty-state";
 import { relativeTime, useNow } from "@/components/inbox/format";
 import { Button } from "@/components/ui/button";

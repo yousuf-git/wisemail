@@ -3,10 +3,7 @@
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import {
-  getBroadcastAudienceAction,
-  sendBroadcastAction,
-} from "@/app/(app)/[orgSlug]/broadcasts/actions";
+import { getBroadcastAudienceAction, sendBroadcastAction } from "@/lib/api/actions/broadcasts";
 import { audienceError } from "@/components/audience/errors";
 import {
   formatScheduled,

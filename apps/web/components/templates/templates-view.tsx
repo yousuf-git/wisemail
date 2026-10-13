@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { duplicateTemplateAction } from "@/app/(app)/[orgSlug]/templates/actions";
+import { duplicateTemplateAction } from "@/lib/api/actions/templates";
 import { EmptyState } from "@/components/app/empty-state";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { StatusChip } from "@/components/app/status-chip";

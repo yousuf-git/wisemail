@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  setSenderDisabledAction,
-  updateSenderAction,
-} from "@/app/(app)/[orgSlug]/settings/senders/actions";
+import { setSenderDisabledAction, updateSenderAction } from "@/lib/api/actions/settings-senders";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusChip } from "@/components/app/status-chip";
 import { friendlyError } from "@/components/composer/errors";

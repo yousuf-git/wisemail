@@ -24,10 +24,10 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M3b — Fastify Inngest (`/api/inngest`) + all `/api/v1/*` routes bridged from Next handlers; shared `inngest/functions.ts`
 - [x] Phase M4 — Org actions over HTTP: `orgAction({ id })` registry (105 ids), `POST /api/v1/actions/:id` on Next + Fastify, `callOrgAction` / `apiActions` client. Existing `"use server"` exports kept for Next UI; SPA should use `lib/api/actions.ts`. Admin/userAction RPC still open.
 - [x] Phase M4.1 — Fastify import graph free of static `next/*` (services → `dal-types`, actions → `org-action` / `orgActionHttp`, request headers via ALS)
-- [ ] Phase M4b — Point Next UI call sites at `apiActions` (or drop server actions); register `userAction` / `adminAction`
+- [x] Phase M4b — Client call sites → `@/lib/api/actions/<domain>` (HTTP, no barrel); `userAction` / `adminAction` registered; `POST /api/v1/{actions,user-actions,admin-actions}/:id` on Next + Fastify; `lucide-react` in `optimizePackageImports`
 - [x] Phase M5 — DB-backed catalog, Stripe lookup keys, `price_changes` + `price-migration` job (next-renewal schedules), Settings → Billing callout, `GET /api/v1/catalog`
-- [~] Phase M6 — Admin `/admin/pricing` + `/admin/settings` (catalog edits, Stripe price create when billing on). Remaining: harden Super Admin immutability / `pnpm admin:create`
-- [ ] Phase M7 — Vite SPA + TanStack Router/Query; port pages
+- [x] Phase M6 — Admin `/admin/pricing` + `/admin/settings`; Super Admin (`platform_settings.superAdminUserId`, immutable) + `pnpm admin:create`
+- [~] Phase M7 — `apps/spa` Vite + React 19 + TanStack Router/Query shell (lazy `PAGE_MODULES`, Query dedupe, `/api` → Fastify). Port product pages next.
 - [ ] Phase M8 — Remove Next; Sentry; tests/e2e
 - [ ] Phase M9 — OCI PM2 + Nginx + Atlas deploy notes
 - [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN)

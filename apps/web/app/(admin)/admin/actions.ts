@@ -30,6 +30,7 @@ const optionalReason = z.string().trim().max(500).optional();
 
 export const banUserAction = adminAction(
   {
+    id: "admin.users.ban",
     input: z.object({
       userId: id,
       reason,
@@ -43,7 +44,7 @@ export const banUserAction = adminAction(
 );
 
 export const unbanUserAction = adminAction(
-  { input: z.object({ userId: id, reason: optionalReason }) },
+  { id: "admin.users.unban", input: z.object({ userId: id, reason: optionalReason }) },
   async ({ input, admin }) => {
     await unbanUser(admin, input);
     return { done: true as const };
@@ -51,7 +52,7 @@ export const unbanUserAction = adminAction(
 );
 
 export const revokeSessionsAction = adminAction(
-  { input: z.object({ userId: id, reason }) },
+  { id: "admin.users.revokeSessions", input: z.object({ userId: id, reason }) },
   async ({ input, admin }) => {
     await revokeUserSessions(admin, input);
     return { done: true as const };
@@ -59,7 +60,7 @@ export const revokeSessionsAction = adminAction(
 );
 
 export const resendVerificationAction = adminAction(
-  { input: z.object({ userId: id }) },
+  { id: "admin.users.resendVerification", input: z.object({ userId: id }) },
   async ({ input, admin }) => {
     await resendVerification(admin, input);
     return { done: true as const };
@@ -67,12 +68,12 @@ export const resendVerificationAction = adminAction(
 );
 
 export const impersonateAction = adminAction(
-  { input: z.object({ userId: id, reason }) },
+  { id: "admin.users.impersonate", input: z.object({ userId: id, reason }) },
   ({ input, admin }) => startImpersonation(admin, input),
 );
 
 export const changePlanAction = adminAction(
-  { input: z.object({ orgId: id, plan: z.enum(PLANS), reason }) },
+  { id: "admin.orgs.changePlan", input: z.object({ orgId: id, plan: z.enum(PLANS), reason }) },
   async ({ input, admin }) => {
     await adminChangePlan(admin, input);
     return { done: true as const };
@@ -81,6 +82,7 @@ export const changePlanAction = adminAction(
 
 export const setLimitsAction = adminAction(
   {
+    id: "admin.orgs.setLimits",
     input: z.object({
       orgId: id,
       overrides: z.partialRecord(
@@ -97,7 +99,10 @@ export const setLimitsAction = adminAction(
 );
 
 export const grantTrialAction = adminAction(
-  { input: z.object({ orgId: id, days: z.number().int().min(1).max(90), reason }) },
+  {
+    id: "admin.orgs.grantTrial",
+    input: z.object({ orgId: id, days: z.number().int().min(1).max(90), reason }),
+  },
   async ({ input, admin }) => {
     await adminGrantTrial(admin, input);
     return { done: true as const };
@@ -105,7 +110,7 @@ export const grantTrialAction = adminAction(
 );
 
 export const suspendOrgAction = adminAction(
-  { input: z.object({ orgId: id, reason }) },
+  { id: "admin.orgs.suspend", input: z.object({ orgId: id, reason }) },
   async ({ input, admin }) => {
     await suspendOrg(admin, input);
     return { done: true as const };
@@ -113,7 +118,7 @@ export const suspendOrgAction = adminAction(
 );
 
 export const unsuspendOrgAction = adminAction(
-  { input: z.object({ orgId: id, reason: optionalReason }) },
+  { id: "admin.orgs.unsuspend", input: z.object({ orgId: id, reason: optionalReason }) },
   async ({ input, admin }) => {
     await unsuspendOrg(admin, input);
     return { done: true as const };
@@ -122,6 +127,7 @@ export const unsuspendOrgAction = adminAction(
 
 export const updatePlanPriceAction = adminAction(
   {
+    id: "admin.catalog.updatePlanPrice",
     input: z.object({
       plan: z.enum(["pro", "team", "agency"]),
       interval: z.enum(["month", "year"]),
@@ -134,6 +140,7 @@ export const updatePlanPriceAction = adminAction(
 
 export const updatePlatformSettingsAction = adminAction(
   {
+    id: "admin.catalog.updatePlatformSettings",
     input: z.object({
       trialDays: z.number().int().min(1).max(90).optional(),
       trialAiCredits: z.number().int().min(0).max(1_000_000).optional(),

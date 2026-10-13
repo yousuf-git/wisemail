@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createDomainAction } from "@/app/(app)/[orgSlug]/domains/actions";
+import { createDomainAction } from "@/lib/api/actions/domains";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

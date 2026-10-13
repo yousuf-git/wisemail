@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createContactAction } from "@/app/(app)/[orgSlug]/audience/actions";
+import { createContactAction } from "@/lib/api/actions/audience";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

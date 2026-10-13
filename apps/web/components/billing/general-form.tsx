@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  requestDeletionAction,
-  updateGeneralAction,
-} from "@/app/(app)/[orgSlug]/settings/general/actions";
+import { requestDeletionAction, updateGeneralAction } from "@/lib/api/actions/settings-general";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

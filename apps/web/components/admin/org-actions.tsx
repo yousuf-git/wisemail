@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  changePlanAction,
-  grantTrialAction,
-  setLimitsAction,
-  suspendOrgAction,
-  unsuspendOrgAction,
-} from "@/app/(admin)/admin/actions";
+import { changePlanActionAdmin as changePlanAction, grantTrialAction, setLimitsAction, suspendOrgAction, unsuspendOrgAction } from "@/lib/api/actions/admin";
 import type { AdminLimitRowDTO } from "@/lib/dto/admin";
 import { ActionForm, Disclosure, SelectField, TextField } from "./action-form";
 

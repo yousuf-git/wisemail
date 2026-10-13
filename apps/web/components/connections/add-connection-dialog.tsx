@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { addConnectionAction } from "@/app/(app)/[orgSlug]/settings/connections/actions";
+import { addConnectionAction } from "@/lib/api/actions/settings-connections";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Wizi } from "@/components/mascot/wizi";
 import { Button } from "@/components/ui/button";

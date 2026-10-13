@@ -4,14 +4,8 @@ import { RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { restoreItemsAction, trashItemsAction } from "@/app/(app)/[orgSlug]/inbox/actions";
-import {
-  countMatchingAction,
-  countTrashAction,
-  emptyTrashAction,
-  permanentlyDeleteAction,
-  startBulkAction,
-} from "@/app/(app)/[orgSlug]/inbox/bulk-actions";
+import { restoreItemsAction, trashItemsAction } from "@/lib/api/actions/inbox";
+import { countMatchingAction, countTrashAction, emptyTrashAction, permanentlyDeleteAction, startBulkAction } from "@/lib/api/actions/inbox-bulk";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { BulkOperationDTO } from "@/lib/dto/deletion";

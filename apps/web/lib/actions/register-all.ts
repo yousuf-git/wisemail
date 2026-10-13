@@ -1,8 +1,8 @@
 import "server-only";
 
 /**
- * Side-effect imports: each module calls `orgAction({ id: ... })` which fills the registry.
- * Loaded by the HTTP action route (Next + Fastify) before dispatching.
+ * Side-effect imports: each module registers action ids. Loaded by HTTP action routes
+ * (Next + Fastify) before dispatching.
  */
 import "@/app/(app)/[orgSlug]/tour-actions";
 import "@/app/(app)/[orgSlug]/alerts/actions";
@@ -25,5 +25,12 @@ import "@/app/(app)/[orgSlug]/settings/notifications/actions";
 import "@/app/(app)/[orgSlug]/settings/projects/actions";
 import "@/app/(app)/[orgSlug]/settings/senders/actions";
 import "@/app/(app)/[orgSlug]/templates/actions";
+import "@/app/onboarding/actions";
+import "@/app/(auth)/invite/[token]/actions";
+import "@/app/(admin)/admin/actions";
 
-export { listOrgActionIds } from "@/lib/actions/registry";
+export {
+  listOrgActionIds,
+  listUserActionIds,
+  listAdminActionIds,
+} from "@/lib/actions/registry";

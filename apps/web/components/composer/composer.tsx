@@ -5,12 +5,8 @@ import { useRouter } from "next/navigation";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  cancelScheduledAction,
-  deleteDraftAction,
-  getDraftAction,
-  sendEmailAction,
-} from "@/app/(app)/[orgSlug]/compose/actions";
+import { deleteDraftAction, getDraftAction, sendEmailAction } from "@/lib/api/actions/compose";
+import { cancelScheduledAction } from "@/lib/api/actions/scheduled";
 import { useComposeAi } from "@/components/ai/compose-tools";
 import { senderReason } from "@/components/senders/sender-status";
 import { Button } from "@/components/ui/button";

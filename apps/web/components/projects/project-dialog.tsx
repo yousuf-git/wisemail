@@ -6,10 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import {
-  createProjectAction,
-  updateProjectAction,
-} from "@/app/(app)/[orgSlug]/settings/projects/actions";
+import { createProjectAction, updateProjectAction } from "@/lib/api/actions/settings-projects";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

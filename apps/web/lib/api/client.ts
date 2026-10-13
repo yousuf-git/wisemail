@@ -1,8 +1,8 @@
 import type { ActionResult } from "@/lib/actions/result";
 
 /**
- * Browser / SPA client for org mutations.
- * Defaults to same-origin `/api/v1/actions/:id` (Next or reverse-proxied Fastify).
+ * Browser / SPA client for mutations.
+ * Defaults to same-origin `/api/v1/...` (Next or reverse-proxied Fastify).
  * Override with `NEXT_PUBLIC_API_URL` / `VITE_API_URL` when the API is on another origin.
  */
 function apiBase(): string {
@@ -17,13 +17,12 @@ function apiBase(): string {
   return "";
 }
 
-export async function callOrgAction<T>(
-  id: string,
-  orgSlug: string,
-  input: unknown,
+async function postAction<T>(
+  path: string,
+  body: unknown,
   init?: RequestInit,
 ): Promise<ActionResult<T>> {
-  const res = await fetch(`${apiBase()}/api/v1/actions/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     method: "POST",
     credentials: "include",
     headers: {
@@ -31,17 +30,42 @@ export async function callOrgAction<T>(
       accept: "application/json",
       ...init?.headers,
     },
-    body: JSON.stringify({ orgSlug, input }),
+    body: JSON.stringify(body),
     ...init,
   });
-  let body: unknown;
+  let parsed: unknown;
   try {
-    body = await res.json();
+    parsed = await res.json();
   } catch {
     return {
       ok: false,
       error: { code: "internal", message: "The server returned an invalid response." },
     };
   }
-  return body as ActionResult<T>;
+  return parsed as ActionResult<T>;
+}
+
+export async function callOrgAction<T>(
+  id: string,
+  orgSlug: string,
+  input: unknown,
+  init?: RequestInit,
+): Promise<ActionResult<T>> {
+  return postAction<T>(`/api/v1/actions/${encodeURIComponent(id)}`, { orgSlug, input }, init);
+}
+
+export async function callUserAction<T>(
+  id: string,
+  input: unknown,
+  init?: RequestInit,
+): Promise<ActionResult<T>> {
+  return postAction<T>(`/api/v1/user-actions/${encodeURIComponent(id)}`, { input }, init);
+}
+
+export async function callAdminAction<T>(
+  id: string,
+  input: unknown,
+  init?: RequestInit,
+): Promise<ActionResult<T>> {
+  return postAction<T>(`/api/v1/admin-actions/${encodeURIComponent(id)}`, { input }, init);
 }

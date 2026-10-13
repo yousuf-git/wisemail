@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  createPropertyAction,
-  deletePropertyAction,
-  updatePropertyAction,
-} from "@/app/(app)/[orgSlug]/audience/actions";
+import { createPropertyAction, deletePropertyAction, updatePropertyAction } from "@/lib/api/actions/audience";
 import { EmptyState } from "@/components/app/empty-state";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { Button } from "@/components/ui/button";

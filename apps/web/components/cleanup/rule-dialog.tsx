@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  createCleanupRuleAction,
-  previewCleanupRuleAction,
-  updateCleanupRuleAction,
-} from "@/app/(app)/[orgSlug]/settings/cleanup/actions";
+import { createCleanupRuleAction, previewCleanupRuleAction, updateCleanupRuleAction } from "@/lib/api/actions/settings-cleanup";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

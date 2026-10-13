@@ -345,12 +345,19 @@ async function main() {
   /* ---- platform admin ---- */
 
   await ensureUser(ADMIN);
-  await session(ADMIN); // sign-in promotes the allowlisted address to the "admin" role
-  const adminRow = await db.collection("user").findOne({ email: ADMIN.email });
+  await session(ADMIN); // sign-in promotes the allowlisted address to the "admin" role + Super Admin claim
+  let adminRow = await db.collection("user").findOne({ email: ADMIN.email });
   if (adminRow?.role !== "admin") {
     await db.collection("user").updateOne({ email: ADMIN.email }, { $set: { role: "admin" } });
+    adminRow = await db.collection("user").findOne({ email: ADMIN.email });
   }
-  log(`Platform admin ready: ${ADMIN.email}`);
+  if (adminRow) {
+    const { claimSuperAdmin } = await import("../lib/admin/super-admin");
+    const { getPlatformCatalog } = await import("../lib/services/catalog");
+    await getPlatformCatalog();
+    await claimSuperAdmin(String(adminRow._id));
+  }
+  log(`Platform Super Admin ready: ${ADMIN.email}`);
 
   const credentials: { email: string; role: string; workspace: string; plan: string }[] = [
     { email: ADMIN.email, role: "platform admin", workspace: "(none: /admin)", plan: "-" },

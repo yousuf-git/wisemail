@@ -6,12 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  deleteContactAction,
-  setContactSegmentsAction,
-  setContactTopicsAction,
-  updateContactAction,
-} from "@/app/(app)/[orgSlug]/audience/actions";
+import { deleteContactAction, setContactSegmentsAction, setContactTopicsAction, updateContactAction } from "@/lib/api/actions/audience";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusChip } from "@/components/app/status-chip";

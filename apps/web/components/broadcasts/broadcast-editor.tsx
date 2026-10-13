@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  cancelBroadcastAction,
-  createBroadcastAction,
-  deleteBroadcastAction,
-  refreshBroadcastAction,
-  sendBroadcastTestAction,
-  updateBroadcastAction,
-} from "@/app/(app)/[orgSlug]/broadcasts/actions";
+import { cancelBroadcastAction, createBroadcastAction, deleteBroadcastAction, refreshBroadcastAction, sendBroadcastTestAction, updateBroadcastAction } from "@/lib/api/actions/broadcasts";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { StatusChip } from "@/components/app/status-chip";
 import { ConfirmDeleteDialog } from "@/components/audience/confirm-delete-dialog";

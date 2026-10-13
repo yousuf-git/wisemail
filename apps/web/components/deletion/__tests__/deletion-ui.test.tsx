@@ -13,8 +13,8 @@ const inbox = vi.hoisted(() => ({
   trashItemsAction: vi.fn(),
   restoreItemsAction: vi.fn(),
 }));
-vi.mock("@/app/(app)/[orgSlug]/inbox/bulk-actions", () => bulk);
-vi.mock("@/app/(app)/[orgSlug]/inbox/actions", () => inbox);
+vi.mock("@/lib/api/actions/inbox-bulk", () => bulk);
+vi.mock("@/lib/api/actions/inbox", () => inbox);
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 import { BulkBar, type BarSelection } from "../bulk-bar";

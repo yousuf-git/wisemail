@@ -20,15 +20,15 @@ Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
 
 ## Commands
 
-Monorepo (`apps/web` Next.js for now, `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
+Monorepo (`apps/web` Next.js for now, `apps/spa` Vite SPA (M7), `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
 
-- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:api` for one (API default `:4000`)
+- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:spa` / `pnpm dev:api` for one (API default `:4000`; SPA `:5173`, proxies `/api`)
 - `pnpm build` / `pnpm start` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (workspace filters)
 - `pnpm db:dev` starts a single-node MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
 - Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
 - After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build` (package `prepare` does this when scripts are enabled)
 - Fastify reuses `apps/web` server modules via tsconfig paths (`@/*` → `apps/web/*`) during the migration; HTTP APIs use `lib/dal-request.ts` (not Next `headers()`)
-- Org mutations: `orgAction({ id: "domain.name", ... })` registers for `POST /api/v1/actions/:id` (`{ orgSlug, input }` → `ActionResult`). Browser/SPA: `callOrgAction` / `apiActions` in `lib/api/`. Next UI may still import `"use server"` wrappers.
+- Org mutations: `orgAction({ id: "domain.name", ... })` registers for `POST /api/v1/actions/:id` (`{ orgSlug, input }` → `ActionResult`). Browser: import from `@/lib/api/actions/<domain>` (no barrel — Vercel `bundle-barrel-imports`); user/admin via `user-actions` / `admin-actions`. Prefer TanStack Query for reads (dedupe like SWR).
 - Every phase ends green on typecheck, lint, test and build.
 
 ## Conventions
@@ -129,7 +129,7 @@ Seeded per team on first use: 3 domains (verified without open tracking + receiv
 
 ## Platform admin panel (`/admin`)
 
-- Platform admin = Better Auth user role `admin` (the `admin` plugin, `lib/admin/plugin.ts`). `PLATFORM_ADMIN_EMAILS` (comma-separated, case-insensitive) promotes verified addresses when a session is created for them (sign-in or verification), so the first admin needs no database edit. Everyone else: no role change, ever, from the app.
+- Platform admin = Better Auth user role `admin` (the `admin` plugin, `lib/admin/plugin.ts`). Exactly one **Super Admin** is stored on `platform_settings.superAdminUserId` (immutable: cannot be banned, impersonated, or session-revoked). Create/claim with `pnpm admin:create <email>` (or first allowlist promotion via `PLATFORM_ADMIN_EMAILS`). Further allowlist promotions are skipped while a Super Admin slot is taken by someone else.
 - Guard: `lib/admin/guard.ts` (`server-only`). `requirePlatformAdmin()` in every admin layout/page and `adminAction()` (`lib/admin/action.ts`) in every admin server action answer **404 / `not_found`** to non-admins, visitors, banned users and impersonation sessions (the proxy lets `/admin` through without a session cookie so a visitor cannot tell it exists). Admin writes never take permissions from input.
 - Code: `app/(admin)/admin/**` (pages + `actions.ts`), `components/admin/**`, `lib/services/admin/{overview,users,orgs,health,audit}.ts`, `lib/dto/admin.ts`. Features: overview counters, users (search, keyset cursor, ban/unban, revoke sessions, resend verification, impersonate), organizations (plan via `applyPlanChange`, per-limit overrides, trial start/extend, suspend), read-only system health.
 - Audit: every write goes to `audit_logs` as `admin.*` with the admin as actor, the target and a `reason` (required for destructive ones). Org-scoped actions are recorded under that org (its Owners/Admins see them); user-scoped ones under the platform scope `PLATFORM_SCOPE_ID` (`000000000000000000000000`), which no tenant can read. Impersonation start/stop is also written under each of the user's workspaces.
@@ -142,6 +142,6 @@ Seeded per team on first use: 3 domains (verified without open tracking + receiv
 
 - `pnpm db:seed` creates a platform admin and four demo workspaces (free, pro, team, agency) through the real services and Better Auth, against the fake Resend/storage/AI (`scripts/seed.ts`, ~40-60 s, needs `pnpm db:dev`). Idempotent: finished workspaces are skipped (marker in `seed_meta`); a workspace whose seed was interrupted needs `--reset`.
 - `--reset` drops **only** a database named `wisemail` (and `.data/storage`); it refuses any other name. The script never runs with `NODE_ENV=production`, and refuses a `MONGODB_URI` host other than localhost / 127.0.0.1 unless `--force-remote`.
-- All users share the password `wisemail-dev-123` (printed with the table at the end): `admin@wisemail.test` (platform admin, `/admin`); `free.owner@`, `free.viewer@`; `pro.owner@`, `pro.developer@`, `pro.support@`, `pro.viewer@` (+ pending invite `invitee.pro@`); `team.owner@`, `team.admin@`, `team.developer@`, `team.support@`, `team.viewer@`, `team.scoped@` (support, only project Marketing; + pending invite `team.invitee@`); `agency.owner@`, `agency.admin@`, `agency.developer@` (+ `team.admin@` also a developer here). All `@wisemail.test`.
+- All users share the password `wisemail-dev-123` (printed with the table at the end): `admin@wisemail.test` (Super Admin, `/admin`); `free.owner@`, `free.viewer@`; `pro.owner@`, `pro.developer@`, `pro.support@`, `pro.viewer@` (+ pending invite `invitee.pro@`); `team.owner@`, `team.admin@`, `team.developer@`, `team.support@`, `team.viewer@`, `team.scoped@` (support, only project Marketing; + pending invite `team.invitee@`); `agency.owner@`, `agency.admin@`, `agency.developer@` (+ `team.admin@` also a developer here). All `@wisemail.test`.
 - Workspaces: Side Hustle Co (free, `side-hustle`), Pixel Post (pro), Northwind Labs (team, projects Marketing/Product, 230 contacts), Brightside Agency (agency, one healthy and one `needs_attention` connection). Paid ones have senders, inbound threads with attachments, replies, sent mail with delivered/opened/clicked/bounced events, a scheduled email, a trashed thread, a bounce-rate rule with an open incident, notifications and ~30 days of rollups. Fake Resend state lives in the seed process only; the dev server recreates teams lazily, stored mail is in MongoDB and `.data/storage`.
 

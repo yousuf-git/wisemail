@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { inviteMemberAction } from "@/app/(app)/[orgSlug]/settings/members/actions";
+import { inviteMemberAction } from "@/lib/api/actions/settings-members";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

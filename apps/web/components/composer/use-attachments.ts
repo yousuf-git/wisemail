@@ -2,11 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import {
-  confirmUploadAction,
-  createUploadAction,
-  removeAttachmentAction,
-} from "@/app/(app)/[orgSlug]/compose/actions";
+import { confirmUploadAction, createUploadAction, removeAttachmentAction } from "@/lib/api/actions/compose";
 import type { AttachmentDTO } from "@/lib/dto/mail";
 import { MAX_ATTACHMENT_BYTES, MAX_EMAIL_BYTES } from "@/lib/validation/mail";
 import { friendlyError } from "./errors";

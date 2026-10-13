@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { checkSlug, createOrganization } from "@/app/onboarding/actions";
+import { checkSlug, createOrganization } from "@/lib/api/actions/user";
 import { createOrgSchema, slugify, slugSchema, type CreateOrgInput } from "@/lib/validation/org";
 
 type SlugState = "idle" | "checking" | "available" | "taken";

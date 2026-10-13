@@ -23,7 +23,11 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
         description={
           <span className="flex flex-wrap items-center gap-2">
             {user.email}
-            {user.isAdmin ? <StatusChip state="engaged">Platform admin</StatusChip> : null}
+            {user.isSuperAdmin ? (
+              <StatusChip state="engaged">Super Admin</StatusChip>
+            ) : user.isAdmin ? (
+              <StatusChip state="engaged">Platform admin</StatusChip>
+            ) : null}
             {user.banned ? <StatusChip state="danger">Banned</StatusChip> : null}
             {user.emailVerified ? <StatusChip state="success">Verified</StatusChip> : <StatusChip state="warning">Unverified</StatusChip>}
           </span>
@@ -78,6 +82,7 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
             userId={user.id}
             banned={user.banned}
             isAdmin={user.isAdmin}
+            isSuperAdmin={user.isSuperAdmin}
             isSelf={user.id === admin.id}
             emailVerified={user.emailVerified}
           />

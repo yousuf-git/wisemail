@@ -4,7 +4,7 @@ import { Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { updateNotificationPreferencesAction } from "@/app/(app)/[orgSlug]/settings/notifications/actions";
+import { updateNotificationPreferencesAction } from "@/lib/api/actions/settings-notifications";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { LockedFeature } from "@/components/billing/locked-feature";
 import { Button } from "@/components/ui/button";

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getBulkOperationAction, startBulkAction } from "@/app/(app)/[orgSlug]/inbox/bulk-actions";
+import { getBulkOperationAction, startBulkAction } from "@/lib/api/actions/inbox-bulk";
 import type { BulkOperationDTO } from "@/lib/dto/deletion";
 import { formatCount } from "./permanent-delete-dialog";
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { updateAiSettingsAction } from "@/app/(app)/[orgSlug]/settings/ai/actions";
+import { updateAiSettingsAction } from "@/lib/api/actions/settings-ai";
 import { EmptyState } from "@/components/app/empty-state";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";

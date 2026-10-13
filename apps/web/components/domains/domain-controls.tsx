@@ -4,10 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  assignDomainProjectAction,
-  setDomainTrackingAction,
-} from "@/app/(app)/[orgSlug]/domains/actions";
+import { assignDomainProjectAction, setDomainTrackingAction } from "@/lib/api/actions/domains";
 import { friendlyError } from "@/components/composer/errors";
 import {
   Select,

@@ -1,15 +1,15 @@
 "use server";
 
-import { headers } from "next/headers";
 import { APIError } from "better-auth/api";
 
 import { userAction, ActionFailure } from "@/lib/actions/action";
 import type { ActionResult } from "@/lib/actions/result";
 import { auth } from "@/lib/auth/server";
+import { getRequestHeaders } from "@/lib/request-context";
 import { isSlugTaken } from "@/lib/services/tenancy";
 import { checkSlugSchema, createOrgSchema, type CreateOrgInput } from "@/lib/validation/org";
 
-const create = userAction({ input: createOrgSchema }, async ({ input }) => {
+const create = userAction({ id: "onboarding.createOrg", input: createOrgSchema }, async ({ input }) => {
   if (await isSlugTaken(input.slug)) {
     throw new ActionFailure("conflict", "That address is taken. Try another.", {
       slug: ["That address is taken."],
@@ -18,7 +18,7 @@ const create = userAction({ input: createOrgSchema }, async ({ input }) => {
   try {
     // Session headers make the caller the owner; the org_settings + audit hook runs inside.
     const org = await auth.api.createOrganization({
-      headers: await headers(),
+      headers: await getRequestHeaders(),
       body: { name: input.name, slug: input.slug },
     });
     return { slug: org.slug };
@@ -30,7 +30,7 @@ const create = userAction({ input: createOrgSchema }, async ({ input }) => {
   }
 });
 
-const check = userAction({ input: checkSlugSchema }, async ({ input }) => ({
+const check = userAction({ id: "onboarding.checkSlug", input: checkSlugSchema }, async ({ input }) => ({
   available: !(await isSlugTaken(input.slug)),
 }));
 

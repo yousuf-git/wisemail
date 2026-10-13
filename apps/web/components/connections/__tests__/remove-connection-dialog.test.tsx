@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const removeConnectionAction = vi.hoisted(() => vi.fn());
-vi.mock("@/app/(app)/[orgSlug]/settings/connections/actions", () => ({ removeConnectionAction }));
+vi.mock("@/lib/api/actions/settings-connections", () => ({ removeConnectionAction }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

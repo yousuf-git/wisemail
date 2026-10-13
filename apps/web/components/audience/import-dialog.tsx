@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  appendImportRowsAction,
-  createContactImportAction,
-  getContactImportAction,
-  importContactsBatchAction,
-  importFinishedAction,
-  startContactImportAction,
-} from "@/app/(app)/[orgSlug]/audience/actions";
+import { appendImportRowsAction, createContactImportAction, getContactImportAction, importContactsBatchAction, importFinishedAction, startContactImportAction } from "@/lib/api/actions/audience";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

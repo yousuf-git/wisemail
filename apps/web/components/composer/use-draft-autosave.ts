@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { saveDraftAction } from "@/app/(app)/[orgSlug]/compose/actions";
+import { saveDraftAction } from "@/lib/api/actions/compose";
 import type { ActionError } from "@/lib/actions/result";
 import type { DraftDTO } from "@/lib/dto/mail";
 

@@ -1,18 +1,13 @@
 "use client";
 
-import {
-  banUserAction,
-  impersonateAction,
-  resendVerificationAction,
-  revokeSessionsAction,
-  unbanUserAction,
-} from "@/app/(admin)/admin/actions";
+import { banUserAction, impersonateAction, resendVerificationAction, revokeSessionsAction, unbanUserAction } from "@/lib/api/actions/admin";
 import { ActionForm, Disclosure, TextField } from "./action-form";
 
 export type UserActionsProps = {
   userId: string;
   banned: boolean;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   isSelf: boolean;
   emailVerified: boolean;
 };
@@ -20,8 +15,15 @@ export type UserActionsProps = {
 const reasonOf = (f: FormData) => String(f.get("reason") ?? "");
 
 /** Support actions for one user. Every submit is written to the audit log with the reason. */
-export function UserActions({ userId, banned, isAdmin, isSelf, emailVerified }: UserActionsProps) {
-  const locked = isAdmin || isSelf;
+export function UserActions({
+  userId,
+  banned,
+  isAdmin,
+  isSuperAdmin,
+  isSelf,
+  emailVerified,
+}: UserActionsProps) {
+  const locked = isAdmin || isSuperAdmin || isSelf;
   return (
     <div className="grid gap-3">
       {!emailVerified ? (
@@ -38,7 +40,9 @@ export function UserActions({ userId, banned, isAdmin, isSelf, emailVerified }: 
         <p className="text-sm text-ink-muted">
           {isSelf
             ? "This is you."
-            : "Platform admins can't be banned, signed out or impersonated here."}
+            : isSuperAdmin
+              ? "The Super Admin can't be changed from here."
+              : "Platform admins can't be banned, signed out or impersonated here."}
         </p>
       ) : (
         <>

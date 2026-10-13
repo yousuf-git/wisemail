@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { createAlertRuleAction, updateAlertRuleAction } from "@/app/(app)/[orgSlug]/alerts/actions";
+import { createAlertRuleAction, updateAlertRuleAction } from "@/lib/api/actions/alerts";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

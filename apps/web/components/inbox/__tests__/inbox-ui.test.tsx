@@ -8,7 +8,7 @@ vi.mock("next/link", () => ({
     </a>
   ),
 }));
-vi.mock("@/app/(app)/[orgSlug]/inbox/actions", () => ({
+vi.mock("@/lib/api/actions/inbox", () => ({
   retryInboundAction: vi.fn(),
 }));
 

@@ -15,7 +15,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
-vi.mock("@/app/(app)/[orgSlug]/settings/ai/actions", () => ({
+vi.mock("@/lib/api/actions/settings-ai", () => ({
   updateAiSettingsAction: mocks.updateAiSettingsAction,
 }));
 

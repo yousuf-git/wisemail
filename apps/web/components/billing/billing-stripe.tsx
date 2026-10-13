@@ -5,10 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  buyCreditPackAction,
-  openPortalAction,
-} from "@/app/(app)/[orgSlug]/settings/billing/actions";
+import { buyCreditPackAction, openPortalAction } from "@/lib/api/actions/settings-billing";
 import { Button } from "@/components/ui/button";
 import type { BillingOverviewDTO } from "@/lib/dto/billing";
 

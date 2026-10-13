@@ -5,6 +5,7 @@ import mongoose, { Types } from "mongoose";
 
 import { hasAdminRole } from "@/lib/admin/allowlist";
 import type { AdminActor } from "@/lib/admin/guard";
+import { getSuperAdminUserId, assertNotSuperAdmin } from "@/lib/admin/super-admin";
 import { auth } from "@/lib/auth/server";
 import { connectDb } from "@/lib/db/connect";
 import type { AdminPageDTO, AdminUserDetailDTO, AdminUserRowDTO } from "@/lib/dto/admin";
@@ -30,15 +31,17 @@ const users = () => mongoose.connection.collection<UserDoc>("user");
 
 const asIdOrString = (id: Types.ObjectId) => ({ $in: [id, id.toHexString()] });
 
-function toRow(u: UserDoc, orgCount: number): AdminUserRowDTO {
+function toRow(u: UserDoc, orgCount: number, superAdminUserId: string | null): AdminUserRowDTO {
   const role = u.role ?? "user";
+  const id = u._id.toHexString();
   return {
-    id: u._id.toHexString(),
+    id,
     name: u.name ?? "",
     email: u.email,
     emailVerified: !!u.emailVerified,
     role,
     isAdmin: hasAdminRole(role),
+    isSuperAdmin: !!superAdminUserId && superAdminUserId === id,
     banned: isBanned(u),
     createdAt: (u.createdAt ?? u._id.getTimestamp()).toISOString(),
     orgCount,
@@ -63,8 +66,11 @@ async function orgCounts(ids: Types.ObjectId[]) {
 }
 
 async function rowsFor(docs: UserDoc[]) {
-  const counts = await orgCounts(docs.map((d) => d._id));
-  return docs.map((d) => toRow(d, counts.get(d._id.toHexString()) ?? 0));
+  const [counts, superAdminUserId] = await Promise.all([
+    orgCounts(docs.map((d) => d._id)),
+    getSuperAdminUserId(),
+  ]);
+  return docs.map((d) => toRow(d, counts.get(d._id.toHexString()) ?? 0, superAdminUserId));
 }
 
 /** Newest first, optional search over name and email, keyset pagination on `_id`. */
@@ -187,13 +193,18 @@ function assertNotAdmin(target: UserDoc, verb: string) {
   }
 }
 
+async function assertMutableTarget(target: UserDoc, verb: string) {
+  await assertNotSuperAdmin(target._id.toHexString(), verb);
+  assertNotAdmin(target, verb);
+}
+
 export async function banUser(
   admin: AdminActor,
   input: { userId: string; reason: string; expiresInDays?: number | null },
 ) {
   const target = await loadTarget(input.userId);
   assertNotSelf(admin, target, "ban");
-  assertNotAdmin(target, "banned");
+  await assertMutableTarget(target, "banned");
   // The plugin checks the caller's role again and revokes the user's sessions.
   await auth.api.banUser({
     headers: await headers(),
@@ -233,7 +244,7 @@ export async function revokeUserSessions(
 ) {
   const target = await loadTarget(input.userId);
   assertNotSelf(admin, target, "sign out");
-  assertNotAdmin(target, "signed out here");
+  await assertMutableTarget(target, "signed out here");
   await auth.api.revokeUserSessions({ headers: await headers(), body: { userId: input.userId } });
   await writeAdminAudit({
     admin,
@@ -275,7 +286,7 @@ export async function startImpersonation(
 ): Promise<{ path: string }> {
   const target = await loadTarget(input.userId);
   assertNotSelf(admin, target, "impersonate");
-  assertNotAdmin(target, "impersonated");
+  await assertMutableTarget(target, "impersonated");
   if (isBanned(target)) throw new ServiceError("conflict", "This user is banned.");
   await auth.api.impersonateUser({ headers: await headers(), body: { userId: input.userId } });
 

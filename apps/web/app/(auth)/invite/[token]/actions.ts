@@ -5,7 +5,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import { acceptInvitation } from "@/lib/services/members";
 import { acceptInvitationSchema } from "@/lib/validation/member";
 
-const accept = userAction({ input: acceptInvitationSchema }, ({ input, user }) =>
+const accept = userAction({ id: "invite.accept", input: acceptInvitationSchema }, ({ input, user }) =>
   acceptInvitation(user, input),
 );
 

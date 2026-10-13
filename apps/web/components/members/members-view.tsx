@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  cancelInvitationAction,
-  resendInvitationAction,
-  changeMemberRoleAction,
-} from "@/app/(app)/[orgSlug]/settings/members/actions";
+import { cancelInvitationAction, resendInvitationAction, changeMemberRoleAction } from "@/lib/api/actions/settings-members";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {

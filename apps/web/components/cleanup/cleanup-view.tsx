@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  deleteCleanupRuleAction,
-  setCleanupRuleEnabledAction,
-} from "@/app/(app)/[orgSlug]/settings/cleanup/actions";
+import { deleteCleanupRuleAction, setCleanupRuleEnabledAction } from "@/lib/api/actions/settings-cleanup";
 import { EmptyState } from "@/components/app/empty-state";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

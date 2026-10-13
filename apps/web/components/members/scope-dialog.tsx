@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { setMemberScopeAction } from "@/app/(app)/[orgSlug]/settings/members/actions";
+import { setMemberScopeAction } from "@/lib/api/actions/settings-members";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {

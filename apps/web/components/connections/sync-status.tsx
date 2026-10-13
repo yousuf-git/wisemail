@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
 
-import { syncNowAction } from "@/app/(app)/[orgSlug]/settings/connections/actions";
+import { syncNowAction } from "@/lib/api/actions/settings-connections";
 import { Button } from "@/components/ui/button";
 import type { SyncStatusDTO } from "@/lib/dto/sync";
 import { useLiveStatus, useLiveTopics } from "@/lib/realtime/live-context";

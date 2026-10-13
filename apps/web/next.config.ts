@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
   // Auto-memoize components; needs `babel-plugin-react-compiler` (devDependency).
   reactCompiler: true,
   experimental: {
-    // motion / radix are not in Next's default optimize list; named imports stay ergonomic.
-    optimizePackageImports: ["motion", "radix-ui", "@number-flow/react"],
+    // Named imports stay ergonomic; Next rewrites barrels (lucide, motion, radix) to direct paths.
+    optimizePackageImports: ["lucide-react", "motion", "radix-ui", "@number-flow/react"],
   },
   // Inlined into the client bundle for instrumentation-client.ts (the DSN is public by design).
   env: {

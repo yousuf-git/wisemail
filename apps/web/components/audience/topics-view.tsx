@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  createTopicAction,
-  deleteTopicAction,
-  updateTopicAction,
-} from "@/app/(app)/[orgSlug]/audience/actions";
+import { createTopicAction, deleteTopicAction, updateTopicAction } from "@/lib/api/actions/audience";
 import { EmptyState } from "@/components/app/empty-state";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { StatusChip } from "@/components/app/status-chip";

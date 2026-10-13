@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { acceptInvitationAction } from "./actions";
+import { acceptInvitationAction } from "@/lib/api/actions/user";
 
 export function AcceptButton({ token }: { token: string }) {
   const router = useRouter();

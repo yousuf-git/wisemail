@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  cancelPendingChangeAction,
-  changePlanAction,
-  openPortalAction,
-  previewPlanChangeAction,
-  startCheckoutAction,
-  startTrialAction,
-} from "@/app/(app)/[orgSlug]/settings/billing/actions";
+import { cancelPendingChangeAction, changePlanAction, openPortalAction, previewPlanChangeAction, startCheckoutAction, startTrialAction } from "@/lib/api/actions/settings-billing";
 import { FormAlert } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
