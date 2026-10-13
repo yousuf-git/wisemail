@@ -1,0 +1,27 @@
+{
+  "name": "@wisemail/spa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit --pretty false",
+    "lint": "echo 'spa lint: deferred until eslint shared config'"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.0",
+    "@tanstack/react-router": "^1.157.16",
+    "@wisemail/shared": "workspace:*",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.0",
+    "typescript": "^5",
+    "vite": "^7.1.7"
+  }
+}

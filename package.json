@@ -12,8 +12,9 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @wisemail/web --filter @wisemail/api run dev",
     "dev:web": "pnpm --filter @wisemail/web dev",
+    "dev:spa": "pnpm --filter @wisemail/spa dev",
     "dev:api": "pnpm --filter @wisemail/api dev",
-    "build": "pnpm -r --filter @wisemail/shared --filter @wisemail/api --filter @wisemail/web run build",
+    "build": "pnpm -r --filter @wisemail/shared --filter @wisemail/api --filter @wisemail/web --filter @wisemail/spa run build",
     "start": "pnpm --parallel --filter @wisemail/web --filter @wisemail/api run start",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
@@ -23,6 +24,7 @@
     "format": "prettier --write .",
     "db:dev": "pnpm --filter @wisemail/web db:dev",
     "db:seed": "pnpm --filter @wisemail/web db:seed",
+    "admin:create": "pnpm --filter @wisemail/web admin:create",
     "mail:check": "pnpm --filter @wisemail/web mail:check",
     "webhook:test": "pnpm --filter @wisemail/web webhook:test",
     "stripe:simulate": "pnpm --filter @wisemail/web stripe:simulate",
