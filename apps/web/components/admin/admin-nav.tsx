@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Building2, LayoutDashboard, Users } from "lucide-react";
+import { Activity, Building2, LayoutDashboard, Settings2, Tags, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,6 +10,8 @@ const ITEMS = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
+  { href: "/admin/pricing", label: "Pricing", icon: Tags },
+  { href: "/admin/settings", label: "Platform", icon: Settings2 },
   { href: "/admin/health", label: "System health", icon: Activity },
 ] as const;
 

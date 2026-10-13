@@ -85,6 +85,7 @@ export function TextField({
   hint,
   min,
   max,
+  step,
 }: {
   label: string;
   name: string;
@@ -96,6 +97,7 @@ export function TextField({
   hint?: string;
   min?: number;
   max?: number;
+  step?: string | number;
 }) {
   const id = useId();
   const cls =
@@ -125,6 +127,7 @@ export function TextField({
           defaultValue={defaultValue}
           min={min}
           max={max}
+          step={step}
           inputMode={type === "number" ? "numeric" : undefined}
           className={cn(cls, "h-9")}
         />
