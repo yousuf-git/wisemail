@@ -44,6 +44,8 @@ const platformSettingsSchema = new Schema(
     githubSignIn: { type: Boolean, required: true, default: false },
     aiEnabled: { type: Boolean, required: true, default: true },
     stripePriceIds: { type: Map, of: String, default: () => new Map() },
+    /** Single immutable platform Super Admin (`user._id`). Null until claimed. */
+    superAdminUserId: { type: Schema.Types.ObjectId, default: null },
     revision: { type: Number, required: true, default: 1 },
   },
   { timestamps: true, collection: "platform_settings" },

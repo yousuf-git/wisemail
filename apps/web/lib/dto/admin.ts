@@ -24,6 +24,8 @@ export type AdminUserRowDTO = {
   emailVerified: boolean;
   role: string;
   isAdmin: boolean;
+  /** True when this user is the single immutable platform Super Admin. */
+  isSuperAdmin: boolean;
   banned: boolean;
   createdAt: string;
   orgCount: number;
