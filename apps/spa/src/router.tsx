@@ -23,9 +23,13 @@ const PAGE_MODULES = {
   signIn: () => import("@/pages/sign-in"),
   orgLayout: () => import("@/pages/org-layout"),
   inbox: () => import("@/pages/inbox"),
+  thread: () => import("@/pages/thread"),
+  sent: () => import("@/pages/mail-folder"),
   scheduled: () => import("@/pages/mail-folder"),
+  trash: () => import("@/pages/mail-folder"),
   activity: () => import("@/pages/activity"),
   compose: () => import("@/pages/compose"),
+  notifications: () => import("@/pages/notifications"),
   contacts: () => import("@/pages/contacts"),
   broadcasts: () => import("@/pages/broadcasts"),
   templates: () => import("@/pages/templates"),
@@ -37,6 +41,11 @@ const PAGE_MODULES = {
   settingsConnections: () => import("@/pages/settings-connections"),
   settingsSenders: () => import("@/pages/settings-senders"),
   settingsMembers: () => import("@/pages/settings-members"),
+  settingsProjects: () => import("@/pages/settings-projects"),
+  settingsNotifications: () => import("@/pages/settings-notifications"),
+  settingsBilling: () => import("@/pages/settings-billing"),
+  settingsAi: () => import("@/pages/settings-ai"),
+  settingsAudit: () => import("@/pages/settings-audit"),
   placeholder: () => import("@/pages/placeholder"),
 } as const;
 
@@ -76,10 +85,28 @@ const inboxRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.inbox, "InboxPage"),
 });
 
+const threadRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/inbox/$threadId",
+  component: lazyRouteComponent(PAGE_MODULES.thread, "ThreadPage"),
+});
+
+const sentRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/sent",
+  component: lazyRouteComponent(PAGE_MODULES.sent, "SentPage"),
+});
+
 const scheduledRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/scheduled",
   component: lazyRouteComponent(PAGE_MODULES.scheduled, "ScheduledPage"),
+});
+
+const trashRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/trash",
+  component: lazyRouteComponent(PAGE_MODULES.trash, "TrashPage"),
 });
 
 const activityRoute = createRoute({
@@ -92,6 +119,12 @@ const composeRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/compose",
   component: lazyRouteComponent(PAGE_MODULES.compose, "ComposePage"),
+});
+
+const notificationsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/notifications",
+  component: lazyRouteComponent(PAGE_MODULES.notifications, "NotificationsPage"),
 });
 
 const contactsRoute = createRoute({
@@ -160,6 +193,36 @@ const settingsMembersRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.settingsMembers, "SettingsMembersPage"),
 });
 
+const settingsProjectsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/projects",
+  component: lazyRouteComponent(PAGE_MODULES.settingsProjects, "SettingsProjectsPage"),
+});
+
+const settingsNotificationsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/notifications",
+  component: lazyRouteComponent(PAGE_MODULES.settingsNotifications, "SettingsNotificationsPage"),
+});
+
+const settingsBillingRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/billing",
+  component: lazyRouteComponent(PAGE_MODULES.settingsBilling, "SettingsBillingPage"),
+});
+
+const settingsAiRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/ai",
+  component: lazyRouteComponent(PAGE_MODULES.settingsAi, "SettingsAiPage"),
+});
+
+const settingsAuditRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/audit",
+  component: lazyRouteComponent(PAGE_MODULES.settingsAudit, "SettingsAuditPage"),
+});
+
 const splatRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/$",
@@ -172,9 +235,13 @@ const routeTree = rootRoute.addChildren([
   orgRoute.addChildren([
     orgIndexRoute,
     inboxRoute,
+    threadRoute,
+    sentRoute,
     scheduledRoute,
+    trashRoute,
     activityRoute,
     composeRoute,
+    notificationsRoute,
     contactsRoute,
     broadcastsRoute,
     templatesRoute,
@@ -186,6 +253,11 @@ const routeTree = rootRoute.addChildren([
     settingsConnectionsRoute,
     settingsSendersRoute,
     settingsMembersRoute,
+    settingsProjectsRoute,
+    settingsNotificationsRoute,
+    settingsBillingRoute,
+    settingsAiRoute,
+    settingsAuditRoute,
     splatRoute,
   ]),
 ]);
