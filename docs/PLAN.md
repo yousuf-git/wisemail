@@ -16,7 +16,7 @@ Legend: `[x]` done · `[~]` in progress / partial · `[ ]` not started
 
 ## Migration — React SPA + Fastify (`react-migration` branch)
 
-Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/shared`, Node 24 LTS, OCI VM + Atlas. Catalog / toggles / AI model + system from-address move to Mongo + admin; secrets stay in env. One platform Super Admin (immutable).
+Target: Vite + React 19 SPA (`apps/spa`), Fastify API (`apps/api`), domain library in `apps/web`, `packages/shared`, Node 24 LTS, OCI VM + Atlas. Catalog / toggles / AI model + system from-address move to Mongo + admin; secrets stay in env. One platform Super Admin (immutable).
 
 - [x] Phase M1 — Monorepo skeleton: `apps/web` (current Next app), `apps/api` (Fastify health), `packages/shared` (plan types)
 - [x] Phase M2 — `@wisemail/shared`: plan catalog + helpers, Stripe price keys, AI credit constants, billing DTOs; web re-exports keep old import paths
@@ -28,9 +28,9 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M5 — DB-backed catalog, Stripe lookup keys, `price_changes` + `price-migration` job (next-renewal schedules), Settings → Billing callout, `GET /api/v1/catalog`
 - [x] Phase M6 — Admin `/admin/pricing` + `/admin/settings`; Super Admin (`platform_settings.superAdminUserId`, immutable) + `pnpm admin:create`
 - [x] Phase M7 — `apps/spa`: auth, shell (bell + SSE + theme), mail (inbox/sent/scheduled/trash/thread/compose+AI+attachments), audience, health, settings (incl. billing/AI/audit); Fastify `/api/dev-storage` + bridged GETs; local cookie/CORS. TipTap rich editor deferred (plain compose OK); e2e polish rolls into M8.
-- [~] Phase M8 — **M8a** scrub moved to `@wisemail/shared/sentry-scrub`; Fastify + SPA init hooks (no-op until `@sentry/node` / `@sentry/browser` installed). **M8b** SPA Playwright smoke (`pnpm test:e2e:spa`). Default `pnpm build` / `pnpm start` no longer run Next; use `build:next` / `start:next` / `clean:next`. **M8c** still open: delete Next only after Fastify no longer bridges `apps/web` route handlers.
+- [x] Phase M8 — SPA is the production UI: mail + settings + **`/admin`** + **`/invite/:token`** + **`/onboarding`**. Fastify serves admin reads, invite preview, and all mutations. Next remains in-repo as a library / optional `dev:web` fallback (TipTap-rich Next composer still richer than SPA plain compose). **Do not run `next start` in prod** — Vercel SPA + OCI API only.
 - [x] Phase M9 — Deploy docs: API-only OCI (`docs/DEPLOY-OCI.md` + Nginx/PM2) and SPA on Vercel (`docs/DEPLOY-VERCEL.md`, `apps/spa/vercel.json`). `APP_URL` / `BETTER_AUTH_URL` split, `COOKIE_DOMAIN`, `SPA_ORIGINS`, webhook URLs on API host.
-- [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN, README stack → SPA+Fastify+OCI)
+- [x] Phase M10 — Docs refreshed for SPA + Fastify + OCI/Vercel: `AGENTS.md`, `README.md`, `TRD.md` §1–2, deploy docs linked from PLAN.
 
 ---
 
@@ -121,6 +121,8 @@ UI (next agent):
 ---
 
 ## Log
+
+- 2026-10-13 — Migration M1–M10 closed for production path. SPA owns mail, settings, `/admin` (incl. limit overrides + trial days), `/invite/:token`, `/onboarding`; Fastify serves admin GETs, invite preview, and all actions. Deploy: SPA on Vercel, API-only on OCI. Next is library + optional `dev:web` only — do not `next start` in prod. TipTap-rich SPA composer still deferred (plain compose OK).
 
 - 2026-09-30 — Phase 8 done. E2E: 15/15 Playwright specs green (≈5.6 min, 2 workers). Performance (`pnpm perf`, target org 50k emails / 5k threads / 100k events, p95): ingest 12.8 ms (<300), inbox first page 14 ms and page 2 13 ms (<400), inbox unread 288 ms (<400), overview 36 ms (<800), activity 4–6 ms, insights 30d 112 ms; no COLLSCAN. Fixes found by e2e/perf: auth collections + unique indexes created at startup (concurrent sign-ups on a fresh DB failed with a masked WriteConflict; nothing enforced unique emails); Motion errors in animated icons/Wizi; inbox sender-name lookup hinted to `{orgId, threadId, createdAt}` (was walking the whole org, ~10x faster). Accessibility (axe AA) passes: filled controls and accent text use `--accent-fill` #0369A1 (sky #0EA5E9 stays for decoration), muted token #6C6B72, faint text rendered as muted, dark initials on coral, editor mode switch is a radio group. Follow-ups: unread inbox filter still sorts threads in memory (index candidate); verify Stripe against a real test-mode account; Sentry needs a DSN.
 

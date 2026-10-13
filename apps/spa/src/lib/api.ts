@@ -54,6 +54,28 @@ export async function callOrgAction<T>(
   });
 }
 
+export async function callUserAction<T>(id: string, input: unknown): Promise<ActionResult<T>> {
+  return postJson<ActionResult<T>>(`/api/v1/user-actions/${encodeURIComponent(id)}`, { input });
+}
+
+export type InvitePreview =
+  | { status: "invalid" }
+  | { status: "expired"; orgName: string }
+  | { status: "used"; orgName: string }
+  | {
+      status: "pending";
+      orgName: string;
+      role: string;
+      maskedEmail: string;
+      emailMatches?: boolean;
+      emailVerified?: boolean;
+      signedInEmail?: string;
+    };
+
+export async function getInvitePreview(token: string) {
+  return getJson<InvitePreview>(`/api/v1/invite/preview?token=${encodeURIComponent(token)}`);
+}
+
 export async function getCatalog() {
   return getJson<unknown>("/api/v1/catalog");
 }

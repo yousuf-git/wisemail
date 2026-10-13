@@ -23,22 +23,7 @@ export function HomePage() {
     if (first?.slug) {
       return <Navigate to="/$orgSlug/inbox" params={{ orgSlug: first.slug }} />;
     }
-    return (
-      <section className="mx-auto max-w-lg py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">No workspace yet</h1>
-        <p className="mt-2 text-sm text-ink-muted">
-          Signed in as {session.data.user.email}. Create a workspace on the Next app for now, then
-          refresh.
-        </p>
-        <button
-          type="button"
-          className="mt-4 h-9 rounded-control border border-line px-3 text-sm"
-          onClick={() => authClient.signOut()}
-        >
-          Sign out
-        </button>
-      </section>
-    );
+    return <Navigate to="/onboarding" />;
   }
 
   return (

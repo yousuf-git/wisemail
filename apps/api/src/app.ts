@@ -40,6 +40,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
           "/api/inngest",
           "/api/v1/catalog",
           "/api/v1/actions/:id",
+          "/api/v1/admin/*",
+          "/api/v1/admin-actions/:id",
           "/api/v1/*",
         ],
   }));
@@ -57,6 +59,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const { inngestRoutes } = await import("./routes/inngest.js");
   const { actionRoutes } = await import("./routes/actions.js");
   const { catalogRoutes } = await import("./routes/catalog.js");
+  const { adminRoutes } = await import("./routes/admin.js");
+  const { inviteRoutes } = await import("./routes/invite.js");
   const { v1Routes } = await import("./routes/v1.js");
 
   app.addHook("onReady", async () => {
@@ -73,6 +77,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(inngestRoutes);
   await app.register(catalogRoutes);
   await app.register(actionRoutes);
+  await app.register(adminRoutes);
+  await app.register(inviteRoutes);
   await app.register(v1Routes);
 
   return app;

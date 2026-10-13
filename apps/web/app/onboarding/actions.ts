@@ -4,7 +4,7 @@ import { APIError } from "better-auth/api";
 
 import { userAction, ActionFailure } from "@/lib/actions/action";
 import type { ActionResult } from "@/lib/actions/result";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/runtime";
 import { getRequestHeaders } from "@/lib/request-context";
 import { isSlugTaken } from "@/lib/services/tenancy";
 import { checkSlugSchema, createOrgSchema, type CreateOrgInput } from "@/lib/validation/org";

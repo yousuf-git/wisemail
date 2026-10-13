@@ -1,14 +1,14 @@
 import "server-only";
 
-import { headers } from "next/headers";
 import mongoose, { Types } from "mongoose";
 
 import { hasAdminRole } from "@/lib/admin/allowlist";
 import type { AdminActor } from "@/lib/admin/guard";
 import { getSuperAdminUserId, assertNotSuperAdmin } from "@/lib/admin/super-admin";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/runtime";
 import { connectDb } from "@/lib/db/connect";
 import type { AdminPageDTO, AdminUserDetailDTO, AdminUserRowDTO } from "@/lib/dto/admin";
+import { getRequestHeaders } from "@/lib/request-context";
 import { ServiceError } from "@/lib/services/errors";
 import { listUserOrgs } from "@/lib/services/tenancy";
 import { writeAdminAudit } from "./audit";
@@ -207,7 +207,7 @@ export async function banUser(
   await assertMutableTarget(target, "banned");
   // The plugin checks the caller's role again and revokes the user's sessions.
   await auth.api.banUser({
-    headers: await headers(),
+    headers: await getRequestHeaders(),
     body: {
       userId: input.userId,
       banReason: input.reason,
@@ -228,7 +228,10 @@ export async function banUser(
 
 export async function unbanUser(admin: AdminActor, input: { userId: string; reason?: string }) {
   const target = await loadTarget(input.userId);
-  await auth.api.unbanUser({ headers: await headers(), body: { userId: input.userId } });
+  await auth.api.unbanUser({
+    headers: await getRequestHeaders(),
+    body: { userId: input.userId },
+  });
   await writeAdminAudit({
     admin,
     action: "admin.user_unbanned",
@@ -245,7 +248,10 @@ export async function revokeUserSessions(
   const target = await loadTarget(input.userId);
   assertNotSelf(admin, target, "sign out");
   await assertMutableTarget(target, "signed out here");
-  await auth.api.revokeUserSessions({ headers: await headers(), body: { userId: input.userId } });
+  await auth.api.revokeUserSessions({
+    headers: await getRequestHeaders(),
+    body: { userId: input.userId },
+  });
   await writeAdminAudit({
     admin,
     action: "admin.sessions_revoked",
@@ -288,7 +294,10 @@ export async function startImpersonation(
   assertNotSelf(admin, target, "impersonate");
   await assertMutableTarget(target, "impersonated");
   if (isBanned(target)) throw new ServiceError("conflict", "This user is banned.");
-  await auth.api.impersonateUser({ headers: await headers(), body: { userId: input.userId } });
+  await auth.api.impersonateUser({
+    headers: await getRequestHeaders(),
+    body: { userId: input.userId },
+  });
 
   const orgs = await listUserOrgs(input.userId);
   const audit = { admin, action: "admin.impersonation_started", reason: input.reason } as const;
@@ -307,7 +316,7 @@ export async function startImpersonation(
 
 /** Ends an impersonation session and restores the admin's own. `adminId` = `session.impersonatedBy`. */
 export async function endImpersonation(input: { adminId: string; targetUserId: string }) {
-  await auth.api.stopImpersonating({ headers: await headers() });
+  await auth.api.stopImpersonating({ headers: await getRequestHeaders() });
   const target = await users().findOne({ _id: requireOid(input.targetUserId, "user") });
   const orgs = await listUserOrgs(input.targetUserId);
   const admin = { id: input.adminId, name: "", email: "" };

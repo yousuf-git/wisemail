@@ -4,10 +4,12 @@
   <p><strong>The control room for every Resend account, domain, and inbox you run.</strong></p>
 
   [![License](https://img.shields.io/badge/license-Proprietary-darkred?style=flat-square)](LICENSE)
-  [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
+  [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+  [![Fastify](https://img.shields.io/badge/Fastify-API-000000?style=flat-square)](https://fastify.dev)
   [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
   [![MongoDB](https://img.shields.io/badge/MongoDB-8.3-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com)
-  [![Vercel](https://img.shields.io/badge/deploys%20on-Vercel-black?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+  [![Vercel](https://img.shields.io/badge/SPA-Vercel-black?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+  [![OCI](https://img.shields.io/badge/API-Oracle%20Cloud-F80000?style=flat-square)](https://www.oracle.com/cloud/)
 </div>
 
 ---
@@ -31,9 +33,10 @@ All scoped to multi-tenant organizations, with roles (Owner / Admin / Developer 
 
 | Layer | Choice |
 |---|---|
-| Framework | Next.js 16 App Router, React 19, TypeScript (strict) |
-| Styling | Tailwind CSS v4, CSS-variable design tokens, shadcn/ui |
-| Motion | Motion (`motion/react`), NumberFlow for rolling counters |
+| UI | Vite + React 19 SPA (`apps/spa`), TanStack Router + Query, TypeScript (strict) |
+| API | Fastify (`apps/api`) on Node 24 — auth, ingest, SSE, org actions, Inngest |
+| Shared services | `apps/web` modules (Mongoose models, domain services); Next is an optional local UI fallback only |
+| Styling | Tailwind CSS v4, CSS-variable design tokens (FED) |
 | Auth | Better Auth with organization and invitation plugins |
 | Database | MongoDB Atlas (replica set) via Mongoose |
 | Jobs | Inngest — durable steps, retries, cron, per-connection throttle |
@@ -42,28 +45,31 @@ All scoped to multi-tenant organizations, with roles (Owner / Admin / Developer 
 | Email | Resend SDK behind a single adapter module |
 | AI | `openai` SDK against any OpenAI-compatible endpoint |
 | Billing | Stripe (Better Auth plugin + direct SDK for metered overage and packs) |
+| Hosting | **SPA → Vercel**, **API → OCI VM** (Nginx + PM2) + Atlas |
 | Testing | Vitest (unit + integration), Playwright (e2e) |
 | Errors | Sentry (optional) |
 
-Full stack rationale in [`docs/TRD.md`](docs/TRD.md).
+Full stack rationale in [`docs/TRD.md`](docs/TRD.md). Deploy: [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md), [`docs/DEPLOY-OCI.md`](docs/DEPLOY-OCI.md).
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    Browser["Browser\n(React 19)"]
-    Next["Next.js 16\n(Vercel, Node runtime)"]
+    Browser["Browser"]
+    SPA["Vite SPA\n(Vercel)"]
+    API["Fastify API\n(OCI VM)"]
     Mongo[("MongoDB Atlas")]
     Inngest["Inngest\nJob Functions"]
     R2[("Cloudflare R2")]
-    AI["AI Provider\n(OpenAI-compatible)"]
+    AI["AI Provider"]
     ResendAccounts["Resend\nAccounts"]
 
-    Browser <-->|"RSC / Server Actions"| Next
-    Browser <-->|"SSE — live updates"| Next
-    Next <-->|"Mongoose"| Mongo
-    ResendAccounts -->|"signed webhook"| Next
-    Next -->|"enqueue event"| Inngest
+    Browser --> SPA
+    SPA <-->|"HTTPS + cookies\n/api/*"| API
+    SPA <-->|"SSE /api/stream"| API
+    API <-->|"Mongoose"| Mongo
+    ResendAccounts -->|"signed webhook"| API
+    API -->|"enqueue"| Inngest
     Inngest <-->|"services"| Mongo
     Inngest --> R2
     Inngest --> AI
@@ -71,9 +77,10 @@ flowchart TB
 
 **Key flows:**
 
-- **Ingest hot path** — `POST /api/ingest/resend/[connectionId]` verifies the Svix signature, deduplicates, stores, and enqueues to Inngest; returns 200 in under 300 ms with no Resend API calls on the hot path.
-- **Sync** — paged backfill of all Resend resources, checkpointed in `sync_runs` so timeouts resume at the failed stage.
-- **Realtime** — every service write calls `publish()` into `realtime_events`; a change stream fans events to SSE clients subscribed to matching topics.
+- **Ingest hot path** — `POST /api/ingest/resend/[connectionId]` on the API verifies Svix, deduplicates, stores, enqueues to Inngest; returns 200 quickly with no Resend calls on the hot path.
+- **Sync** — paged backfill of Resend resources, checkpointed in `sync_runs`.
+- **Realtime** — services `publish()` into `realtime_events`; change streams fan out over SSE.
+- **Split URLs** — `APP_URL` = SPA origin; `BETTER_AUTH_URL` = API origin (webhooks and auth).
 
 ## Getting started
 
@@ -82,9 +89,14 @@ Requirements: **Node.js 24** (see `.nvmrc`), **pnpm**, and a `mongod` binary on 
 ```bash
 pnpm install
 cp .env.example .env.local     # fill the Core block
+ln -sfn ../.env.local apps/web/.env.local
+pnpm --filter @wisemail/shared build
 pnpm db:dev                    # MongoDB replica set rs0 on 127.0.0.1:27017
-pnpm dev                       # http://localhost:3000
+pnpm dev:api                   # http://127.0.0.1:4000
+pnpm dev:spa                   # http://localhost:5173 (proxies /api → API)
 ```
+
+Platform admin is on the SPA at `/admin` (same `pnpm dev:spa` stack). Optional Next UI: `pnpm dev:web`.
 
 #### Port 27017 already in use
 
@@ -118,21 +130,21 @@ Creates a platform admin and four demo workspaces (Free, Pro, Team, Agency) with
 
 | Command | Description |
 |---|---|
-| `pnpm dev` / `pnpm build` / `pnpm start` | Next.js dev, build (checks env first), start |
-| `pnpm typecheck` | `next typegen` + `tsc --noEmit` |
-| `pnpm lint` / `pnpm format` | ESLint / Prettier |
-| `pnpm test` / `pnpm test:watch` | Vitest (unit and integration) |
-| `pnpm test:e2e` | Playwright end-to-end |
-| `pnpm db:dev` | Start local MongoDB replica set |
-| `pnpm db:seed` | Seed demo workspaces and users (`--reset` drops the database first) |
-| `pnpm webhook:test <connectionId>` | Post a signed test webhook to a connection |
-| `pnpm mail:check` | Run the full mail flow against in-memory services |
+| `pnpm dev:spa` / `pnpm dev:api` | Primary local stack (SPA + Fastify) |
+| `pnpm dev` / `pnpm dev:web` | Next UI + API (admin / legacy) |
+| `pnpm build` / `pnpm start` | Build shared+api+spa; start API only |
+| `pnpm build:next` / `pnpm start:next` | Legacy Next build/start |
+| `pnpm clean:next` | Remove `.next` build caches |
+| `pnpm typecheck` / `pnpm lint` / `pnpm format` | Workspace checks |
+| `pnpm test` / `pnpm test:e2e` / `pnpm test:e2e:spa` | Vitest; Playwright (Next e2e / SPA smoke) |
+| `pnpm db:dev` / `pnpm db:seed` | Local Mongo replica set; demo data |
+| `pnpm webhook:test` / `pnpm mail:check` | Signed webhook sample; full mail fake-mode check |
 
 Every change must pass `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build`.
 
 ## Configuration
 
-`lib/env.ts` validates every variable with Zod at startup. `pnpm build` runs `scripts/check-env.ts` before the build; a misconfiguration fails the deployment before it goes live. Code never reads `process.env` directly.
+Env is validated via `@wisemail/shared/env-schema` (`apps/web/lib/env.ts`). Code should not read `process.env` directly in app logic. See [`.env.example`](.env.example).
 
 ### Core (always required)
 
@@ -140,8 +152,12 @@ Every change must pass `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm bui
 |---|---|
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/wisemail?replicaSet=rs0` locally (transactions need a replica set) |
 | `BETTER_AUTH_SECRET` | 32+ characters — `openssl rand -base64 32` |
-| `BETTER_AUTH_URL`, `APP_URL` | Public base URL; `http://localhost:3000` locally, `https://…` in production |
-| `ENCRYPTION_KEK_CURRENT`, `ENCRYPTION_KEK_ID` | AES-256-GCM key-encrypting key and its ID (`openssl rand -base64 32`) |
+| `BETTER_AUTH_URL` | Public **API** origin (`http://localhost:4000` or `https://api…`) |
+| `APP_URL` | Public **SPA** origin (`http://localhost:5173` or `https://app…`) |
+| `COOKIE_DOMAIN` | Optional `.example.com` when SPA and API share a parent domain |
+| `SPA_ORIGINS` | Optional comma-separated extra CORS / trusted origins (Vercel previews) |
+| `ENCRYPTION_KEK_CURRENT`, `ENCRYPTION_KEK_ID` | AES-256-GCM KEK (`openssl rand -base64 32`) |
+| `VITE_API_URL` | SPA only (Vercel): absolute API origin; empty in local Vite proxy mode |
 
 ### Service modes
 

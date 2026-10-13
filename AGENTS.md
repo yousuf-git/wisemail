@@ -17,27 +17,38 @@ Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
 - `docs/PRD.md` features, `docs/UCD.md` use cases, `docs/TRD.md` stack, architecture and project structure (§4)
 - `docs/DBD.md` data model, `docs/FED.md` design system (tokens, type, motion), `docs/PRICING.md` plans
 - `docs/PLAN.md` phased build checklist; update it as work lands
+- `docs/DEPLOY-OCI.md` API on Oracle Cloud VM; `docs/DEPLOY-VERCEL.md` SPA on Vercel
 
 ## Commands
 
-Monorepo (`apps/web` Next.js for now, `apps/spa` Vite SPA (M7), `apps/api` Fastify, `packages/shared`). Branch: `react-migration`.
+Monorepo on `react-migration`:
 
-- `pnpm dev` runs web + api; `pnpm dev:web` / `pnpm dev:spa` / `pnpm dev:api` for one (API default `:4000`; SPA `:5173`, proxies `/api` with cookie rewrite). SPA auth trusts `http://localhost:5173` via Better Auth `trustedOrigins`.
-- `pnpm build` / `pnpm start` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (workspace filters)
-- `pnpm db:dev` starts a single-node MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
-- Web env: put `.env.local` at repo root and `ln -sfn ../.env.local apps/web/.env.local`
-- After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build` (package `prepare` does this when scripts are enabled)
-- Fastify reuses `apps/web` server modules via tsconfig paths (`@/*` → `apps/web/*`) during the migration; HTTP APIs use `lib/dal-request.ts` (not Next `headers()`)
-- Org mutations: `orgAction({ id: "domain.name", ... })` registers for `POST /api/v1/actions/:id` (`{ orgSlug, input }` → `ActionResult`). Browser: import from `@/lib/api/actions/<domain>` (no barrel — Vercel `bundle-barrel-imports`); user/admin via `user-actions` / `admin-actions`. Prefer TanStack Query for reads (dedupe like SWR).
-- Every phase ends green on typecheck, lint, test and build.
+| Package | Role |
+|---|---|
+| `apps/spa` | **Primary UI** — Vite + React 19 + TanStack Router/Query |
+| `apps/api` | **Primary server** — Fastify (auth, ingest, SSE, actions, Inngest) |
+| `apps/web` | **Domain library** (+ optional Next UI via `dev:web`) — models/services/handlers Fastify imports; prod UI is `apps/spa` |
+| `packages/shared` | Shared DTOs, plans, env schema, Sentry scrub |
+
+- `pnpm dev:spa` + `pnpm dev:api` — usual local stack (SPA `:5173` proxies `/api` → Fastify `:4000`)
+- `pnpm dev` / `pnpm dev:web` — optional Next UI fallback (not production)
+- `pnpm build` — shared + api + spa (**not** Next). `pnpm build:next` / `pnpm start:next` / `pnpm clean:next` for Next artifacts
+- `pnpm start` — API only; SPA is static (Vercel or `vite preview`)
+- `pnpm db:dev` — MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
+- Env: `.env.local` at repo root; `ln -sfn ../.env.local apps/web/.env.local`. SPA: `VITE_API_URL` empty in dev (proxy); production = public API origin
+- After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build`
+- Fastify reuses `apps/web` via `@/*` → `apps/web/*`; HTTP uses `lib/dal-request.ts` (not Next `headers()`)
+- Org mutations: `orgAction({ id })` → `POST /api/v1/actions/:id`. SPA: `callOrgAction` / `lib/api`. Prefer TanStack Query for reads
+- Production split: `APP_URL` = SPA (Vercel), `BETTER_AUTH_URL` = API (OCI), optional `COOKIE_DOMAIN` / `SPA_ORIGINS`
+- Every phase ends green on typecheck, lint, test and build
 
 ## Conventions
 
-- Check `node_modules/next/dist/docs/` for Next.js APIs before using them (nextjs.org may be unreachable).
-- Read env only through `apps/web/lib/env.ts` (`env`, `parseEnv`) or `apps/api/src/env.ts`; never `process.env` directly in app code. New variables go in the schema and `.env.example`.
-- Use semantic design tokens from `apps/web/app/globals.css` (`bg-canvas`, `text-ink`, `text-muted`, `bg-accent`, `bg-success-soft`, ...), never raw hex. Theme is `data-theme` on `<html>` (light/dark, absent = system).
-- shadcn/ui components live in `apps/web/components/ui` and are already mapped to the tokens (`accent` is the brand color, hover surfaces use `canvas-sunken`). Add new ones by hand or from the shadcn registry, then restyle.
-- Shared DTOs/types: `packages/shared`. Tests: `apps/web/tests/unit`, `apps/web/tests/integration` (Vitest; `*.test.tsx` runs in jsdom), `apps/web/tests/e2e` (Playwright).
+- New product UI goes in `apps/spa` (including `/admin`, `/invite/:token`, `/onboarding`). Do not grow the Next App Router surface; Next is an optional local fallback only.
+- If you must touch Next, read `apps/web/node_modules/next/dist/docs/` first (nextjs.org may be unreachable).
+- Read env only through `apps/web/lib/env.ts` / `@wisemail/shared/env-schema` or `apps/api/src/env.ts`; never `process.env` in app logic. New vars → schema + `.env.example`.
+- Design tokens: SPA uses `apps/spa` styles mapped to the same FED tokens; Next UI still uses `apps/web/app/globals.css` (`bg-canvas`, `text-ink`, …). Theme: `data-theme` on `<html>`.
+- Shared DTOs/types: `packages/shared`. Tests: `apps/web/tests/*` (Vitest/Playwright), `apps/spa/tests/e2e` (SPA smoke), `apps/api` Vitest.
 
 ## Fake-mode services
 
@@ -131,7 +142,7 @@ Seeded per team on first use: 3 domains (verified without open tracking + receiv
 
 - Platform admin = Better Auth user role `admin` (the `admin` plugin, `lib/admin/plugin.ts`). Exactly one **Super Admin** is stored on `platform_settings.superAdminUserId` (immutable: cannot be banned, impersonated, or session-revoked). Create/claim with `pnpm admin:create <email>` (or first allowlist promotion via `PLATFORM_ADMIN_EMAILS`). Further allowlist promotions are skipped while a Super Admin slot is taken by someone else.
 - Guard: `lib/admin/guard.ts` (`server-only`). `requirePlatformAdmin()` in every admin layout/page and `adminAction()` (`lib/admin/action.ts`) in every admin server action answer **404 / `not_found`** to non-admins, visitors, banned users and impersonation sessions (the proxy lets `/admin` through without a session cookie so a visitor cannot tell it exists). Admin writes never take permissions from input.
-- Code: `app/(admin)/admin/**` (pages + `actions.ts`), `components/admin/**`, `lib/services/admin/{overview,users,orgs,health,audit}.ts`, `lib/dto/admin.ts`. Features: overview counters, users (search, keyset cursor, ban/unban, revoke sessions, resend verification, impersonate), organizations (plan via `applyPlanChange`, per-limit overrides, trial start/extend, suspend), read-only system health.
+- Production UI: SPA `apps/spa/src/pages/admin-*.tsx` + Fastify `GET /api/v1/admin/*` and `POST /api/v1/admin-actions/:id`. Domain: `lib/services/admin/{overview,users,orgs,health,audit}.ts`, `lib/dto/admin.ts`, `adminAction()` registrations under `app/(admin)/admin/actions.ts`. Features: overview, users (ban/unban, sessions, verification, impersonate), orgs (plan, limit overrides, trial start/extend, suspend), health, catalog/pricing/settings. Next `app/(admin)/admin/**` remains as optional fallback only.
 - Audit: every write goes to `audit_logs` as `admin.*` with the admin as actor, the target and a `reason` (required for destructive ones). Org-scoped actions are recorded under that org (its Owners/Admins see them); user-scoped ones under the platform scope `PLATFORM_SCOPE_ID` (`000000000000000000000000`), which no tenant can read. Impersonation start/stop is also written under each of the user's workspaces.
 - Impersonation: Better Auth `impersonateUser` swaps the session cookie for a one-hour session of the target (`session.impersonatedBy` = admin); admins cannot impersonate admins (plugin default, also checked in the service). `ImpersonationBanner` ("Viewing as X" + Stop) is rendered by `app/(app)/layout.tsx` and the onboarding page; Stop (`components/admin/impersonation-actions.ts`) is deliberately not behind the admin guard because the session belongs to the target.
 - Suspension: `org_settings.suspended = { at, by, reason }`. `getOrgContext` answers `{ status: "suspended" }`; `requireOrg` redirects to `/suspended/<slug>`, `orgAction`/`orgRoute`/`/api/stream` refuse (`workspace_suspended`). Ingest and sync keep running (nothing is lost); it blocks people, not data. Lift it from the org's admin page.

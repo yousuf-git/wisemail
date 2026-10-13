@@ -46,6 +46,17 @@ const PAGE_MODULES = {
   settingsBilling: () => import("@/pages/settings-billing"),
   settingsAi: () => import("@/pages/settings-ai"),
   settingsAudit: () => import("@/pages/settings-audit"),
+  adminLayout: () => import("@/pages/admin-layout"),
+  adminOverview: () => import("@/pages/admin-overview"),
+  adminUsers: () => import("@/pages/admin-users"),
+  adminUser: () => import("@/pages/admin-user"),
+  adminOrgs: () => import("@/pages/admin-orgs"),
+  adminOrg: () => import("@/pages/admin-org"),
+  adminHealth: () => import("@/pages/admin-health"),
+  adminPricing: () => import("@/pages/admin-pricing"),
+  adminSettings: () => import("@/pages/admin-settings"),
+  invite: () => import("@/pages/invite"),
+  onboarding: () => import("@/pages/onboarding"),
   placeholder: () => import("@/pages/placeholder"),
 } as const;
 
@@ -60,6 +71,73 @@ const signInRoute = createRoute({
   path: "/sign-in",
   validateSearch: z.object({ next: z.string().optional() }),
   component: lazyRouteComponent(PAGE_MODULES.signIn, "SignInPage"),
+});
+
+const inviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invite/$token",
+  component: lazyRouteComponent(PAGE_MODULES.invite, "InvitePage"),
+});
+
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: lazyRouteComponent(PAGE_MODULES.onboarding, "OnboardingPage"),
+});
+
+/** Static `/admin` must register before `/$orgSlug` so it is not treated as an org slug. */
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: lazyRouteComponent(PAGE_MODULES.adminLayout, "AdminLayoutPage"),
+});
+
+const adminIndexRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/",
+  component: lazyRouteComponent(PAGE_MODULES.adminOverview, "AdminOverviewPage"),
+});
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/users",
+  component: lazyRouteComponent(PAGE_MODULES.adminUsers, "AdminUsersPage"),
+});
+
+const adminUserRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/users/$userId",
+  component: lazyRouteComponent(PAGE_MODULES.adminUser, "AdminUserPage"),
+});
+
+const adminOrgsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/organizations",
+  component: lazyRouteComponent(PAGE_MODULES.adminOrgs, "AdminOrgsPage"),
+});
+
+const adminOrgRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/organizations/$orgId",
+  component: lazyRouteComponent(PAGE_MODULES.adminOrg, "AdminOrgPage"),
+});
+
+const adminPricingRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/pricing",
+  component: lazyRouteComponent(PAGE_MODULES.adminPricing, "AdminPricingPage"),
+});
+
+const adminSettingsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/settings",
+  component: lazyRouteComponent(PAGE_MODULES.adminSettings, "AdminSettingsPage"),
+});
+
+const adminHealthRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/health",
+  component: lazyRouteComponent(PAGE_MODULES.adminHealth, "AdminHealthPage"),
 });
 
 const orgRoute = createRoute({
@@ -232,6 +310,18 @@ const splatRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
+  inviteRoute,
+  onboardingRoute,
+  adminRoute.addChildren([
+    adminIndexRoute,
+    adminUsersRoute,
+    adminUserRoute,
+    adminOrgsRoute,
+    adminOrgRoute,
+    adminPricingRoute,
+    adminSettingsRoute,
+    adminHealthRoute,
+  ]),
   orgRoute.addChildren([
     orgIndexRoute,
     inboxRoute,

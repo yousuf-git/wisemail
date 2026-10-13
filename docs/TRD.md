@@ -1,7 +1,7 @@
 # TRD — Wisemail
 
-> **Status:** Draft v0.1, 2026-09-29
-> **Related:** `PRD.md`, `UCD.md`, `DBD.md`, `FED.md`
+> **Status:** Draft v0.2, 2026-10-13 (SPA + Fastify migration)
+> **Related:** `PRD.md`, `UCD.md`, `DBD.md`, `FED.md`, `DEPLOY-OCI.md`, `DEPLOY-VERCEL.md`
 
 ---
 
@@ -9,8 +9,10 @@
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | **Next.js 16 (App Router)**, React 19, TypeScript (strict) | One codebase for UI, server actions, webhook ingest, and SSE. |
-| Runtime / hosting | **Vercel**, Node.js 24 runtime (Fluid Compute) | Default 300 s function timeout covers syncs and SSE; no Edge runtime. |
+| UI | **Vite + React 19 SPA** (`apps/spa`), TanStack Router + Query, TypeScript (strict) | Client app hosted on Vercel; talks to the API over HTTPS + cookies. |
+| API | **Fastify** (`apps/api`) on **Node.js 24** | Long-lived process for ingest, SSE, Inngest, and org actions — not serverless timeouts. |
+| Domain library | **`apps/web`** services/models (bridged into Fastify); Next App Router optional local fallback only | Avoid a big-bang rewrite of domain code; production UI is the SPA. |
+| Runtime / hosting | **SPA → Vercel**; **API → Oracle Cloud VM** (Nginx + PM2) + **MongoDB Atlas** | Static UI on a CDN; always-on API for webhooks and SSE. See deploy docs. |
 | Styling | **Tailwind CSS v4** with CSS-variable design tokens (see `FED.md`) | Tokens drive light and warm-dark themes. |
 | Components | **shadcn/ui** (Radix primitives), **lucide-react** icons | Owned source, easy to restyle to the warm/rounded look. |
 | Motion | **Motion** (`motion/react`) with `LazyMotion` + `domAnimation` to keep the bundle small | Micro-interactions, Wizi animation, list arrivals; see `FED.md` §9. |
@@ -20,18 +22,18 @@
 | Charts | shadcn charts (**Recharts**) for sparklines and small multiples | Matches component system. |
 | Editors | **TipTap** (rich text), **CodeMirror 6** (HTML), sandboxed iframe preview | CodeMirror is lighter than Monaco. |
 | Forms / validation | **react-hook-form** + **Zod** (shared schemas client and server) | One schema per input. |
-| Client data | **TanStack Query** for lists, infinite scroll, optimistic updates; Server Components for initial render | |
+| Client data | **TanStack Query** for lists, infinite scroll, optimistic updates (SPA); Next RSC only where the legacy App Router remains | |
 | Auth & tenancy | **Better Auth** with **MongoDB adapter** + **organization plugin** (orgs, members, invitations, custom access-control roles) | Self-owned; data stays in our database. |
 | Database | **MongoDB Atlas** (replica set) + **Mongoose** | Referenced relationships (ObjectId refs, branded ID types), multi-document transactions, change streams for realtime. Convex was evaluated; see §2.12 for how we match its strengths. |
-| Background jobs | **Inngest** (Vercel integration) | Durable steps, retries, cron, and **per-key throttling** (keyed by `connectionId`) to respect Resend's rate limit. |
+| Background jobs | **Inngest** (Cloud; sync URL on the API host) | Durable steps, retries, cron, and **per-key throttling** (keyed by `connectionId`) to respect Resend's rate limit. |
 | Realtime | **Server-Sent Events** + one MongoDB change stream per server instance on `realtime_events`, consumed by a `useLiveQuery` hook over TanStack Query | Every view live by default, replay on reconnect; see §2.6. |
-| Object storage | **Cloudflare R2** (private bucket) via the S3 API: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` | Raw inbound MIME, inbound and outbound attachments. No egress fees; presigned URLs let browsers upload and download directly, bypassing Vercel's 4.5 MB request/response body limit. See §2.13. |
+| Object storage | **Cloudflare R2** (private bucket) via the S3 API: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` | Raw inbound MIME, inbound and outbound attachments. No egress fees; presigned URLs let browsers upload/download directly (API body limits never see the bytes). See §2.13. |
 | Resend | Official **`resend`** Node SDK, wrapped in one adapter module | Isolates API changes. |
 | MIME / HTML | **mailparser** (parse raw inbound), **isomorphic-dompurify** (sanitize) | |
 | AI | **`openai`** SDK against any OpenAI-compatible endpoint (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`) | Provider switch is an env change. |
 | System email | Our own Resend account + **React Email** templates (invites, alerts, digests) | |
 | Billing | **Stripe**: Better Auth Stripe plugin (organization as customer) for plan subscriptions; **Stripe SDK** directly for extra-connection quantity, metered overage (Billing Meters), and one-time AI credit packs | Plugin covers checkout, portal, and subscription sync; the rest needs direct API calls. See §2.10 and `PRICING.md`. |
-| Observability | Sentry (errors), Vercel Observability (functions), Inngest dashboard (jobs) | |
+| Observability | Sentry (errors), host metrics on the OCI VM, Inngest dashboard (jobs) | |
 | Testing | **Vitest** (unit/integration with `mongodb-memory-server`), **Playwright** (e2e) | |
 | Tooling | pnpm, ESLint, Prettier, Husky + lint-staged | |
 
@@ -45,7 +47,10 @@ R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
 (endpoint derived as https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com)
 AI_BASE_URL, AI_API_KEY, AI_MODEL, AI_MODEL_FAST (optional, triage)
 SYSTEM_RESEND_API_KEY, SYSTEM_FROM_EMAIL
-APP_URL (public base URL used when registering webhooks)
+APP_URL (SPA / user-facing origin — Vercel)
+BETTER_AUTH_URL (API origin — OCI; webhooks and /api/auth)
+COOKIE_DOMAIN, SPA_ORIGINS (optional; cross-subdomain cookies + preview CORS)
+VITE_API_URL (SPA build-time API origin)
 STRIPE_SANDBOX (true = Stripe test mode keys required, false = live keys required)
 STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY (optional), STRIPE_WEBHOOK_SECRET, STRIPE_BILLING_WEBHOOK_SECRET
 STRIPE_PRICE_* (plan monthly/annual, extra connection, overage meters per tier, credit pack)
@@ -77,16 +82,15 @@ SENTRY_DSN
 ## 2. Architecture
 
 ```
-                 ┌──────────────────────────────────────────────────────────┐
- Browser ──RSC/Server Actions──▶  Next.js app (Vercel, Node runtime)         │
-    ▲  └──TanStack Query (route handlers)──▶  services/ ──▶ repositories/ ──▶│──▶ MongoDB Atlas
-    │                                         │                             │
-    └────── SSE /api/stream ◀── change streams┘                             │
-                                                                            │
- Resend account A ──webhook──▶ /api/ingest/resend/[connectionId] ──┐         │
- Resend account B ──webhook──▶        (verify, dedupe, store, 200) │         │
-                                                                   ▼         │
-                                                 Inngest events ──▶ /api/inngest (functions)
+ Browser ──▶ Vite SPA (Vercel) ──HTTPS+cookies──▶ Fastify API (OCI / Nginx)
+    ▲              │  TanStack Query                    │
+    │              └──────── SSE /api/stream ◀──────────┤
+    │                                                   │
+    │                              services/ (apps/web) ┼──▶ MongoDB Atlas
+    │                                                   │
+ Resend ──webhook──▶ /api/ingest/resend/[connectionId] ──┤
+                                                        ▼
+                                      Inngest ──▶ /api/inngest (functions)
                                                    • process-event (timeline, rollups, notifications, alerts)
                                                    • fetch-inbound (raw MIME → R2, parse, thread)
                                                    • sync-connection (paged backfill)
@@ -97,10 +101,11 @@ SENTRY_DSN
                                                    • bulk-delete (chunked, background)
                                                    • billing: usage-thresholds, report-usage, trial-end,
                                                      apply-plan-change, retention-rewrite, backfill-storage
-                 └──────────────────────────────────────────────────────────┘
+
  All outbound Resend calls ──▶ lib/resend/adapter (per-connection client, throttled via Inngest)
  AI calls ──▶ lib/ai/client (OpenAI SDK, base URL from env)
 ```
+
 
 ### 2.1 Webhook ingest (hot path)
 1. `POST /api/ingest/resend/[connectionId]`: read raw body, load connection, decrypt its signing secret.

@@ -83,6 +83,7 @@ Auth client and SSE already use `VITE_API_URL` via `apps/spa/src/lib/api-base.ts
 - [ ] API `APP_URL` = Vercel SPA origin
 - [ ] API `COOKIE_DOMAIN=.example.com`
 - [ ] Sign-in on `app.example.com` sets a cookie and loads inbox
+- [ ] Platform admin at `https://app.example.com/admin` (platform-admin role; 404 otherwise)
 - [ ] Resend / Inngest / Stripe still point at **`api.example.com`**, not `app.`
 
 ---
