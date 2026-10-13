@@ -5,8 +5,11 @@ import { RouterProvider } from "@tanstack/react-router";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { queryClient } from "@/lib/query-client";
+import { initSpaSentry } from "@/lib/sentry";
 import { createAppRouter } from "@/router";
 import "@/styles.css";
+
+void initSpaSentry();
 
 const router = createAppRouter(queryClient);
 

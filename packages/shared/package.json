@@ -37,6 +37,10 @@
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
+    },
+    "./sentry-scrub": {
+      "types": "./dist/sentry-scrub.d.ts",
+      "default": "./dist/sentry-scrub.js"
     }
   },
   "files": ["dist"],

@@ -46,8 +46,9 @@ const SENDING_ONLY_MESSAGE =
 const REJECTED_MESSAGE =
   "Resend rejected this key. Create a Full access key in Resend → API Keys and paste it here.";
 
+/** Resend must POST to the API host (BETTER_AUTH_URL), not the Vercel SPA (APP_URL). */
 export const webhookUrl = (connectionId: Types.ObjectId | string) =>
-  `${env.APP_URL.replace(/\/$/, "")}/api/ingest/resend/${connectionId.toString()}`;
+  `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/api/ingest/resend/${connectionId.toString()}`;
 
 export function toConnectionDTO(doc: {
   _id: Types.ObjectId;

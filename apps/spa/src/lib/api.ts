@@ -1,16 +1,15 @@
 import type { ActionResult } from "@wisemail/shared/action-result";
 
+import { apiUrl } from "@/lib/api-base";
+
 /**
- * SPA fetch helpers. Same-origin `/api` (Vite proxy → Fastify in dev).
+ * SPA fetch helpers. Dev: same-origin `/api` via Vite proxy.
+ * Prod (Vercel): set `VITE_API_URL` to the OCI API origin (e.g. https://api.example.com).
  * Keep paths literal for static analysis (`bundle-analyzable-paths`).
  */
-function apiBase(): string {
-  const vite = import.meta.env.VITE_API_URL;
-  return typeof vite === "string" ? vite.replace(/\/$/, "") : "";
-}
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const res = await fetch(apiUrl(path), {
     credentials: "include",
     headers: { accept: "application/json" },
   });
@@ -19,7 +18,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const res = await fetch(apiUrl(path), {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json", accept: "application/json" },

@@ -20,8 +20,23 @@ const schema = z.object({
     .regex(/^mongodb(\+srv)?:\/\//, "must start with mongodb:// or mongodb+srv://"),
 
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
+  /** Public origin that serves `/api/auth/*` (Fastify on OCI when split from the SPA). */
   BETTER_AUTH_URL: z.url(),
+  /**
+   * User-facing app origin (Vercel SPA in the split deploy). Invite links, Stripe return URLs,
+   * and notification deep links. Webhooks must NOT use this — they use BETTER_AUTH_URL.
+   */
   APP_URL: z.url(),
+  /**
+   * Extra browser origins allowed for CORS + Better Auth `trustedOrigins`
+   * (comma-separated). Always includes APP_URL. Use for Vercel preview URLs.
+   */
+  SPA_ORIGINS: optionalString,
+  /**
+   * Shared cookie Domain for `app.` + `api.` on the same parent (e.g. `.example.com`).
+   * Required for credentialed SPA→API calls across subdomains. Omit for same-origin.
+   */
+  COOKIE_DOMAIN: optionalString,
 
   ENCRYPTION_KEK_CURRENT: base64Key,
   ENCRYPTION_KEK_ID: z.string().min(1),

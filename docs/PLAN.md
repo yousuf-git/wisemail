@@ -28,9 +28,9 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M5 — DB-backed catalog, Stripe lookup keys, `price_changes` + `price-migration` job (next-renewal schedules), Settings → Billing callout, `GET /api/v1/catalog`
 - [x] Phase M6 — Admin `/admin/pricing` + `/admin/settings`; Super Admin (`platform_settings.superAdminUserId`, immutable) + `pnpm admin:create`
 - [x] Phase M7 — `apps/spa`: auth, shell (bell + SSE + theme), mail (inbox/sent/scheduled/trash/thread/compose+AI+attachments), audience, health, settings (incl. billing/AI/audit); Fastify `/api/dev-storage` + bridged GETs; local cookie/CORS. TipTap rich editor deferred (plain compose OK); e2e polish rolls into M8.
-- [ ] Phase M8 — Remove Next; Sentry; tests/e2e
-- [ ] Phase M9 — OCI PM2 + Nginx + Atlas deploy notes
-- [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN)
+- [~] Phase M8 — **M8a** scrub moved to `@wisemail/shared/sentry-scrub`; Fastify + SPA init hooks (no-op until `@sentry/node` / `@sentry/browser` installed). **M8b** SPA Playwright smoke (`pnpm test:e2e:spa`). Default `pnpm build` / `pnpm start` no longer run Next; use `build:next` / `start:next` / `clean:next`. **M8c** still open: delete Next only after Fastify no longer bridges `apps/web` route handlers.
+- [x] Phase M9 — Deploy docs: API-only OCI (`docs/DEPLOY-OCI.md` + Nginx/PM2) and SPA on Vercel (`docs/DEPLOY-VERCEL.md`, `apps/spa/vercel.json`). `APP_URL` / `BETTER_AUTH_URL` split, `COOKIE_DOMAIN`, `SPA_ORIGINS`, webhook URLs on API host.
+- [ ] Phase M10 — Docs (`AGENTS.md`, TRD, PRICING, PLAN, README stack → SPA+Fastify+OCI)
 
 ---
 

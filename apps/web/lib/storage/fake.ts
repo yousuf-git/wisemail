@@ -102,7 +102,8 @@ export function verifyFakeToken(token: string, now = Date.now()): FakeTokenPaylo
   }
 }
 
-const urlFor = (token: string) => `${env.APP_URL.replace(/\/$/, "")}/api/dev-storage/${token}`;
+const urlFor = (token: string) =>
+  `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/api/dev-storage/${token}`;
 
 /* ------------------------------------------------------------------ store */
 

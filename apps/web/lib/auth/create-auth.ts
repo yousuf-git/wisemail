@@ -34,6 +34,26 @@ async function mailSafely(what: string, send: () => Promise<void>) {
 }
 
 /**
+ * Cookie SameSite for SPA (APP_URL) ↔ API (BETTER_AUTH_URL).
+ * Subdomains of one parent with COOKIE_DOMAIN stay "lax"; truly cross-site needs "none".
+ */
+function cookieSameSite(cfg: {
+  APP_URL: string;
+  BETTER_AUTH_URL: string;
+  COOKIE_DOMAIN?: string;
+}): "lax" | "none" {
+  try {
+    const app = new URL(cfg.APP_URL);
+    const api = new URL(cfg.BETTER_AUTH_URL);
+    if (app.origin === api.origin) return "lax";
+    if (cfg.COOKIE_DOMAIN) return "lax";
+    return api.protocol === "https:" ? "none" : "lax";
+  } catch {
+    return "lax";
+  }
+}
+
+/**
  * Builds the Better Auth instance. Next.js passes `nextCookies()` as a trailing plugin; Fastify
  * omits it and serves the handler through `toNodeHandler` instead.
  */
@@ -59,18 +79,33 @@ export function createAuth(options: { trailingPlugins?: BetterAuthPlugin[] } = {
       appName: "Wisemail",
       baseURL: env.BETTER_AUTH_URL,
       secret: env.BETTER_AUTH_SECRET,
-      // SPA (Vite :5173) + Next (:3000) during M7; production keeps APP_URL / BETTER_AUTH_URL.
+      // SPA origins (Vercel APP_URL + SPA_ORIGINS) must be trusted for credentialed auth.
       trustedOrigins: [
         env.APP_URL,
         env.BETTER_AUTH_URL,
+        ...(env.SPA_ORIGINS ?? "")
+          .split(",")
+          .map((o) => o.trim().replace(/\/$/, ""))
+          .filter(Boolean),
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
       ].filter((v, i, a) => a.indexOf(v) === i),
-      // Local SPA (:5173) + API (:4000) need Lax cookies over http; Secure only on https.
       advanced: {
+        ...(env.COOKIE_DOMAIN
+          ? {
+              crossSubDomainCookies: {
+                enabled: true,
+                domain: env.COOKIE_DOMAIN,
+              },
+            }
+          : {}),
         defaultCookieAttributes: {
-          sameSite: "lax",
-          secure: env.BETTER_AUTH_URL.startsWith("https://"),
+          // Same parent domain (COOKIE_DOMAIN) → Lax. Cross-site (e.g. *.vercel.app → api) → None.
+          sameSite: cookieSameSite(env),
+          secure:
+            env.BETTER_AUTH_URL.startsWith("https://") || cookieSameSite(env) === "none",
           path: "/",
         },
       },

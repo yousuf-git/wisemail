@@ -114,3 +114,11 @@ export {
 } from "./action-result.js";
 
 export type { CatalogPlan, PlatformCatalog } from "./catalog.js";
+
+export {
+  scrubBreadcrumb,
+  scrubEvent,
+  scrubString,
+  scrubValue,
+  type ScrubbableEvent,
+} from "./sentry-scrub.js";

@@ -1,18 +1,30 @@
 import type { FastifyPluginAsync } from "fastify";
 
 /**
- * Dev CORS for the Vite SPA when it talks to Fastify with an absolute
- * `VITE_API_URL` (cross-origin cookies). Same-origin proxy mode does not need this.
+ * CORS for the Vite/Vercel SPA when it calls Fastify with credentials
+ * (`VITE_API_URL` absolute). Same-origin (Vite proxy / Nginx on one host) skips this.
+ *
+ * Allowed origins: APP_URL, SPA_ORIGINS (comma list), plus local Vite ports.
  */
-const LOCAL_SPA = new Set([
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]);
+function allowedOrigins(): Set<string> {
+  const set = new Set<string>(["http://localhost:5173", "http://127.0.0.1:5173"]);
+  for (const key of ["APP_URL", "SPA_ORIGINS"] as const) {
+    const raw = process.env[key];
+    if (!raw) continue;
+    for (const part of raw.split(",")) {
+      const origin = part.trim().replace(/\/$/, "");
+      if (origin) set.add(origin);
+    }
+  }
+  return set;
+}
 
 export const spaCors: FastifyPluginAsync = async (app) => {
+  const origins = allowedOrigins();
+
   app.addHook("onRequest", async (req, reply) => {
     const origin = req.headers.origin;
-    if (!origin || !LOCAL_SPA.has(origin)) return;
+    if (!origin || !origins.has(origin)) return;
 
     reply.header("Access-Control-Allow-Origin", origin);
     reply.header("Access-Control-Allow-Credentials", "true");

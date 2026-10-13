@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit --pretty false",
-    "lint": "echo 'spa lint: deferred until eslint shared config'"
+    "lint": "echo 'spa lint: deferred until eslint shared config'",
+    "test:e2e": "pnpm --dir ../web exec playwright test --config ../spa/playwright.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
