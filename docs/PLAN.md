@@ -25,8 +25,8 @@ Target: Vite + React 19 SPA (`apps/web`), Fastify API (`apps/api`), `packages/sh
 - [x] Phase M4 — Org actions over HTTP: `orgAction({ id })` registry (105 ids), `POST /api/v1/actions/:id` on Next + Fastify, `callOrgAction` / `apiActions` client. Existing `"use server"` exports kept for Next UI; SPA should use `lib/api/actions.ts`. Admin/userAction RPC still open.
 - [x] Phase M4.1 — Fastify import graph free of static `next/*` (services → `dal-types`, actions → `org-action` / `orgActionHttp`, request headers via ALS)
 - [ ] Phase M4b — Point Next UI call sites at `apiActions` (or drop server actions); register `userAction` / `adminAction`
-- [~] Phase M5 — DB-backed catalog (`plans` + `platform_settings`, seed-on-read, `GET /api/v1/catalog`, entitlements/AI/system-email wired). Remaining: Stripe lookup keys, price migration job, billing callout, admin UI (M6)
-- [ ] Phase M6 — Admin pricing + platform settings pages; Super Admin seed
+- [x] Phase M5 — DB-backed catalog, Stripe lookup keys, `price_changes` + `price-migration` job (next-renewal schedules), Settings → Billing callout, `GET /api/v1/catalog`
+- [~] Phase M6 — Admin `/admin/pricing` + `/admin/settings` (catalog edits, Stripe price create when billing on). Remaining: harden Super Admin immutability / `pnpm admin:create`
 - [ ] Phase M7 — Vite SPA + TanStack Router/Query; port pages
 - [ ] Phase M8 — Remove Next; Sentry; tests/e2e
 - [ ] Phase M9 — OCI PM2 + Nginx + Atlas deploy notes

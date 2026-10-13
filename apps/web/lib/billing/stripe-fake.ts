@@ -82,12 +82,44 @@ export type FakePortal = {
   flow: Json | null;
 };
 
+type FakePrice = {
+  id: string;
+  object: "price";
+  active: boolean;
+  unit_amount: number | null;
+  currency: string;
+  lookup_key: string | null;
+  product: string;
+  recurring: Json | null;
+  metadata: Record<string, string>;
+};
+
+type FakeProduct = {
+  id: string;
+  object: "product";
+  name: string;
+  active: boolean;
+  metadata: Record<string, string>;
+};
+
+type FakeSchedule = {
+  id: string;
+  object: "subscription_schedule";
+  subscription: string;
+  status: string;
+  phases: Json[];
+  metadata: Record<string, string>;
+};
+
 type Store = {
   seq: number;
   customers: Map<string, Json>;
   subscriptions: Map<string, FakeSubscription>;
   sessions: Map<string, FakeSession>;
   portals: Map<string, FakePortal>;
+  products: Map<string, FakeProduct>;
+  prices: Map<string, FakePrice>;
+  schedules: Map<string, FakeSchedule>;
   meterEvents: Map<string, { event_name: string; customer: string; value: number; at: number }>;
   /** Every `subscriptions.update` call, so tests can assert what would have been sent. */
   subscriptionUpdates: { id: string; params: Json }[];
@@ -104,6 +136,9 @@ function fresh(): Store {
     subscriptions: new Map(),
     sessions: new Map(),
     portals: new Map(),
+    products: new Map(),
+    prices: new Map(),
+    schedules: new Map(),
     meterEvents: new Map(),
     subscriptionUpdates: [],
     sessionCreates: [],
@@ -137,6 +172,14 @@ const missing = (what: string, id: string) =>
   new FakeStripeError(`No such ${what}: '${id}'`, "resource_missing", 404);
 
 function priceOf(id: string): FakeItem["price"] {
+  const stored = fakeStore().prices.get(id);
+  if (stored) {
+    return {
+      id: stored.id,
+      lookup_key: stored.lookup_key,
+      recurring: stored.recurring,
+    };
+  }
   const row = fakePriceCatalog().find((p) => p.id === id);
   if (!row) throw missing("price", id);
   return {
@@ -224,12 +267,91 @@ const customers = {
   },
 };
 
-const prices = {
-  async retrieve(id: string) {
-    return { id, object: "price", active: true, recurring: priceOf(id).recurring };
+const products = {
+  async create(params: Json) {
+    const id = nextId("prod");
+    const product: FakeProduct = {
+      id,
+      object: "product",
+      name: String(params.name ?? "Wisemail"),
+      active: params.active !== false,
+      metadata: (params.metadata as Record<string, string> | undefined) ?? {},
+    };
+    fakeStore().products.set(id, product);
+    return product;
   },
-  async list() {
-    return { object: "list", data: [], has_more: false };
+  async retrieve(id: string) {
+    const p = fakeStore().products.get(id);
+    if (!p) throw missing("product", id);
+    return p;
+  },
+  async update(id: string, params: Json) {
+    const p = await products.retrieve(id);
+    Object.assign(p, params);
+    return p;
+  },
+};
+
+const prices = {
+  async create(params: Json) {
+    const store = fakeStore();
+    const lookup = (params.lookup_key as string | undefined) ?? null;
+    if (lookup && params.transfer_lookup_key) {
+      for (const existing of store.prices.values()) {
+        if (existing.lookup_key === lookup) existing.lookup_key = null;
+      }
+    }
+    const id = nextId("price");
+    const recurring = (params.recurring as Json | undefined) ?? null;
+    const price: FakePrice = {
+      id,
+      object: "price",
+      active: params.active !== false,
+      unit_amount: (params.unit_amount as number | undefined) ?? null,
+      currency: String(params.currency ?? "usd"),
+      lookup_key: lookup,
+      product: String(params.product),
+      recurring,
+      metadata: (params.metadata as Record<string, string> | undefined) ?? {},
+    };
+    store.prices.set(id, price);
+    return price;
+  },
+  async retrieve(id: string) {
+    const stored = fakeStore().prices.get(id);
+    if (stored) return stored;
+    const base = priceOf(id);
+    return {
+      id,
+      object: "price",
+      active: true,
+      unit_amount: fakePriceCatalog().find((p) => p.id === id)?.unitAmount ?? null,
+      currency: "usd",
+      lookup_key: base.lookup_key,
+      product: "prod_fake_catalog",
+      recurring: base.recurring,
+      metadata: {},
+    };
+  },
+  async update(id: string, params: Json) {
+    const price = (await prices.retrieve(id)) as FakePrice;
+    if (!fakeStore().prices.has(id)) {
+      fakeStore().prices.set(id, { ...price });
+    }
+    const row = fakeStore().prices.get(id)!;
+    if (params.active !== undefined) row.active = Boolean(params.active);
+    if (params.lookup_key !== undefined) row.lookup_key = params.lookup_key as string | null;
+    return row;
+  },
+  async list(params: { lookup_keys?: string[]; active?: boolean } = {}) {
+    const data = [...fakeStore().prices.values()].filter((p) => {
+      if (params.active !== undefined && p.active !== params.active) return false;
+      if (params.lookup_keys?.length && !params.lookup_keys.includes(p.lookup_key ?? "")) {
+        return false;
+      }
+      return true;
+    });
+    return { object: "list", data, has_more: false };
   },
 };
 
@@ -310,6 +432,37 @@ type ItemUpdate = {
 };
 
 const subscriptions = {
+  async create(params: Json) {
+    const store = fakeStore();
+    const customer = String(params.customer);
+    if (!store.customers.has(customer)) throw missing("customer", customer);
+    const id = nextId("sub");
+    const start = new Date();
+    const items = ((params.items as { price: string; quantity?: number }[] | undefined) ?? []).map(
+      (item) => makeItem(item.price, item.quantity ?? 1, start),
+    );
+    if (items.length === 0) throw new FakeStripeError("At least one item is required");
+    const sub: FakeSubscription = {
+      id,
+      object: "subscription",
+      customer,
+      status: "active",
+      items: { object: "list", data: items },
+      cancel_at_period_end: false,
+      cancel_at: null,
+      canceled_at: null,
+      ended_at: null,
+      trial_start: null,
+      trial_end: null,
+      metadata: (params.metadata as Record<string, string> | undefined) ?? {},
+      schedule: null,
+      cancellation_details: null,
+      created: seconds(start),
+      billing_mode: { type: "classic" },
+    };
+    store.subscriptions.set(id, sub);
+    return sub;
+  },
   async retrieve(id: string) {
     const s = fakeStore().subscriptions.get(id);
     if (!s) throw missing("subscription", id);
@@ -364,15 +517,46 @@ const subscriptions = {
   },
 };
 
-const unsupported = (what: string) => async () => {
-  throw new FakeStripeError(`${what} is not supported by the fake Stripe.`);
-};
 const subscriptionSchedules = {
-  create: unsupported("subscriptionSchedules.create"),
-  list: async () => ({ object: "list", data: [], has_more: false }),
-  update: unsupported("subscriptionSchedules.update"),
-  release: unsupported("subscriptionSchedules.release"),
-  retrieve: unsupported("subscriptionSchedules.retrieve"),
+  async create(params: Json) {
+    const store = fakeStore();
+    const fromSub = params.from_subscription as string | undefined;
+    if (!fromSub) throw new FakeStripeError("from_subscription is required");
+    const sub = store.subscriptions.get(fromSub);
+    if (!sub) throw missing("subscription", fromSub);
+    const id = nextId("sub_sched");
+    const schedule: FakeSchedule = {
+      id,
+      object: "subscription_schedule",
+      subscription: fromSub,
+      status: "active",
+      phases: (params.phases as Json[] | undefined) ?? [],
+      metadata: (params.metadata as Record<string, string> | undefined) ?? {},
+    };
+    store.schedules.set(id, schedule);
+    sub.schedule = id;
+    return schedule;
+  },
+  list: async () => ({ object: "list", data: [...fakeStore().schedules.values()], has_more: false }),
+  async update(id: string, params: Json) {
+    const s = fakeStore().schedules.get(id);
+    if (!s) throw missing("subscription_schedule", id);
+    Object.assign(s, params);
+    return s;
+  },
+  async release(id: string) {
+    const s = fakeStore().schedules.get(id);
+    if (!s) throw missing("subscription_schedule", id);
+    s.status = "released";
+    const sub = fakeStore().subscriptions.get(s.subscription);
+    if (sub) sub.schedule = null;
+    return s;
+  },
+  async retrieve(id: string) {
+    const s = fakeStore().schedules.get(id);
+    if (!s) throw missing("subscription_schedule", id);
+    return s;
+  },
 };
 
 const billing = {
@@ -401,6 +585,7 @@ const billing = {
 
 export class FakeStripe {
   readonly customers = customers;
+  readonly products = products;
   readonly prices = prices;
   readonly checkout = { sessions: checkoutSessions };
   readonly billingPortal = { sessions: portalSessions };

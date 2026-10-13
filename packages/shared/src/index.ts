@@ -51,6 +51,7 @@ export {
   overageMeterEvent,
   overagePriceKey,
   planPriceKey,
+  stripeLookupKey,
   type BillingInterval,
   type PaidPlan,
   type PriceInfo,

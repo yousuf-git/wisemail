@@ -64,6 +64,11 @@ export const aiTriageRequested = eventType("ai/triage.requested", {
   schema: z.object({ emailId: z.string(), orgId: z.string() }),
 });
 
+/** Migrate subscribers to a new Stripe price at next renewal after an admin catalog change. */
+export const priceMigrationRequested = eventType("billing/price-migration.requested", {
+  schema: z.object({ priceChangeId: z.string() }),
+});
+
 export const eventTypes = {
   aiTriageRequested,
   bulkDeleteRequested,
@@ -76,4 +81,5 @@ export const eventTypes = {
   connectionSyncRequested,
   inboundFetchRequested,
   sendEmailRequested,
+  priceMigrationRequested,
 } as const;

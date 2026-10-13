@@ -2,6 +2,7 @@ import "server-only";
 
 import { PLAN_CATALOG } from "@/lib/billing/plans";
 import { env } from "@/lib/env";
+import { priceIdFromCatalog } from "@/lib/services/catalog";
 import { ServiceError } from "@/lib/services/errors";
 import {
   CREDIT_PACK_CREDITS,
@@ -9,17 +10,18 @@ import {
   REQUIRED_PRICE_KEYS,
   describeKey,
   fakePriceId,
+  stripeLookupKey,
   type BillingInterval,
   type PriceInfo,
   type PriceKey,
 } from "./stripe-price-keys";
 
 /**
- * Stripe price catalog for Wisemail (PRICING §3, TRD §2.10). One environment variable per price,
- * `STRIPE_PRICE_<KEY>`; in fake mode a missing variable falls back to `price_fake_<key>` so the
- * whole flow runs without a Stripe account.
+ * Stripe price catalog for Wisemail (PRICING §3, TRD §2.10). Prefer Mongo catalog price ids
+ * (seeded from `STRIPE_PRICE_*` / fake ids); env remains the bootstrap fallback.
  *
- * What has to exist in Stripe (create these in the dashboard, test mode first):
+ * What has to exist in Stripe (create these in the dashboard, test mode first — or let admin
+ * price changes create them via lookup keys):
  * - plan prices: Pro / Team / Agency, monthly and annual (per-year amount), licensed;
  * - extra connection (Agency): $5/month and an annual counterpart, licensed, quantity-based;
  * - overage, one metered price per tier: $1 / $0.75 / $0.50 per unit, where one unit is 10,000
@@ -42,6 +44,7 @@ export {
   overageMeterEvent,
   overagePriceKey,
   planPriceKey,
+  stripeLookupKey,
   type BillingInterval,
   type PaidPlan,
   type PriceInfo,
@@ -54,6 +57,8 @@ export function readPriceId(prices: Record<string, string>, key: PriceKey, fake:
 }
 
 export function priceId(key: PriceKey): string {
+  const fromCatalog = priceIdFromCatalog(key);
+  if (fromCatalog) return fromCatalog;
   const id = readPriceId(env.STRIPE_PRICES, key, env.STRIPE_MODE === "fake");
   if (!id) {
     throw new ServiceError(
@@ -67,6 +72,7 @@ export function priceId(key: PriceKey): string {
 /** What a Stripe price id stands for, or `null` for prices we do not know. */
 export function describePrice(id: string): PriceInfo | null {
   for (const key of REQUIRED_PRICE_KEYS) {
+    if (priceIdFromCatalog(key) === id) return describeKey(key);
     if (readPriceId(env.STRIPE_PRICES, key, env.STRIPE_MODE === "fake") !== id) continue;
     return describeKey(key);
   }

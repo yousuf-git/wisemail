@@ -605,21 +605,54 @@ export async function getBillingOverview(ctx: OrgContext): Promise<BillingOvervi
   await connectDb();
   const orgId = orgOid(ctx);
   const e = await getEntitlements(orgId);
-  const settings = await OrgSettingsModel.findOne(
-    { orgId },
-    {
-      trial: 1,
-      stripeSubscriptionId: 1,
-      stripePeriodEnd: 1,
-      billingInterval: 1,
-      extraConnections: 1,
-      grace: 1,
-    },
-  ).lean();
+  const { getPlanCatalog, getPlatformCatalog } = await import("@/lib/services/catalog");
+  const { findOpenPriceMigration } = await import("@/lib/services/price-changes");
+  const [settings, planCatalog, platform] = await Promise.all([
+    OrgSettingsModel.findOne(
+      { orgId },
+      {
+        trial: 1,
+        stripeSubscriptionId: 1,
+        stripePeriodEnd: 1,
+        billingInterval: 1,
+        extraConnections: 1,
+        grace: 1,
+      },
+    ).lean(),
+    getPlanCatalog(),
+    getPlatformCatalog(),
+  ]);
   const now = Date.now();
   const pc = e.pendingChange;
+  const billingEnabled = platform.flags.billingEnabled || env.BILLING_ENABLED;
+  const interval = (settings?.billingInterval as "month" | "year" | null) ?? null;
+  const openMigration =
+    billingEnabled && e.plan !== "free"
+      ? await findOpenPriceMigration({ plan: e.plan, interval })
+      : null;
+  const renewsAt = settings?.stripePeriodEnd
+    ? new Date(settings.stripePeriodEnd).toISOString()
+    : null;
+  const priceMigration =
+    openMigration && interval
+      ? {
+          planLabel: e.planLabel,
+          interval,
+          oldPriceUsd: openMigration.oldAmountUsd,
+          newPriceUsd: openMigration.newAmountUsd,
+          renewsAt,
+          message: priceMigrationMessage({
+            planLabel: e.planLabel,
+            interval,
+            oldPriceUsd: openMigration.oldAmountUsd,
+            newPriceUsd: openMigration.newAmountUsd,
+            renewsAt,
+          }),
+        }
+      : null;
+
   return {
-    billingEnabled: env.BILLING_ENABLED,
+    billingEnabled,
     currentPlan: e.plan,
     currentLabel: e.planLabel,
     planState: e.planState,
@@ -630,15 +663,15 @@ export async function getBillingOverview(ctx: OrgContext): Promise<BillingOvervi
     pendingChange: pc
       ? {
           toPlan: pc.toPlan,
-          toLabel: PLAN_LABELS[pc.toPlan],
+          toLabel: planCatalog[pc.toPlan].label,
           effectiveAt: pc.effectiveAt.toISOString(),
           scheduled: pc.effectiveAt.getTime() > now,
           retentionEffectiveAt: pc.retentionEffectiveAt?.toISOString() ?? null,
-          retentionTo: PLAN_CATALOG[pc.toPlan].limits.retentionDays,
+          retentionTo: planCatalog[pc.toPlan].limits.retentionDays,
         }
       : null,
     plans: PLAN_ORDER.map((id) => {
-      const p = PLAN_CATALOG[id];
+      const p = planCatalog[id];
       return {
         id,
         label: p.label,
@@ -653,6 +686,22 @@ export async function getBillingOverview(ctx: OrgContext): Promise<BillingOvervi
       };
     }),
     canManage: ctx.can("billing:manage"),
+    priceMigration,
     stripe: await stripeOverview(orgId, e, settings),
   };
+}
+
+function priceMigrationMessage(input: {
+  planLabel: string;
+  interval: "month" | "year";
+  oldPriceUsd: number;
+  newPriceUsd: number;
+  renewsAt: string | null;
+}): string {
+  const oldP = `$${input.oldPriceUsd}/month`;
+  const newP = `$${input.newPriceUsd}/month`;
+  const when = input.renewsAt
+    ? ` Your current price stays the same until your next renewal on ${new Date(input.renewsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+    : ` Your current price stays the same until your next renewal.`;
+  return `Your ${input.planLabel} plan price is changing from ${oldP} to ${newP} (billed ${input.interval === "year" ? "yearly" : "monthly"}).${when}`;
 }

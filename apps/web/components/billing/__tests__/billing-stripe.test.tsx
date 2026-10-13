@@ -51,6 +51,7 @@ function overview(over: Partial<BillingOverviewDTO> = {}): BillingOverviewDTO {
     pendingChange: null,
     plans: [plan("free", 0, 0), plan("pro", 12, 10), plan("team", 39, 32), plan("agency", 99, 82)],
     canManage: true,
+    priceMigration: null,
     stripe: {
       fake: false,
       interval: null,

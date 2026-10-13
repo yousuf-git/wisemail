@@ -1,6 +1,7 @@
 /**
  * Stripe price keys: pure data and helpers (no environment access).
- * Price ids themselves come from env (`STRIPE_PRICE_*`) until migration M5 moves them to Mongo.
+ * Runtime price ids live on `plans` / `platform_settings` (lookup keys + stored ids);
+ * `STRIPE_PRICE_*` env remains a seed / fallback during migration.
  */
 
 import type { Plan } from "./plans.js";
@@ -49,6 +50,11 @@ export const overageMeterEvent = (plan: PaidPlan) => `wisemail_overage_${plan}`;
 
 export function fakePriceId(key: PriceKey) {
   return `price_fake_${key.toLowerCase()}`;
+}
+
+/** Stable Stripe lookup_key for each catalog price (transferred when an admin changes amount). */
+export function stripeLookupKey(key: PriceKey): string {
+  return `wisemail_${key.toLowerCase()}`;
 }
 
 export type PriceInfo =

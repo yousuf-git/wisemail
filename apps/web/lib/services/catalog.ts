@@ -23,6 +23,9 @@ import {
   CREDIT_PACK_PRICE_USD,
   MAX_PACKS_PER_PURCHASE,
   REQUIRED_PRICE_KEYS,
+  describeKey,
+  fakePriceId,
+  stripeLookupKey,
   type PriceKey,
 } from "@wisemail/shared/stripe-prices";
 
@@ -79,6 +82,12 @@ async function seedIfEmpty() {
               overagePriceId:
                 id === "free" ? null : stripeIdFromEnv(`OVERAGE_${id.toUpperCase()}` as PriceKey),
               productId: null,
+              lookupMonthly:
+                id === "free" ? null : stripeLookupKey(`${id.toUpperCase()}_MONTHLY` as PriceKey),
+              lookupAnnual:
+                id === "free" ? null : stripeLookupKey(`${id.toUpperCase()}_ANNUAL` as PriceKey),
+              lookupOverage:
+                id === "free" ? null : stripeLookupKey(`OVERAGE_${id.toUpperCase()}` as PriceKey),
             },
           };
         }),
@@ -110,6 +119,7 @@ async function seedIfEmpty() {
           priceUsd: CREDIT_PACK_PRICE_USD,
           maxPacks: MAX_PACKS_PER_PURCHASE,
           stripePriceId: stripeIdFromEnv("CREDIT_PACK"),
+          stripeLookupKey: stripeLookupKey("CREDIT_PACK"),
         },
         aiCreditCost: { ...DEFAULT_AI_CREDIT_COST },
         aiModel: env.AI_MODEL ?? null,
@@ -165,6 +175,7 @@ export async function getPlatformCatalog(): Promise<PlatformCatalog> {
 
   await connectDb();
   await seedIfEmpty();
+  await backfillLookupKeys();
 
   const [planRows, settings] = await Promise.all([
     PlanModel.find().sort({ sortOrder: 1 }).lean(),
@@ -175,6 +186,9 @@ export async function getPlatformCatalog(): Promise<PlatformCatalog> {
 
   const plans: CatalogPlan[] = planRows.map((row) => {
     const id = row._id as Plan;
+    const monthlyKey = id === "free" ? null : (`${id.toUpperCase()}_MONTHLY` as PriceKey);
+    const annualKey = id === "free" ? null : (`${id.toUpperCase()}_ANNUAL` as PriceKey);
+    const overageKey = id === "free" ? null : (`OVERAGE_${id.toUpperCase()}` as PriceKey);
     return {
       id,
       label: row.label,
@@ -187,9 +201,14 @@ export async function getPlatformCatalog(): Promise<PlatformCatalog> {
       extraConnectionUsd: row.extraConnectionUsd ?? null,
       support: row.support,
       stripePriceIds: {
-        monthly: row.stripe?.priceMonthlyId ?? null,
-        annual: row.stripe?.priceAnnualId ?? null,
-        overage: row.stripe?.overagePriceId ?? null,
+        monthly: row.stripe?.priceMonthlyId ?? (monthlyKey ? stripeIdFromEnv(monthlyKey) : null),
+        annual: row.stripe?.priceAnnualId ?? (annualKey ? stripeIdFromEnv(annualKey) : null),
+        overage: row.stripe?.overagePriceId ?? (overageKey ? stripeIdFromEnv(overageKey) : null),
+      },
+      stripeLookupKeys: {
+        monthly: row.stripe?.lookupMonthly ?? (monthlyKey ? stripeLookupKey(monthlyKey) : null),
+        annual: row.stripe?.lookupAnnual ?? (annualKey ? stripeLookupKey(annualKey) : null),
+        overage: row.stripe?.lookupOverage ?? (overageKey ? stripeLookupKey(overageKey) : null),
       },
     };
   });
@@ -199,7 +218,8 @@ export async function getPlatformCatalog(): Promise<PlatformCatalog> {
     settings.creditPack.stripePriceId ??
     (priceMap instanceof Map
       ? (priceMap.get("CREDIT_PACK") ?? null)
-      : ((priceMap as Record<string, string> | undefined)?.CREDIT_PACK ?? null));
+      : ((priceMap as Record<string, string> | undefined)?.CREDIT_PACK ?? null)) ??
+    stripeIdFromEnv("CREDIT_PACK");
 
   const catalog: PlatformCatalog = {
     plans,
@@ -216,6 +236,7 @@ export async function getPlatformCatalog(): Promise<PlatformCatalog> {
       priceUsd: settings.creditPack.priceUsd,
       maxPacks: settings.creditPack.maxPacks,
       stripePriceId: creditPackStripe,
+      stripeLookupKey: settings.creditPack.stripeLookupKey ?? stripeLookupKey("CREDIT_PACK"),
     },
     ai: {
       creditCost: settings.aiCreditCost as Record<AiFeature, number>,
@@ -246,4 +267,67 @@ export async function getPlanCatalog(): Promise<PlanCatalog> {
 /** Synchronous fallback for pure code paths that have not loaded the DB yet. */
 export function defaultPlanCatalog(): PlanCatalog {
   return DEFAULT_PLAN_CATALOG;
+}
+
+/** Resolve a Stripe price id from the cached catalog (DB), else env / fake. */
+export function priceIdFromCatalog(key: PriceKey, catalog?: PlatformCatalog | null): string | null {
+  const c = catalog ?? cache?.catalog ?? null;
+  if (c) {
+    const info = describeKey(key);
+    if (info.kind === "credit_pack") {
+      return c.creditPack.stripePriceId;
+    }
+    if (info.kind === "plan") {
+      const plan = c.plans.find((p) => p.id === info.plan);
+      if (!plan) return null;
+      return info.interval === "year" ? plan.stripePriceIds.annual : plan.stripePriceIds.monthly;
+    }
+    if (info.kind === "overage") {
+      return c.plans.find((p) => p.id === info.plan)?.stripePriceIds.overage ?? null;
+    }
+    // Extra connection prices stay on platform_settings.stripePriceIds / env for now.
+  }
+  return stripeIdFromEnv(key) ?? (env.STRIPE_MODE === "fake" ? fakePriceId(key) : null);
+}
+
+/** Ensure catalog is loaded, then resolve a price id. */
+export async function resolveCatalogPriceId(key: PriceKey): Promise<string | null> {
+  const catalog = await getPlatformCatalog();
+  return priceIdFromCatalog(key, catalog) ?? stripeIdFromEnv(key) ?? (env.STRIPE_MODE === "fake" ? fakePriceId(key) : null);
+}
+
+async function backfillLookupKeys() {
+  for (const id of PLAN_ORDER) {
+    if (id === "free") continue;
+    const monthly = `${id.toUpperCase()}_MONTHLY` as PriceKey;
+    const annual = `${id.toUpperCase()}_ANNUAL` as PriceKey;
+    const overage = `OVERAGE_${id.toUpperCase()}` as PriceKey;
+    await PlanModel.updateOne(
+      {
+        _id: id,
+        $or: [
+          { "stripe.lookupMonthly": null },
+          { "stripe.lookupMonthly": { $exists: false } },
+        ],
+      },
+      {
+        $set: {
+          "stripe.lookupMonthly": stripeLookupKey(monthly),
+          "stripe.lookupAnnual": stripeLookupKey(annual),
+          "stripe.lookupOverage": stripeLookupKey(overage),
+        },
+      },
+    );
+  }
+
+  await PlatformSettingsModel.updateOne(
+    {
+      key: PLATFORM_SETTINGS_KEY,
+      $or: [
+        { "creditPack.stripeLookupKey": null },
+        { "creditPack.stripeLookupKey": { $exists: false } },
+      ],
+    },
+    { $set: { "creditPack.stripeLookupKey": stripeLookupKey("CREDIT_PACK") } },
+  );
 }

@@ -152,6 +152,14 @@ export function BillingView({
           card is charged.
         </p>
       ) : null}
+      {overview.priceMigration ? (
+        <p
+          data-testid="price-migration-callout"
+          className="rounded-xl bg-accent-soft px-4 py-3 text-sm text-info-ink"
+        >
+          {overview.priceMigration.message}
+        </p>
+      ) : null}
       {returning.waiting ? <ReturnNotice kind={returning.kind} /> : null}
       {stripe ? (
         <PaymentIssueBanner

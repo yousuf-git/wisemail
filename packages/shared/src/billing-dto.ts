@@ -101,6 +101,18 @@ export type BillingOverviewDTO = {
   } | null;
   plans: BillingPlanCardDTO[];
   canManage: boolean;
+  /**
+   * Friendly notice when the catalog price for this org's plan changed and the subscription
+   * will move at the next renewal (grandfathered until then).
+   */
+  priceMigration: {
+    planLabel: string;
+    interval: "month" | "year";
+    oldPriceUsd: number;
+    newPriceUsd: number;
+    renewsAt: string | null;
+    message: string;
+  } | null;
   stripe: {
     fake: boolean;
     interval: "month" | "year" | null;

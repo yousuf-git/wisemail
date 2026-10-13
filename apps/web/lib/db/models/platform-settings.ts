@@ -28,6 +28,7 @@ const platformSettingsSchema = new Schema(
           priceUsd: { type: Number, required: true },
           maxPacks: { type: Number, required: true },
           stripePriceId: { type: String, default: null },
+          stripeLookupKey: { type: String, default: null },
         },
         { _id: false },
       ),

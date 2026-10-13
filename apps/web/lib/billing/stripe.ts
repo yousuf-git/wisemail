@@ -29,6 +29,11 @@ export function getStripe(): Stripe {
   return client;
 }
 
+/** Drop the cached client (tests after `resetFakeStripe`). */
+export function resetStripeClient() {
+  globalForStripe.__wisemailStripe = undefined;
+}
+
 /**
  * Signing secrets of the two webhook endpoints: the Better Auth plugin's
  * (`/api/auth/stripe/webhook`, subscriptions) and ours (`/api/billing/stripe-webhook`, credit

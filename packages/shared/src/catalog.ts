@@ -6,8 +6,14 @@ import type { Plan, PlanCatalogEntry, PlanFeatures, PlanLimits } from "./plans.j
 import type { AiFeature } from "./ai.js";
 
 export type CatalogPlan = PlanCatalogEntry & {
-  /** Stripe price ids (empty string when unset / fake mode). */
+  /** Stripe price ids (null when unset / not yet created). */
   stripePriceIds: {
+    monthly: string | null;
+    annual: string | null;
+    overage: string | null;
+  };
+  /** Stripe lookup_keys (stable; transferred onto the newest price when amounts change). */
+  stripeLookupKeys: {
     monthly: string | null;
     annual: string | null;
     overage: string | null;
@@ -26,6 +32,7 @@ export type PlatformCatalog = {
     priceUsd: number;
     maxPacks: number;
     stripePriceId: string | null;
+    stripeLookupKey: string | null;
   };
   ai: {
     creditCost: Record<AiFeature, number>;

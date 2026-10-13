@@ -9,6 +9,7 @@ import { dailyDigest } from "@/inngest/functions/digest";
 import { evaluateAlerts } from "@/inngest/functions/evaluate-alerts";
 import { fetchInbound } from "@/inngest/functions/fetch-inbound";
 import { importContacts } from "@/inngest/functions/import-contacts";
+import { priceMigration } from "@/inngest/functions/price-migration";
 import { processEvent } from "@/inngest/functions/process-event";
 import { purgeTrash } from "@/inngest/functions/purge-trash";
 import { reportUsage } from "@/inngest/functions/report-usage";
@@ -44,4 +45,5 @@ export const inngestFunctions = [
   trialEnd,
   reportUsage,
   billingGrace,
+  priceMigration,
 ] as const;

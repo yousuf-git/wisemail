@@ -12,6 +12,7 @@ import {
   connectionSyncRequested,
   domainDnsCheckRequested,
   inboundFetchRequested,
+  priceMigrationRequested,
   resendEventReceived,
   sendEmailRequested,
 } from "@/inngest/events";
@@ -69,6 +70,10 @@ export type JobEvent =
   | {
       name: typeof aiTriageRequested.name;
       data: z.infer<NonNullable<typeof aiTriageRequested.schema>>;
+    }
+  | {
+      name: typeof priceMigrationRequested.name;
+      data: z.infer<NonNullable<typeof priceMigrationRequested.schema>>;
     };
 
 export const sentJobs: JobEvent[] = [];
@@ -153,3 +158,7 @@ export const enqueueConnectionDataDelete = (data: {
 /** Ask for AI triage of one received email (only enqueued when the org's AI is on). */
 export const enqueueAiTriage = (data: { emailId: string; orgId: string }) =>
   send({ name: "ai/triage.requested", data });
+
+/** Schedule Stripe subscription switches after an admin catalog price change. */
+export const enqueuePriceMigration = (data: { priceChangeId: string }) =>
+  send({ name: "billing/price-migration.requested", data });

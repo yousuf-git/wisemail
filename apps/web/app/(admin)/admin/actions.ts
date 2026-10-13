@@ -13,6 +13,10 @@ import {
   unsuspendOrg,
 } from "@/lib/services/admin/orgs";
 import {
+  adminUpdatePlanPrice,
+  adminUpdatePlatformSettings,
+} from "@/lib/services/admin/catalog";
+import {
   banUser,
   resendVerification,
   revokeUserSessions,
@@ -112,6 +116,47 @@ export const unsuspendOrgAction = adminAction(
   { input: z.object({ orgId: id, reason: optionalReason }) },
   async ({ input, admin }) => {
     await unsuspendOrg(admin, input);
+    return { done: true as const };
+  },
+);
+
+export const updatePlanPriceAction = adminAction(
+  {
+    input: z.object({
+      plan: z.enum(["pro", "team", "agency"]),
+      interval: z.enum(["month", "year"]),
+      priceUsd: z.number().positive().max(10_000),
+      reason: optionalReason,
+    }),
+  },
+  ({ input, admin }) => adminUpdatePlanPrice(admin, input),
+);
+
+export const updatePlatformSettingsAction = adminAction(
+  {
+    input: z.object({
+      trialDays: z.number().int().min(1).max(90).optional(),
+      trialAiCredits: z.number().int().min(0).max(1_000_000).optional(),
+      freeGraceDays: z.number().int().min(0).max(90).optional(),
+      freeOverAllowanceRetentionDays: z.number().int().min(1).max(365).optional(),
+      retentionNoticeDays: z.number().int().min(0).max(90).optional(),
+      paymentGraceDays: z.number().int().min(0).max(90).optional(),
+      billingEnabled: z.boolean().optional(),
+      googleSignIn: z.boolean().optional(),
+      githubSignIn: z.boolean().optional(),
+      aiEnabled: z.boolean().optional(),
+      aiModel: z.string().trim().max(200).nullable().optional(),
+      aiModelFast: z.string().trim().max(200).nullable().optional(),
+      aiBaseUrl: z.string().trim().max(500).nullable().optional(),
+      systemFromEmail: z.string().trim().max(320).nullable().optional(),
+      creditPackCredits: z.number().int().min(1).max(1_000_000).optional(),
+      creditPackPriceUsd: z.number().positive().max(10_000).optional(),
+      creditPackMaxPacks: z.number().int().min(1).max(100).optional(),
+      reason: optionalReason,
+    }),
+  },
+  async ({ input, admin }) => {
+    await adminUpdatePlatformSettings(admin, input);
     return { done: true as const };
   },
 );
