@@ -91,7 +91,7 @@ SSH from your laptop (`ssh`). On Windows use WSL or PowerShell OpenSSH.
 ### 2.4 URI
 
 ```text
-mongodb+srv://wisemail_app:PASSWORD@cluster0.xxxxx.mongodb.net/wisemail?retryWrites=true&w=majority
+mongodb+srv://<APP_NAME>:PASSWORD@<CLUSTER>/<DB_NAME>?retryWrites=true&w=majority
 ```
 
 URL-encode special characters in the password. This is `MONGODB_URI`.
