@@ -21,6 +21,8 @@ export function sendEmail(
     subject: string;
     html?: string;
     text?: string;
+    templateId?: string;
+    templateVariables?: Record<string, string | number>;
     scheduledAt?: string;
     inReplyToEmailId?: string;
     attachmentIds?: string[];

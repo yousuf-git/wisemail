@@ -14,10 +14,21 @@
     "baseUrl": ".",
     "types": ["node"],
     "paths": {
-      "@/*": ["../web/*"],
-      "server-only": ["./src/stubs/server-only.ts"]
+      "@/*": ["./*"],
+      "server-only": ["./src/stubs/server-only.ts"],
+      "next/navigation": ["./src/stubs/next-navigation.ts"],
+      "next/headers": ["./src/stubs/next-headers.ts"],
+      "next/server": ["./src/stubs/next-server.ts"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": [
+    "src/**/*.ts",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "app/**/*.ts",
+    "inngest/**/*.ts",
+    "emails/**/*.ts",
+    "emails/**/*.tsx"
+  ],
+  "exclude": ["src/**/*.test.ts", "lib/**/*.test.ts", "tests/**", "scripts/**", "node_modules"]
 }

@@ -156,7 +156,24 @@ export type Sender = {
   status: string;
   isDefault: boolean;
   version: number;
+  domainId: string;
+  connectionId: string;
+  signatureHtml?: string;
 };
+
+export type TemplateOption = {
+  id: string;
+  connectionId: string;
+  name: string;
+  subject: string;
+  html: string;
+  variables: { key: string; type: "string" | "number"; fallback: string | number | null }[];
+};
+
+export async function listTemplateOptions(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<TemplateOption[]>(`/api/v1/templates/options?${q}`);
+}
 
 export async function listSenders(orgSlug: string) {
   const q = new URLSearchParams({ orgSlug });

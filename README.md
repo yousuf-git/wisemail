@@ -35,7 +35,7 @@ All scoped to multi-tenant organizations, with roles (Owner / Admin / Developer 
 |---|---|
 | UI | Vite + React 19 SPA (`apps/spa`), TanStack Router + Query, TypeScript (strict) |
 | API | Fastify (`apps/api`) on Node 24 — auth, ingest, SSE, org actions, Inngest |
-| Shared services | `apps/web` modules (Mongoose models, domain services); Next is an optional local UI fallback only |
+| Domain / jobs | Inside `apps/api` (`lib/`, Inngest, React Email). Archived Next UI lives in `archive/next-web` |
 | Styling | Tailwind CSS v4, CSS-variable design tokens (FED) |
 | Auth | Better Auth with organization and invitation plugins |
 | Database | MongoDB Atlas (replica set) via Mongoose |
@@ -89,14 +89,13 @@ Requirements: **Node.js 24** (see `.nvmrc`), **pnpm**, and a `mongod` binary on 
 ```bash
 pnpm install
 cp .env.example .env.local     # fill the Core block
-ln -sfn ../.env.local apps/web/.env.local
 pnpm --filter @wisemail/shared build
 pnpm db:dev                    # MongoDB replica set rs0 on 127.0.0.1:27017
 pnpm dev:api                   # http://127.0.0.1:4000
 pnpm dev:spa                   # http://localhost:5173 (proxies /api → API)
 ```
 
-Platform admin is on the SPA at `/admin` (same `pnpm dev:spa` stack). Optional Next UI: `pnpm dev:web`.
+Platform admin is on the SPA at `/admin`.
 
 #### Port 27017 already in use
 

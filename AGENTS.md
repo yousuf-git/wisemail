@@ -1,16 +1,8 @@
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `apps/web/node_modules/next/dist/docs/` (or the pnpm store path linked from there) before writing any Next.js code on this branch. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
-
 # Wisemail
 
 Multi-tenant SaaS dashboard on top of Resend. Product name is always "Wisemail".
+
+Stack: **React SPA** (`apps/spa`) + **standalone Fastify API** (`apps/api`). Next.js UI is archived under `archive/next-web` (not shipped).
 
 ## Docs map
 
@@ -25,30 +17,28 @@ Monorepo on `react-migration`:
 
 | Package | Role |
 |---|---|
-| `apps/spa` | **Primary UI** — Vite + React 19 + TanStack Router/Query |
-| `apps/api` | **Primary server** — Fastify (auth, ingest, SSE, actions, Inngest) |
-| `apps/web` | **Domain library** (+ optional Next UI via `dev:web`) — models/services/handlers Fastify imports; prod UI is `apps/spa` |
+| `apps/spa` | **UI only** — Vite + React 19 + TanStack Router/Query |
+| `apps/api` | **Standalone backend** — Fastify + domain (`lib/`, models, services, Inngest, emails) |
 | `packages/shared` | Shared DTOs, plans, env schema, Sentry scrub |
+| `archive/next-web` | Archived Next.js App Router UI (reference only; not in workspace) |
 
-- `pnpm dev:spa` + `pnpm dev:api` — usual local stack (SPA `:5173` proxies `/api` → Fastify `:4000`)
-- `pnpm dev` / `pnpm dev:web` — optional Next UI fallback (not production)
-- `pnpm build` — shared + api + spa (**not** Next). `pnpm build:next` / `pnpm start:next` / `pnpm clean:next` for Next artifacts
+- `pnpm dev` / `pnpm dev:spa` + `pnpm dev:api` — SPA `:5173` proxies `/api` → Fastify `:4000`
+- `pnpm build` — shared + api + spa
 - `pnpm start` — API only; SPA is static (Vercel or `vite preview`)
 - `pnpm db:dev` — MongoDB replica set `rs0` on 127.0.0.1:27017 (data in `.data/mongo`)
-- Env: `.env.local` at repo root; `ln -sfn ../.env.local apps/web/.env.local`. SPA: `VITE_API_URL` empty in dev (proxy); production = public API origin
+- Env: `.env.local` at repo root (API loads it). SPA: `VITE_API_URL` empty in dev (proxy); production = public API origin
 - After `pnpm install --ignore-scripts`, run `pnpm --filter @wisemail/shared build`
-- Fastify reuses `apps/web` via `@/*` → `apps/web/*`; HTTP uses `lib/dal-request.ts` (not Next `headers()`)
-- Org mutations: `orgAction({ id })` → `POST /api/v1/actions/:id`. SPA: `callOrgAction` / `lib/api`. Prefer TanStack Query for reads
+- API owns `@/*` → `apps/api/*` (`lib/`, `app/api/`, `inngest/`, `emails/`). HTTP uses `lib/dal-request.ts`
+- Org mutations: `orgAction({ id })` → `POST /api/v1/actions/:id`. SPA: `callOrgAction` / `lib/api`
 - Production split: `APP_URL` = SPA (Vercel), `BETTER_AUTH_URL` = API (OCI), optional `COOKIE_DOMAIN` / `SPA_ORIGINS`
 - Every phase ends green on typecheck, lint, test and build
 
 ## Conventions
 
-- New product UI goes in `apps/spa` (including `/admin`, `/invite/:token`, `/onboarding`). Do not grow the Next App Router surface; Next is an optional local fallback only.
-- If you must touch Next, read `apps/web/node_modules/next/dist/docs/` first (nextjs.org may be unreachable).
-- Read env only through `apps/web/lib/env.ts` / `@wisemail/shared/env-schema` or `apps/api/src/env.ts`; never `process.env` in app logic. New vars → schema + `.env.example`.
-- Design tokens: SPA uses `apps/spa` styles mapped to the same FED tokens; Next UI still uses `apps/web/app/globals.css` (`bg-canvas`, `text-ink`, …). Theme: `data-theme` on `<html>`.
-- Shared DTOs/types: `packages/shared`. Tests: `apps/web/tests/*` (Vitest/Playwright), `apps/spa/tests/e2e` (SPA smoke), `apps/api` Vitest.
+- New product UI goes in `apps/spa` only. Do not revive `archive/next-web`.
+- Read env only through `apps/api/lib/env.ts` / `@wisemail/shared/env-schema` or `apps/api/src/env.ts`; never `process.env` in app logic. New vars → schema + `.env.example`.
+- Design tokens: SPA styles mapped to FED tokens (`bg-canvas`, `text-ink`, …). Theme: `data-theme` on `<html>`.
+- Shared DTOs/types: `packages/shared` + `apps/api/lib/dto`. Tests: `apps/api/tests/*` (Vitest), `apps/spa/tests/e2e` (Playwright).
 
 ## Fake-mode services
 

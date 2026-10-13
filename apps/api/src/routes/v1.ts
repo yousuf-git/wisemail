@@ -19,6 +19,7 @@ import { GET as getInsights } from "@/app/api/v1/insights/route";
 import { GET as getMembers } from "@/app/api/v1/members/route";
 import { GET as getProjects } from "@/app/api/v1/projects/route";
 import { GET as getTemplates } from "@/app/api/v1/templates/route";
+import { GET as getTemplateOptions } from "@/app/api/v1/templates/options/route";
 import { GET as getNotificationsUnread } from "@/app/api/v1/notifications/unread/route";
 import { GET as getNotifications } from "@/app/api/v1/notifications/route";
 import { GET as getSenders } from "@/app/api/v1/senders/route";
@@ -83,6 +84,9 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
     bridge(req, reply, getBroadcasts as AnyRouteHandler),
   );
   app.get("/api/v1/templates", (req, reply) => bridge(req, reply, getTemplates as AnyRouteHandler));
+  app.get("/api/v1/templates/options", (req, reply) =>
+    bridge(req, reply, getTemplateOptions as AnyRouteHandler),
+  );
   app.get("/api/v1/connections", (req, reply) =>
     bridge(req, reply, getConnections as AnyRouteHandler),
   );

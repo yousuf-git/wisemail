@@ -1,7 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Eye, EyeOff, Monitor, Moon, Smartphone, Sun } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
 
+import { AddressField } from "@/components/composer/address-field";
+import { isBodyBlank, isLossyForRich } from "@/components/composer/compose-validation";
+import { PreviewFrame } from "@/components/composer/preview-frame";
+import { SchedulePicker } from "@/components/composer/schedule-picker";
+import { isValidTimeZone } from "@/components/composer/schedule";
+import { TemplatePanel } from "@/components/composer/template-panel";
 import {
   confirmAttachmentUpload,
   removeDraftAttachment,
@@ -12,36 +19,32 @@ import {
 import {
   aiComposeAssist,
   getAiStatus,
+  getGeneralSettings,
   listSenders,
+  listTemplateOptions,
   sameOriginUploadUrl,
+  type TemplateOption,
 } from "@/lib/api";
+import { missingVariables, renderTemplate } from "@/lib/mail/template-vars";
+import { cn } from "@/lib/utils";
 
-function splitAddresses(raw: string): string[] {
-  return raw
-    .split(/[,;\s]+/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-}
+const RichEditor = lazy(() => import("@/components/composer/rich-editor"));
+const HtmlEditor = lazy(() => import("@/components/composer/html-editor"));
 
-function escapeHtml(text: string) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function plainToHtml(body: string) {
-  return `<p>${body
-    .split("\n")
-    .map((line) => escapeHtml(line))
-    .join("<br/>")}</p>`;
-}
-
-function localInputToIso(value: string): string | undefined {
-  if (!value) return undefined;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toISOString();
+function htmlToPlain(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
 }
 
 type Attached = { id: string; filename: string; size: number };
+type EditorMode = "rich" | "html" | "template";
 
 export function ComposePage() {
   const { orgSlug } = useParams({ from: "/$orgSlug/compose" });
@@ -49,6 +52,15 @@ export function ComposePage() {
   const senders = useQuery({
     queryKey: ["senders", orgSlug],
     queryFn: () => listSenders(orgSlug),
+  });
+  const settings = useQuery({
+    queryKey: ["settings-general", orgSlug],
+    queryFn: () => getGeneralSettings(orgSlug),
+  });
+  const templatesQ = useQuery({
+    queryKey: ["template-options", orgSlug],
+    queryFn: () => listTemplateOptions(orgSlug),
+    retry: false,
   });
   const ai = useQuery({
     queryKey: ["ai-status", orgSlug],
@@ -62,16 +74,23 @@ export function ComposePage() {
   const defaultSenderId =
     activeSenders.find((s) => s.isDefault)?.id ?? activeSenders[0]?.id ?? "";
 
+  const timeZone = isValidTimeZone(settings.data?.timezone)
+    ? settings.data!.timezone
+    : (Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC");
+
   const [senderId, setSenderId] = useState(defaultSenderId);
-  const [to, setTo] = useState("");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
+  const [to, setTo] = useState<string[]>([]);
+  const [cc, setCc] = useState<string[]>([]);
+  const [bcc, setBcc] = useState<string[]>([]);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [subject, setSubject] = useState("");
-  const [mode, setMode] = useState<"text" | "html">("text");
-  const [body, setBody] = useState("");
-  const [schedule, setSchedule] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [mode, setMode] = useState<EditorMode>("rich");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [editorKey, setEditorKey] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewDark, setPreviewDark] = useState(false);
+  const [previewWidth, setPreviewWidth] = useState<"desktop" | "mobile">("desktop");
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [subjectIdeas, setSubjectIdeas] = useState<string[]>([]);
   const [tone, setTone] = useState<"friendly" | "professional" | "concise" | "empathetic">(
@@ -81,9 +100,37 @@ export function ComposePage() {
   const [draftVersion, setDraftVersion] = useState<number | undefined>(undefined);
   const [attachments, setAttachments] = useState<Attached[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [templateValues, setTemplateValues] = useState<Record<string, string>>({});
+  const [templateErrors, setTemplateErrors] = useState<Record<string, string>>({});
 
   const effectiveSenderId = senderId || defaultSenderId;
-  const bodyHtmlForAi = mode === "html" ? body : plainToHtml(body);
+  const sender = activeSenders.find((s) => s.id === effectiveSenderId);
+  const senderConnection = sender?.connectionId;
+  const availableTemplates = useMemo(
+    () =>
+      (templatesQ.data ?? []).filter(
+        (t) => !senderConnection || t.connectionId === senderConnection,
+      ),
+    [templatesQ.data, senderConnection],
+  );
+  const template: TemplateOption | null =
+    availableTemplates.find((t) => t.id === templateId) ?? null;
+
+  const renderedTemplate = template
+    ? renderTemplate(template.html, templateValues, template.variables, { escape: true })
+    : "";
+  const renderedSubject = template
+    ? renderTemplate(template.subject, templateValues, template.variables)
+    : subject;
+
+  const previewVisible = mode === "html" || mode === "template" || showPreview;
+  const previewHtml =
+    mode === "template"
+      ? renderedTemplate
+      : isBodyBlank(bodyHtml)
+        ? ""
+        : bodyHtml;
 
   const aiComposeOk =
     ai.data?.planIncluded &&
@@ -92,15 +139,42 @@ export function ComposePage() {
     ai.data.features.compose &&
     (ai.data.credits.available ?? 0) > 0;
 
+  function changeMode(next: EditorMode) {
+    if (next === mode) return;
+    if (next === "template") {
+      if (availableTemplates.length === 0) return;
+      setMode("template");
+      return;
+    }
+    if (
+      next === "rich" &&
+      isLossyForRich(bodyHtml) &&
+      !window.confirm(
+        "Rich text keeps simple formatting only. Tables, custom styles and other HTML will be simplified. Switch anyway?",
+      )
+    ) {
+      return;
+    }
+    setMode(next);
+    setEditorKey((k) => k + 1);
+  }
+
+  function chooseTemplate(id: string) {
+    const chosen = availableTemplates.find((t) => t.id === id);
+    setTemplateId(id);
+    setTemplateValues({});
+    setTemplateErrors({});
+    if (chosen && !subject.trim()) setSubject(chosen.subject);
+  }
+
   async function ensureDraft(): Promise<{ id: string; version: number }> {
     if (draftId && draftVersion !== undefined) return { id: draftId, version: draftVersion };
     const result = await saveDraft(orgSlug, {
       senderId: effectiveSenderId || null,
-      to: splitAddresses(to),
+      to,
       subject,
-      bodyHtml: mode === "html" ? body : plainToHtml(body),
-      bodyText: mode === "html" ? undefined : body,
-      mode: mode === "html" ? "html" : "rich",
+      bodyHtml: bodyHtml || "<p></p>",
+      mode: mode === "template" ? "template" : mode,
     });
     if (!result.ok) throw new Error(result.error.message);
     setDraftId(result.data.id);
@@ -148,17 +222,42 @@ export function ComposePage() {
 
   const send = useMutation({
     mutationFn: () => {
-      const html = mode === "html" ? body : plainToHtml(body);
-      const text = mode === "html" ? undefined : body;
+      if (!to.length) throw new Error("Add at least one recipient.");
+      if (!subject.trim() && mode !== "template") throw new Error("Add a subject.");
+      if (mode === "template") {
+        if (!template) throw new Error("Choose a template.");
+        const missing = missingVariables(template.variables, templateValues);
+        if (missing.length) {
+          setTemplateErrors(Object.fromEntries(missing.map((k) => [k, "Required."])));
+          throw new Error("Fill the required template fields.");
+        }
+        return sendEmail(orgSlug, {
+          senderId: effectiveSenderId,
+          to,
+          cc,
+          bcc,
+          subject: subject.trim() || template.subject,
+          templateId: template.id,
+          templateVariables: Object.fromEntries(
+            Object.entries(templateValues)
+              .filter(([, v]) => v.trim() !== "")
+              .map(([k, v]) => [k, v.trim()]),
+          ),
+          scheduledAt: scheduledAt?.toISOString(),
+          attachmentIds: attachments.map((a) => a.id),
+          draftId: draftId ?? undefined,
+        });
+      }
+      if (isBodyBlank(bodyHtml)) throw new Error("Write a message.");
       return sendEmail(orgSlug, {
         senderId: effectiveSenderId,
-        to: splitAddresses(to),
-        cc: splitAddresses(cc),
-        bcc: splitAddresses(bcc),
+        to,
+        cc,
+        bcc,
         subject,
-        html,
-        text,
-        scheduledAt: schedule ? localInputToIso(scheduledAt) : undefined,
+        html: bodyHtml,
+        text: mode === "rich" ? htmlToPlain(bodyHtml) : undefined,
+        scheduledAt: scheduledAt?.toISOString(),
         attachmentIds: attachments.map((a) => a.id),
         draftId: draftId ?? undefined,
       });
@@ -170,10 +269,11 @@ export function ComposePage() {
       }
       setError(null);
       await navigate({
-        to: schedule ? "/$orgSlug/scheduled" : "/$orgSlug/inbox",
+        to: scheduledAt ? "/$orgSlug/scheduled" : "/$orgSlug/inbox",
         params: { orgSlug },
       });
     },
+    onError: (e: Error) => setError(e.message || "Could not send."),
   });
 
   const assist = useMutation({
@@ -181,7 +281,7 @@ export function ComposePage() {
       aiComposeAssist(orgSlug, {
         action,
         subject,
-        bodyHtml: bodyHtmlForAi,
+        bodyHtml: bodyHtml || "<p></p>",
         tone: action === "rewrite" ? tone : undefined,
       }),
     onSuccess: (result) => {
@@ -190,8 +290,8 @@ export function ComposePage() {
         setSubjectIdeas(result.suggestions);
         return;
       }
-      if (mode === "html") setBody(result.html);
-      else setBody(result.text);
+      setBodyHtml(result.html);
+      setEditorKey((k) => k + 1);
     },
     onError: (e: Error) => setError(e.message || "AI assist failed."),
   });
@@ -241,11 +341,11 @@ export function ComposePage() {
   }
 
   return (
-    <section className="grid max-w-2xl gap-4">
+    <section className="grid max-w-4xl gap-4">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Compose</h1>
         <p className="text-sm text-ink-muted">
-          Plain/HTML · schedule · attachments · AI helpers
+          Rich text · HTML · templates · preview · schedule · attachments · AI
         </p>
       </header>
       <form
@@ -267,7 +367,13 @@ export function ComposePage() {
           <select
             className="h-10 rounded-control border border-line-strong bg-canvas px-3"
             value={effectiveSenderId}
-            onChange={(e) => setSenderId(e.target.value)}
+            onChange={(e) => {
+              setSenderId(e.target.value);
+              if (mode === "template") {
+                setTemplateId(null);
+                setTemplateValues({});
+              }
+            }}
           >
             {activeSenders.map((s) => (
               <option key={s.id} value={s.id}>
@@ -276,11 +382,13 @@ export function ComposePage() {
             ))}
           </select>
         </label>
-        <div className="grid gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-sm font-medium" htmlFor="compose-to">
-              To
-            </label>
+
+        <AddressField
+          label="To"
+          values={to}
+          onChange={setTo}
+          placeholder="you@example.com"
+          trailing={
             <button
               type="button"
               className="text-xs font-medium text-accent-fill hover:underline"
@@ -288,45 +396,27 @@ export function ComposePage() {
             >
               {showCcBcc ? "Hide Cc/Bcc" : "Cc/Bcc"}
             </button>
-          </div>
-          <input
-            id="compose-to"
-            className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder="you@example.com"
-            required
-          />
-        </div>
+          }
+        />
         {showCcBcc ? (
           <>
-            <label className="grid gap-1.5 text-sm font-medium">
-              Cc
-              <input
-                className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
-                value={cc}
-                onChange={(e) => setCc(e.target.value)}
-              />
-            </label>
-            <label className="grid gap-1.5 text-sm font-medium">
-              Bcc
-              <input
-                className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
-                value={bcc}
-                onChange={(e) => setBcc(e.target.value)}
-              />
-            </label>
+            <AddressField label="Cc" values={cc} onChange={setCc} />
+            <AddressField label="Bcc" values={bcc} onChange={setBcc} />
           </>
         ) : null}
+
         <label className="grid gap-1.5 text-sm font-medium">
           Subject
           <input
             className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            required
+            required={mode !== "template"}
           />
         </label>
+        {mode === "template" && template && renderedSubject !== subject ? (
+          <p className="text-xs text-ink-muted">Goes out as: {renderedSubject}</p>
+        ) : null}
         {subjectIdeas.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
             {subjectIdeas.map((idea) => (
@@ -342,37 +432,153 @@ export function ComposePage() {
             ))}
           </ul>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["text", "Plain text"],
-              ["html", "HTML"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setMode(id)}
-              className={`h-8 rounded-control px-3 text-sm font-medium ${
-                mode === id
-                  ? "bg-accent-soft text-accent-fill"
-                  : "border border-line text-ink-secondary hover:bg-canvas-sunken"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            className="flex flex-wrap gap-1 rounded-control border border-line p-0.5"
+            role="group"
+            aria-label="Editor mode"
+          >
+            {(
+              [
+                ["rich", "Rich text"],
+                ["html", "HTML"],
+                ["template", "Template"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                disabled={id === "template" && availableTemplates.length === 0}
+                title={
+                  id === "template" && availableTemplates.length === 0
+                    ? "No published templates for this sender's Resend account yet"
+                    : undefined
+                }
+                onClick={() => changeMode(id)}
+                className={cn(
+                  "h-8 rounded-[calc(var(--radius-control)-2px)] px-3 text-sm font-medium disabled:opacity-40",
+                  mode === id
+                    ? "bg-accent-soft text-accent-fill"
+                    : "text-ink-secondary hover:bg-canvas-sunken",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            {previewVisible ? (
+              <div className="flex items-center gap-0.5" role="group" aria-label="Preview options">
+                <button
+                  type="button"
+                  aria-label="Desktop width"
+                  aria-pressed={previewWidth === "desktop"}
+                  onClick={() => setPreviewWidth("desktop")}
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded-control hover:bg-canvas-sunken",
+                    previewWidth === "desktop" && "bg-accent-soft",
+                  )}
+                >
+                  <Monitor className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Mobile width"
+                  aria-pressed={previewWidth === "mobile"}
+                  onClick={() => setPreviewWidth("mobile")}
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded-control hover:bg-canvas-sunken",
+                    previewWidth === "mobile" && "bg-accent-soft",
+                  )}
+                >
+                  <Smartphone className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={previewDark ? "Light preview" : "Dark preview"}
+                  aria-pressed={previewDark}
+                  onClick={() => setPreviewDark((d) => !d)}
+                  className="inline-flex size-8 items-center justify-center rounded-control hover:bg-canvas-sunken"
+                >
+                  {previewDark ? (
+                    <Sun className="size-4" aria-hidden />
+                  ) : (
+                    <Moon className="size-4" aria-hidden />
+                  )}
+                </button>
+              </div>
+            ) : null}
+            {mode === "rich" ? (
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                aria-pressed={showPreview}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-xs font-medium text-ink-secondary hover:bg-canvas-sunken"
+              >
+                {showPreview ? (
+                  <EyeOff className="size-3.5" aria-hidden />
+                ) : (
+                  <Eye className="size-3.5" aria-hidden />
+                )}
+                {showPreview ? "Hide preview" : "Preview"}
+              </button>
+            ) : null}
+          </div>
         </div>
-        <label className="grid gap-1.5 text-sm font-medium">
-          Message
-          <textarea
-            className="min-h-40 rounded-control border border-line-strong bg-canvas px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-accent"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            required
-            spellCheck={mode === "text"}
-          />
-        </label>
+
+        <div
+          className={cn("grid min-h-56 gap-4", previewVisible && "min-[900px]:grid-cols-2")}
+        >
+          <div className="min-w-0">
+            {mode === "template" ? (
+              <TemplatePanel
+                templates={availableTemplates}
+                templateId={template?.id ?? null}
+                onTemplate={chooseTemplate}
+                values={templateValues}
+                onValues={(values) => {
+                  setTemplateValues(values);
+                  setTemplateErrors({});
+                }}
+                errors={templateErrors}
+              />
+            ) : (
+              <Suspense
+                fallback={
+                  <div
+                    className="min-h-40 animate-pulse rounded-control bg-canvas-sunken"
+                    aria-busy
+                  />
+                }
+              >
+                {mode === "rich" ? (
+                  <RichEditor
+                    key={`rich-${editorKey}`}
+                    initialHtml={bodyHtml}
+                    onChange={setBodyHtml}
+                  />
+                ) : (
+                  <HtmlEditor
+                    key={`html-${editorKey}`}
+                    value={bodyHtml}
+                    onChange={setBodyHtml}
+                    className="max-h-[32rem] rounded-control border border-line bg-canvas-sunken px-1"
+                  />
+                )}
+              </Suspense>
+            )}
+          </div>
+          {previewVisible ? (
+            <PreviewFrame
+              html={previewHtml}
+              dark={previewDark}
+              width={previewWidth}
+              className="max-h-[32rem] min-h-64"
+            />
+          ) : null}
+        </div>
+
         <div className="grid gap-2">
           <label className="text-sm font-medium">
             Attachments
@@ -414,7 +620,7 @@ export function ComposePage() {
             </ul>
           ) : null}
         </div>
-        {aiComposeOk ? (
+        {mode !== "template" && aiComposeOk ? (
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={tone}
@@ -437,7 +643,7 @@ export function ComposePage() {
               <button
                 key={action}
                 type="button"
-                disabled={assist.isPending || (!body.trim() && action !== "subjects")}
+                disabled={assist.isPending || (isBodyBlank(bodyHtml) && action !== "subjects")}
                 onClick={() => assist.mutate(action)}
                 className="h-8 rounded-control border border-line px-2.5 text-xs font-medium hover:bg-canvas-sunken disabled:opacity-50"
               >
@@ -448,36 +654,21 @@ export function ComposePage() {
               {ai.data!.credits.available} credits left
             </span>
           </div>
-        ) : ai.data ? (
-          <p className="text-xs text-ink-muted">AI compose unavailable on {ai.data.planLabel}.</p>
         ) : null}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={schedule}
-            onChange={(e) => setSchedule(e.target.checked)}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <SchedulePicker
+            value={scheduledAt}
+            onChange={setScheduledAt}
+            timeZone={timeZone}
+            disabled={send.isPending}
           />
-          Schedule send
-        </label>
-        {schedule ? (
-          <label className="grid gap-1.5 text-sm font-medium">
-            Send at
-            <input
-              type="datetime-local"
-              required={schedule}
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="h-10 rounded-control border border-line-strong bg-canvas px-3"
-            />
-          </label>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
           <button
             type="submit"
             disabled={send.isPending || uploading}
             className="h-10 rounded-control bg-accent-fill px-4 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
           >
-            {send.isPending ? "Sending…" : schedule ? "Schedule" : "Send"}
+            {send.isPending ? "Sending…" : scheduledAt ? "Schedule" : "Send"}
           </button>
           <Link
             to="/$orgSlug/inbox"

@@ -9,12 +9,22 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit --pretty false",
     "lint": "echo 'spa lint: deferred until eslint shared config'",
-    "test:e2e": "pnpm --dir ../web exec playwright test --config ../spa/playwright.config.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-router": "^1.157.16",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
     "@wisemail/shared": "workspace:*",
     "better-auth": "^1.7.6",
     "clsx": "^2.1.1",
@@ -26,6 +36,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",

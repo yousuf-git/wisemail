@@ -11,7 +11,7 @@
 |---|---|---|
 | UI | **Vite + React 19 SPA** (`apps/spa`), TanStack Router + Query, TypeScript (strict) | Client app hosted on Vercel; talks to the API over HTTPS + cookies. |
 | API | **Fastify** (`apps/api`) on **Node.js 24** | Long-lived process for ingest, SSE, Inngest, and org actions — not serverless timeouts. |
-| Domain library | **`apps/web`** services/models (bridged into Fastify); Next App Router optional local fallback only | Avoid a big-bang rewrite of domain code; production UI is the SPA. |
+| Domain library | **Inside `apps/api`** (`lib/`, models, services, Inngest); Next UI archived at `archive/next-web` | Standalone API; SPA is UI-only. |
 | Runtime / hosting | **SPA → Vercel**; **API → Oracle Cloud VM** (Nginx + PM2) + **MongoDB Atlas** | Static UI on a CDN; always-on API for webhooks and SSE. See deploy docs. |
 | Styling | **Tailwind CSS v4** with CSS-variable design tokens (see `FED.md`) | Tokens drive light and warm-dark themes. |
 | Components | **shadcn/ui** (Radix primitives), **lucide-react** icons | Owned source, easy to restyle to the warm/rounded look. |
