@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AuthShell, FormAlert } from "@/components/auth/auth-shell";
 import { authClient } from "@/lib/auth/client";
-import { AuthLayout } from "@/pages/sign-up";
 
 const schema = z.object({ email: z.email("That email doesn't look right.") });
 
@@ -35,23 +35,18 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Forgot password"
       description="We'll email a code and a reset link."
+      mood="thinking"
       footer={
-        <p className="text-center text-sm text-ink-muted">
-          <Link to="/sign-in" className="font-medium text-accent-fill hover:underline">
-            Back to sign in
-          </Link>
-        </p>
+        <Link to="/sign-in" className="font-medium text-accent-fill hover:underline">
+          Back to sign in
+        </Link>
       }
     >
       <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
-        {formError ? (
-          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
-            {formError}
-          </p>
-        ) : null}
+        <FormAlert>{formError}</FormAlert>
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">Email</span>
           <input
@@ -67,11 +62,11 @@ export function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="h-10 rounded-control bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+          className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
         >
-          {form.formState.isSubmitting ? "Sending…" : "Send code and link"}
+          {form.formState.isSubmitting ? "Sending…" : "Send reset email"}
         </button>
       </form>
-    </AuthLayout>
+    </AuthShell>
   );
 }

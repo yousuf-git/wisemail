@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AuthShell, FormAlert } from "@/components/auth/auth-shell";
+import { PasswordInput } from "@/components/auth/password-input";
+import { SocialButtons } from "@/components/auth/social-buttons";
 import { authClient } from "@/lib/auth/client";
 import { safeNext } from "@/lib/auth/safe-next";
 
@@ -49,11 +52,12 @@ export function SignUpPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Create your account"
       description="A minute to start. Free plan, no card."
+      mood="happy"
       footer={
-        <p className="text-center text-sm text-ink-muted">
+        <>
           Already have an account?{" "}
           <Link
             to="/sign-in"
@@ -62,51 +66,42 @@ export function SignUpPage() {
           >
             Sign in
           </Link>
-        </p>
+        </>
       }
     >
-      <form
-        className="grid gap-4"
-        onSubmit={form.handleSubmit(onSubmit)}
-        noValidate
-      >
-        {formError ? (
-          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
-            {formError}
-          </p>
-        ) : null}
-        <Field label="Your name" error={form.formState.errors.name?.message}>
-          <input
-            autoComplete="name"
-            className={inputClass}
-            {...form.register("name")}
-          />
-        </Field>
-        <Field label="Email" error={form.formState.errors.email?.message}>
-          <input
-            type="email"
-            autoComplete="email"
-            className={inputClass}
-            {...form.register("email")}
-          />
-        </Field>
-        <Field label="Password" error={form.formState.errors.password?.message}>
-          <input
-            type="password"
-            autoComplete="new-password"
-            className={inputClass}
-            {...form.register("password")}
-          />
-        </Field>
-        <button
-          type="submit"
-          disabled={form.formState.isSubmitting}
-          className="h-10 rounded-control bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
-        >
-          {form.formState.isSubmitting ? "Creating…" : "Create account"}
-        </button>
-      </form>
-    </AuthLayout>
+      <div className="grid gap-4">
+        <SocialButtons next={next} disabled={form.formState.isSubmitting} />
+        <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <FormAlert>{formError}</FormAlert>
+          <Field label="Your name" error={form.formState.errors.name?.message}>
+            <input autoComplete="name" className={inputClass} {...form.register("name")} />
+          </Field>
+          <Field label="Email" error={form.formState.errors.email?.message}>
+            <input
+              type="email"
+              autoComplete="email"
+              className={inputClass}
+              {...form.register("email")}
+            />
+          </Field>
+          <Field label="Password" error={form.formState.errors.password?.message}>
+            <PasswordInput
+              strength
+              autoComplete="new-password"
+              {...form.register("password")}
+              value={form.watch("password")}
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+          >
+            {form.formState.isSubmitting ? "Creating…" : "Create account"}
+          </button>
+        </form>
+      </div>
+    </AuthShell>
   );
 }
 
@@ -131,26 +126,5 @@ function Field({
   );
 }
 
-export function AuthLayout({
-  title,
-  description,
-  children,
-  footer,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-}) {
-  return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-4 py-10">
-      <div>
-        <p className="text-sm font-semibold tracking-tight text-accent-fill">Wisemail</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{description}</p>
-      </div>
-      <div className="grid gap-4 rounded-lg border border-line bg-surface p-5 shadow-sm">{children}</div>
-      {footer}
-    </div>
-  );
-}
+/** Re-export for forgot/reset/verify pages. */
+export { AuthLayout } from "@/components/auth/auth-shell";

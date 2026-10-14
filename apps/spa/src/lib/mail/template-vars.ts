@@ -62,3 +62,30 @@ export function missingVariables(
     .filter((v) => resolveVariable(v.key, values, variables) === null)
     .map((v) => v.key);
 }
+
+/** Variable names used in `sources`, in order of first use, without Resend's reserved ones. */
+export function extractVariables(...sources: (string | null | undefined)[]): string[] {
+  const seen = new Set<string>();
+  for (const source of sources) {
+    if (!source) continue;
+    for (const match of source.matchAll(PLACEHOLDER)) {
+      const key = match[1]!;
+      if (!RESERVED_VARIABLES.has(key.toUpperCase())) seen.add(key);
+    }
+  }
+  return [...seen];
+}
+
+/**
+ * Preview-only rendering of Resend contact merge tags in a broadcast:
+ * `{{{FIRST_NAME|there}}}` shows its fallback (or `[FIRST_NAME]`).
+ */
+export function previewMergeTags(html: string): string {
+  return html.replace(
+    /\{\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*(?:\|([^}]*))?\}\}\}/g,
+    (_whole, key: string, fallback?: string) =>
+      key.toUpperCase() === "RESEND_UNSUBSCRIBE_URL"
+        ? "#"
+        : escapeHtml(fallback?.trim() || `[${key}]`),
+  );
+}

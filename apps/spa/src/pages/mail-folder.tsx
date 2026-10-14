@@ -1,9 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+import { Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import { restoreThreads } from "@/lib/actions";
-import { listThreads } from "@/lib/api";
+import { ThreadRow } from "@/components/inbox/thread-row";
+import { restoreItems } from "@/lib/actions";
+import { listThreads, type MailFolder, type MailListRow } from "@/lib/api";
+
+function useDebounced<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+function rowKey(row: MailListRow) {
+  return `${row.kind}:${row.id}`;
+}
 
 export function ScheduledPage() {
   const { orgSlug } = useParams({ from: "/$orgSlug/scheduled" });
@@ -20,6 +35,13 @@ export function SentPage() {
   return <MailFolderList orgSlug={orgSlug} folder="sent" title="Sent" />;
 }
 
+const EMPTY: Record<MailFolder, string> = {
+  inbox: "Inbox zero",
+  sent: "Nothing sent yet",
+  scheduled: "Nothing scheduled",
+  trash: "Trash is empty",
+};
+
 function MailFolderList({
   orgSlug,
   folder,
@@ -31,13 +53,30 @@ function MailFolderList({
 }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const threads = useQuery({
-    queryKey: ["threads", orgSlug, folder],
-    queryFn: () => listThreads(orgSlug, folder),
+  const [query, setQuery] = useState("");
+  const debounced = useDebounced(query, 250);
+
+  const list = useInfiniteQuery({
+    queryKey: ["threads", orgSlug, folder, debounced],
+    queryFn: ({ pageParam }) =>
+      listThreads({
+        orgSlug,
+        folder,
+        q: debounced.trim() || undefined,
+        cursor: pageParam,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
   });
 
+  const rows = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
+
   const restore = useMutation({
-    mutationFn: (threadId: string) => restoreThreads(orgSlug, [threadId]),
+    mutationFn: (row: MailListRow) =>
+      restoreItems(
+        orgSlug,
+        row.kind === "email" ? { emailIds: [row.id] } : { threadIds: [row.id] },
+      ),
     onSuccess: async (result) => {
       if (!result.ok) {
         setError(result.error.message);
@@ -49,72 +88,82 @@ function MailFolderList({
     onError: () => setError("Could not restore."),
   });
 
+  const emptyLabel = debounced.trim()
+    ? `No results for “${debounced.trim()}”`
+    : EMPTY[folder];
+
   return (
     <section className="grid gap-3">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-sm text-ink-muted">`GET /api/v1/threads?folder={folder}`</p>
+        <p className="text-sm text-ink-muted">Mail in this folder.</p>
       </header>
+
+      <label className="relative max-w-md">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-muted"
+        />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search…"
+          className="h-9 w-full rounded-control border border-line bg-surface pr-8 pl-8 text-sm outline-none focus:ring-2 focus:ring-accent"
+        />
+        {query ? (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => setQuery("")}
+            className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-muted hover:text-ink"
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : null}
+      </label>
+
       {error ? (
         <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
           {error}
         </p>
       ) : null}
-      {threads.isPending ? (
+
+      {list.isPending ? (
         <p className="text-sm text-ink-muted">Loading…</p>
-      ) : threads.isError ? (
+      ) : list.isError ? (
         <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
           Could not load {title.toLowerCase()}.
         </p>
-      ) : threads.data.items.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted">
-          Nothing here yet.
+          {emptyLabel}
         </p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
-          {threads.data.items.map((row) => {
-            const who = row.peopleLabels?.[0] ?? row.people[0] ?? "Unknown";
-            const threadId = row.kind === "thread" ? row.id : row.threadId;
-            return (
-              <li key={row.id} className="flex items-stretch">
-                <div className="min-w-0 flex-1 grid gap-0.5 px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p
-                      className={`truncate text-sm ${row.unread ? "font-semibold" : "font-medium"}`}
-                    >
-                      {who}
-                    </p>
-                    <time className="shrink-0 text-xs text-ink-faint">
-                      {new Date(row.lastMessageAt).toLocaleString()}
-                    </time>
-                  </div>
-                  <p className="truncate text-sm text-ink">{row.subject || "(no subject)"}</p>
-                  {row.snippet ? (
-                    <p className="truncate text-xs text-ink-muted">{row.snippet}</p>
-                  ) : null}
-                </div>
-                {folder === "trash" && threadId ? (
-                  <button
-                    type="button"
-                    disabled={restore.isPending}
-                    onClick={() => restore.mutate(threadId)}
-                    className="shrink-0 border-l border-line px-3 text-xs font-medium text-ink-secondary hover:bg-canvas-sunken disabled:opacity-50"
-                  >
-                    Restore
-                  </button>
-                ) : folder === "scheduled" && threadId ? (
-                  <Link
-                    to="/$orgSlug/inbox/$threadId"
-                    params={{ orgSlug, threadId }}
-                    className="flex shrink-0 items-center border-l border-line px-3 text-xs font-medium text-accent-fill hover:bg-canvas-sunken"
-                  >
-                    Open
-                  </Link>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <ul>
+            {rows.map((row) => (
+              <ThreadRow
+                key={rowKey(row)}
+                row={row}
+                orgSlug={orgSlug}
+                folder={folder}
+                onRestore={folder === "trash" ? () => restore.mutate(row) : undefined}
+              />
+            ))}
+          </ul>
+          {list.hasNextPage ? (
+            <div className="border-t border-line p-2">
+              <button
+                type="button"
+                disabled={list.isFetchingNextPage}
+                onClick={() => void list.fetchNextPage()}
+                className="h-9 w-full rounded-control text-sm font-medium text-ink-secondary hover:bg-canvas-sunken disabled:opacity-50"
+              >
+                {list.isFetchingNextPage ? "Loading…" : "Load more"}
+              </button>
+            </div>
+          ) : null}
+        </div>
       )}
     </section>
   );

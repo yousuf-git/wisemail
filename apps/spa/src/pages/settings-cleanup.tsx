@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
+import { Ban, Eraser, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { RuleDialog } from "@/components/cleanup/rule-dialog";
 import {
   ResourceEmpty,
   ResourceError,
   ResourcePage,
   ResourcePending,
 } from "@/components/resource-page";
-import { createCleanupRule, removeCleanupRule, setCleanupRuleEnabled } from "@/lib/actions";
-import { ApiError, listCleanupRules, type CleanupRule } from "@/lib/api";
+import { removeCleanupRule, setCleanupRuleEnabled } from "@/lib/actions";
+import {
+  ApiError,
+  listCleanupRules,
+  listConnections,
+  type CleanupRule,
+} from "@/lib/api";
 
 const ACTION_LABEL = { archive: "Archive", trash: "Move to Trash", delete: "Delete permanently" };
 
@@ -20,24 +27,30 @@ function describeRule(rule: CleanupRule): string {
   if (m.fromDomain) parts.push(`from @${m.fromDomain}`);
   if (m.subjectContains) parts.push(`subject contains “${m.subjectContains}”`);
   if (m.direction) parts.push(m.direction === "inbound" ? "received" : "sent");
+  if (m.tag) parts.push(`tag ${m.tag.name}${m.tag.value ? `=${m.tag.value}` : ""}`);
+  if (m.aiCategory) parts.push(`AI category ${m.aiCategory}`);
   if (m.olderThanDays) parts.push(`older than ${m.olderThanDays} days`);
+  if (rule.scope?.mailboxAddresses?.length)
+    parts.push(`in ${rule.scope.mailboxAddresses.join(", ")}`);
   return parts.join(" · ") || "Everything";
 }
 
-/** Settings → Cleanup: list, toggle, delete, and a simple create form. */
 export function SettingsCleanupPage() {
   const { orgSlug } = useParams({ from: "/$orgSlug/settings/cleanup" });
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [fromDomain, setFromDomain] = useState("");
-  const [olderThanDays, setOlderThanDays] = useState("30");
-  const [action, setAction] = useState<"archive" | "trash" | "delete">("trash");
+  const [editing, setEditing] = useState<CleanupRule | "new" | null>(null);
 
   const rules = useQuery({
     queryKey: ["cleanup-rules", orgSlug],
     queryFn: () => listCleanupRules(orgSlug),
     retry: false,
+  });
+
+  const connections = useQuery({
+    queryKey: ["connections", orgSlug],
+    queryFn: () => listConnections(orgSlug),
+    enabled: !!rules.data,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["cleanup-rules", orgSlug] });
@@ -67,29 +80,6 @@ export function SettingsCleanupPage() {
     },
   });
 
-  const create = useMutation({
-    mutationFn: () =>
-      createCleanupRule(orgSlug, {
-        name: name.trim(),
-        kind: "rule",
-        action,
-        match: {
-          ...(fromDomain.trim() ? { fromDomain: fromDomain.trim() } : {}),
-          ...(Number(olderThanDays) > 0 ? { olderThanDays: Number(olderThanDays) } : {}),
-        },
-      }),
-    onSuccess: async (result) => {
-      if (!result.ok) {
-        setError(result.error.message);
-        return;
-      }
-      setError(null);
-      setName("");
-      setFromDomain("");
-      await invalidate();
-    },
-  });
-
   if (rules.isError && rules.error instanceof ApiError && rules.error.status === 403) {
     return (
       <ResourcePage title="Cleanup" description="Archive or trash old mail automatically.">
@@ -98,10 +88,14 @@ export function SettingsCleanupPage() {
     );
   }
 
+  const canDelete = rules.data?.canDelete ?? false;
+  const connectionOptions =
+    connections.data?.connections.map((c) => ({ id: c.id, name: c.name })) ?? [];
+
   return (
     <ResourcePage
       title="Cleanup"
-      description="Keep your mailbox tidy: archive or trash old mail automatically. Trash is emptied after 30 days."
+      description="Keep your mailbox tidy: archive or trash old mail automatically, and send mail from senders you never want to Trash. Trash is emptied after 30 days."
     >
       {error ? (
         <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
@@ -109,82 +103,62 @@ export function SettingsCleanupPage() {
         </p>
       ) : null}
 
-      <form
-        className="grid gap-2 rounded-lg border border-line bg-surface p-4 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          create.mutate();
-        }}
-      >
-        <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-ink-muted">Name</span>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-9 rounded-control border border-line bg-canvas px-3 text-sm"
-            placeholder="Old GitHub noise"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-ink-muted">From domain</span>
-          <input
-            value={fromDomain}
-            onChange={(e) => setFromDomain(e.target.value)}
-            className="h-9 rounded-control border border-line bg-canvas px-3 text-sm"
-            placeholder="github.com"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-ink-muted">Older than (days)</span>
-          <input
-            type="number"
-            min={1}
-            value={olderThanDays}
-            onChange={(e) => setOlderThanDays(e.target.value)}
-            className="h-9 w-24 rounded-control border border-line bg-canvas px-3 text-sm"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-xs font-medium text-ink-muted">Action</span>
-          <select
-            value={action}
-            onChange={(e) => setAction(e.target.value as typeof action)}
-            className="h-9 rounded-control border border-line bg-canvas px-2 text-sm"
-          >
-            <option value="trash">Trash</option>
-            <option value="archive">Archive</option>
-            <option value="delete">Delete</option>
-          </select>
-        </label>
-        <div className="flex items-end">
-          <button
-            type="submit"
-            disabled={create.isPending || name.trim().length < 2}
-            className="h-9 rounded-control bg-accent-fill px-3 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-50"
-          >
-            {create.isPending ? "Adding…" : "Add rule"}
-          </button>
-        </div>
-      </form>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-ink-muted">
+          Rules run every hour. Blocked senders skip the inbox on arrival.
+        </p>
+        <button
+          type="button"
+          onClick={() => setEditing("new")}
+          className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent-fill px-3 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover"
+        >
+          <Plus aria-hidden className="size-4" /> New rule
+        </button>
+      </div>
 
       {rules.isPending ? (
         <ResourcePending />
       ) : rules.isError ? (
         <ResourceError message="Could not load cleanup rules." />
       ) : rules.data.rules.length === 0 ? (
-        <ResourceEmpty>No cleanup rules yet.</ResourceEmpty>
+        <div className="rounded-xl border border-dashed border-line bg-surface px-5 py-8 text-center">
+          <p className="text-base font-semibold">No cleanup rules yet</p>
+          <p className="mt-2 text-sm text-ink-muted">
+            For example: move notifications from github.com to Trash after 30 days, or send mail
+            from a sender you never want straight to Trash.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditing("new")}
+            className="mt-4 inline-flex h-9 items-center rounded-control bg-accent-fill px-4 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover"
+          >
+            Create your first rule
+          </button>
+        </div>
       ) : (
         <ul className="grid gap-2" aria-label="Cleanup rules">
           {rules.data.rules.map((rule) => {
-            const locked = rule.action === "delete" && !rules.data.canDelete;
+            const locked = rule.action === "delete" && !canDelete;
             return (
               <li
                 key={rule.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4"
+                data-testid="cleanup-rule"
+                className="grid gap-3 rounded-xl bg-surface p-4 shadow-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{rule.name}</p>
+                <div className="grid min-w-0 gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {rule.kind === "block_sender" ? (
+                      <Ban aria-hidden className="size-3.5 text-ink-muted" />
+                    ) : (
+                      <Eraser aria-hidden className="size-3.5 text-ink-muted" />
+                    )}
+                    <p className="truncate text-sm font-semibold">{rule.name}</p>
+                    {!rule.enabled ? (
+                      <span className="rounded-full bg-canvas-sunken px-2 py-0.5 text-[0.7rem] font-semibold text-ink-muted">
+                        Off
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="truncate text-xs text-ink-muted">
                     {ACTION_LABEL[rule.action]} · {describeRule(rule)}
                     {rule.lastRunAt
@@ -192,19 +166,28 @@ export function SettingsCleanupPage() {
                       : ""}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
+                      role="switch"
                       checked={rule.enabled}
                       disabled={locked || toggle.isPending}
                       onChange={(e) =>
                         toggle.mutate({ id: rule.id, enabled: e.target.checked })
                       }
+                      className="size-4 accent-accent"
                     />
                     On
                   </label>
-                  {rules.data.canDelete || rule.action !== "delete" ? (
+                  <button
+                    type="button"
+                    className="rounded-control border border-line px-2.5 py-1 text-xs font-medium hover:bg-canvas-sunken"
+                    onClick={() => setEditing(rule)}
+                  >
+                    Edit
+                  </button>
+                  {canDelete || rule.action !== "delete" ? (
                     <button
                       type="button"
                       disabled={remove.isPending}
@@ -228,6 +211,21 @@ export function SettingsCleanupPage() {
           })}
         </ul>
       )}
+
+      <RuleDialog
+        orgSlug={orgSlug}
+        rule={editing && editing !== "new" ? editing : undefined}
+        connections={connectionOptions}
+        canDelete={canDelete}
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+        onSaved={() => {
+          setEditing(null);
+          void invalidate();
+        }}
+      />
     </ResourcePage>
   );
 }

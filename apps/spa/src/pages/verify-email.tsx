@@ -3,9 +3,10 @@ import { MailCheck } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 
+import { AuthShell, FormAlert, FormNotice } from "@/components/auth/auth-shell";
+import { OtpInput } from "@/components/auth/otp-input";
 import { authClient } from "@/lib/auth/client";
 import { safeNext } from "@/lib/auth/safe-next";
-import { AuthLayout } from "@/pages/sign-up";
 
 const OTP_LENGTH = 6;
 
@@ -17,6 +18,7 @@ export function VerifyEmailPage() {
   const session = authClient.useSession();
 
   const [code, setCode] = useState("");
+  const [boxes, setBoxes] = useState(0);
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export function VerifyEmailPage() {
             : "That code didn't work. Try again?",
       );
       setCode("");
+      setBoxes((n) => n + 1);
       return;
     }
     window.location.assign(callbackURL);
@@ -70,22 +73,22 @@ export function VerifyEmailPage() {
     }
     setMessage("Sent again. The new code replaces the old one.");
     setCode("");
+    setBoxes((n) => n + 1);
   }
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Check your inbox"
       description="One quick step to make sure this address is really yours."
+      mood="thinking"
       footer={
-        <p className="text-center text-sm text-ink-muted">
-          <Link
-            to="/sign-up"
-            search={next ? { next } : undefined}
-            className="font-medium text-accent-fill hover:underline"
-          >
-            Use a different email
-          </Link>
-        </p>
+        <Link
+          to="/sign-up"
+          search={next ? { next } : undefined}
+          className="font-medium text-accent-fill hover:underline"
+        >
+          Use a different email
+        </Link>
       }
     >
       <div className="grid gap-5" data-testid="verify-notice">
@@ -97,14 +100,8 @@ export function VerifyEmailPage() {
             open the link.
           </p>
         </div>
-        {error ? (
-          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-ink">
-            {error}
-          </p>
-        ) : null}
-        {message ? (
-          <p className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-ink">{message}</p>
-        ) : null}
+        <FormAlert>{error}</FormAlert>
+        <FormNotice>{message}</FormNotice>
         <form
           className="grid gap-3"
           onSubmit={(e) => {
@@ -112,25 +109,23 @@ export function VerifyEmailPage() {
             void verify(code.trim());
           }}
         >
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Code</span>
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={OTP_LENGTH}
+          <div className="grid gap-2">
+            <p className="text-sm font-medium">Code</p>
+            <OtpInput
+              key={boxes}
               value={code}
-              onChange={(e) => {
-                const nextCode = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
-                setCode(nextCode);
-                if (nextCode.length === OTP_LENGTH) void verify(nextCode);
-              }}
-              className="h-10 rounded-control border border-line-strong bg-canvas px-3 font-mono tracking-[0.3em] outline-none focus:ring-2 focus:ring-accent"
+              onChange={setCode}
+              onComplete={(otp) => void verify(otp)}
+              length={OTP_LENGTH}
+              disabled={checking}
+              invalid={!!error}
+              autoFocus
             />
-          </label>
+          </div>
           <button
             type="submit"
             disabled={checking || code.length !== OTP_LENGTH}
-            className="h-10 rounded-control bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
           >
             {checking ? "Checking…" : "Confirm"}
           </button>
@@ -144,6 +139,6 @@ export function VerifyEmailPage() {
           {sending ? "Sending…" : "Send a new code"}
         </button>
       </div>
-    </AuthLayout>
+    </AuthShell>
   );
 }

@@ -20,6 +20,9 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Audience",
     items: [
       { label: "Contacts", path: "audience/contacts", alsoActiveFor: ["audience"] },
+      { label: "Segments", path: "audience/segments" },
+      { label: "Topics", path: "audience/topics" },
+      { label: "Properties", path: "audience/properties" },
       { label: "Broadcasts", path: "broadcasts" },
       { label: "Templates", path: "templates" },
     ],

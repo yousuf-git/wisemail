@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
@@ -182,7 +182,13 @@ export function AlertsPage() {
             {incidents.data.map((row) => (
               <li key={row.id} className="grid gap-2 px-4 py-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="truncate text-sm font-semibold">{row.title}</p>
+                  <Link
+                    to="/$orgSlug/alerts/incidents/$incidentId"
+                    params={{ orgSlug, incidentId: row.id }}
+                    className="truncate text-sm font-semibold hover:underline"
+                  >
+                    {row.title}
+                  </Link>
                   <span className="shrink-0 text-xs font-medium text-warning-ink">{row.status}</span>
                 </div>
                 <p className="text-xs text-ink-muted">
@@ -190,7 +196,14 @@ export function AlertsPage() {
                 </p>
                 {row.summary ? <p className="text-sm text-ink-secondary">{row.summary}</p> : null}
                 {row.status === "open" ? (
-                  <div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      to="/$orgSlug/alerts/incidents/$incidentId"
+                      params={{ orgSlug, incidentId: row.id }}
+                      className="rounded-control border border-line px-2.5 py-1 text-xs font-medium hover:bg-canvas-sunken"
+                    >
+                      Open
+                    </Link>
                     <button
                       type="button"
                       disabled={ack.isPending}

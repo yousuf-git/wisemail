@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
+import { ProjectsView } from "@/components/projects/projects-view";
 import {
   ResourceEmpty,
   ResourceError,
@@ -11,36 +12,33 @@ import { listProjects } from "@/lib/api";
 
 export function SettingsProjectsPage() {
   const { orgSlug } = useParams({ from: "/$orgSlug/settings/projects" });
+  const queryClient = useQueryClient();
   const projects = useQuery({
     queryKey: ["projects", orgSlug],
     queryFn: () => listProjects(orgSlug),
   });
 
   return (
-    <ResourcePage title="Projects" description="`GET /api/v1/projects`">
+    <ResourcePage
+      title="Projects"
+      description="A project groups domains, like one product or one client. Filters and member access can follow it."
+    >
       {projects.isPending ? (
         <ResourcePending />
       ) : projects.isError ? (
         <ResourceError message="Could not load projects." />
-      ) : projects.data.length === 0 ? (
-        <ResourceEmpty>No projects yet.</ResourceEmpty>
+      ) : !projects.data.can.read ? (
+        <ResourceEmpty>
+          Ask an Owner or Admin if you need something grouped.
+        </ResourceEmpty>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
-          {projects.data.map((row) => (
-            <li key={row.id} className="flex items-baseline justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{row.name}</p>
-                <p className="truncate text-xs text-ink-muted">
-                  {row.slug}
-                  {row.description ? ` · ${row.description}` : ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs text-ink-secondary">
-                {row.domainCount} domains · {row.scopedMemberCount} scoped
-              </span>
-            </li>
-          ))}
-        </ul>
+        <ProjectsView
+          orgSlug={orgSlug}
+          data={projects.data}
+          onChanged={() => {
+            void queryClient.invalidateQueries({ queryKey: ["projects", orgSlug] });
+          }}
+        />
       )}
     </ResourcePage>
   );

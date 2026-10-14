@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Menu, PenLine } from "lucide-react";
+import { Menu, PenLine } from "lucide-react";
 import { useState } from "react";
 
-import { authClient } from "@/lib/auth/client";
 import { getUsageSummary } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { TourMenu } from "@/components/tour/tour-menu";
 import { NavLinks } from "@/components/shell/nav-links";
 import { NotificationBell } from "@/components/shell/notification-bell";
+import { UserMenu } from "@/components/shell/user-menu";
 import { PlanBanner, UsageTile } from "@/components/shell/usage-tile";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
@@ -133,25 +132,8 @@ function Dock({
         <NavLinks orgSlug={org.slug} />
       </div>
       <UsageTile orgSlug={org.slug} usage={usage} />
-      <div className="grid gap-2 border-t border-line pt-2">
-        <div className="px-1">
-          <p className="truncate text-sm font-medium">{user.name}</p>
-          <p className="truncate text-xs text-ink-muted">{user.email}</p>
-        </div>
-        <button
-          type="button"
-          className={cn(
-            "flex h-9 items-center justify-center gap-2 rounded-control border border-line px-3 text-sm font-medium",
-            "text-ink-secondary hover:bg-canvas-sunken hover:text-ink",
-          )}
-          onClick={async () => {
-            await authClient.signOut();
-            window.location.assign("/sign-in");
-          }}
-        >
-          <LogOut size={16} aria-hidden />
-          Sign out
-        </button>
+      <div className="border-t border-line pt-2">
+        <UserMenu user={user} orgSlug={org.slug} />
       </div>
     </div>
   );

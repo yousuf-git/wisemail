@@ -19,6 +19,12 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 /** Explicit lazy map — Vite can analyze every entry (`bundle-dynamic-imports`). */
 const PAGE_MODULES = {
   home: () => import("@/pages/home"),
+  pricing: () => import("@/pages/pricing"),
+  privacy: () => import("@/pages/privacy"),
+  terms: () => import("@/pages/terms"),
+  devOutbox: () => import("@/pages/dev-outbox"),
+  devStripeCheckout: () => import("@/pages/dev-stripe-checkout"),
+  devStripePortal: () => import("@/pages/dev-stripe-portal"),
   signIn: () => import("@/pages/sign-in"),
   signUp: () => import("@/pages/sign-up"),
   forgotPassword: () => import("@/pages/forgot-password"),
@@ -33,14 +39,23 @@ const PAGE_MODULES = {
   scheduled: () => import("@/pages/mail-folder"),
   trash: () => import("@/pages/mail-folder"),
   activity: () => import("@/pages/activity"),
+  activityEmail: () => import("@/pages/activity-email"),
   compose: () => import("@/pages/compose"),
   notifications: () => import("@/pages/notifications"),
   contacts: () => import("@/pages/contacts"),
+  contactDetail: () => import("@/pages/contact-detail"),
+  audienceSegments: () => import("@/pages/audience-segments"),
+  audienceTopics: () => import("@/pages/audience-topics"),
+  audienceProperties: () => import("@/pages/audience-properties"),
   broadcasts: () => import("@/pages/broadcasts"),
+  broadcastEditor: () => import("@/pages/broadcast-editor"),
   templates: () => import("@/pages/templates"),
+  templateEditor: () => import("@/pages/template-editor"),
   insights: () => import("@/pages/insights"),
   alerts: () => import("@/pages/alerts"),
+  incidentDetail: () => import("@/pages/incident-detail"),
   domains: () => import("@/pages/domains"),
+  domainDetail: () => import("@/pages/domain-detail"),
   apiKeys: () => import("@/pages/api-keys"),
   settingsGeneral: () => import("@/pages/settings-general"),
   settingsConnections: () => import("@/pages/settings-connections"),
@@ -72,6 +87,42 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: lazyRouteComponent(PAGE_MODULES.home, "HomePage"),
+});
+
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pricing",
+  component: lazyRouteComponent(PAGE_MODULES.pricing, "PricingPage"),
+});
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: lazyRouteComponent(PAGE_MODULES.privacy, "PrivacyPage"),
+});
+
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: lazyRouteComponent(PAGE_MODULES.terms, "TermsPage"),
+});
+
+const devOutboxRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/outbox",
+  component: lazyRouteComponent(PAGE_MODULES.devOutbox, "DevOutboxPage"),
+});
+
+const devStripeCheckoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/stripe/checkout/$id",
+  component: lazyRouteComponent(PAGE_MODULES.devStripeCheckout, "DevStripeCheckoutPage"),
+});
+
+const devStripePortalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/stripe/portal/$id",
+  component: lazyRouteComponent(PAGE_MODULES.devStripePortal, "DevStripePortalPage"),
 });
 
 const signInRoute = createRoute({
@@ -235,6 +286,12 @@ const activityRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.activity, "ActivityPage"),
 });
 
+const activityEmailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/activity/$emailId",
+  component: lazyRouteComponent(PAGE_MODULES.activityEmail, "ActivityEmailPage"),
+});
+
 const composeRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/compose",
@@ -253,16 +310,64 @@ const contactsRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.contacts, "ContactsPage"),
 });
 
+const contactDetailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/audience/contacts/$contactId",
+  component: lazyRouteComponent(PAGE_MODULES.contactDetail, "ContactDetailPage"),
+});
+
+const audienceSegmentsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/audience/segments",
+  component: lazyRouteComponent(PAGE_MODULES.audienceSegments, "AudienceSegmentsPage"),
+});
+
+const audienceTopicsRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/audience/topics",
+  component: lazyRouteComponent(PAGE_MODULES.audienceTopics, "AudienceTopicsPage"),
+});
+
+const audiencePropertiesRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/audience/properties",
+  component: lazyRouteComponent(PAGE_MODULES.audienceProperties, "AudiencePropertiesPage"),
+});
+
 const broadcastsRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/broadcasts",
   component: lazyRouteComponent(PAGE_MODULES.broadcasts, "BroadcastsPage"),
 });
 
+const broadcastNewRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/broadcasts/new",
+  component: lazyRouteComponent(PAGE_MODULES.broadcastEditor, "BroadcastNewPage"),
+});
+
+const broadcastDetailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/broadcasts/$broadcastId",
+  component: lazyRouteComponent(PAGE_MODULES.broadcastEditor, "BroadcastDetailPage"),
+});
+
 const templatesRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/templates",
   component: lazyRouteComponent(PAGE_MODULES.templates, "TemplatesPage"),
+});
+
+const templateNewRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/templates/new",
+  component: lazyRouteComponent(PAGE_MODULES.templateEditor, "TemplateNewPage"),
+});
+
+const templateDetailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/templates/$templateId",
+  component: lazyRouteComponent(PAGE_MODULES.templateEditor, "TemplateDetailPage"),
 });
 
 const insightsRoute = createRoute({
@@ -277,10 +382,22 @@ const alertsRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.alerts, "AlertsPage"),
 });
 
+const incidentDetailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/alerts/incidents/$incidentId",
+  component: lazyRouteComponent(PAGE_MODULES.incidentDetail, "IncidentDetailPage"),
+});
+
 const domainsRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/domains",
   component: lazyRouteComponent(PAGE_MODULES.domains, "DomainsPage"),
+});
+
+const domainDetailRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/domains/$domainId",
+  component: lazyRouteComponent(PAGE_MODULES.domainDetail, "DomainDetailPage"),
 });
 
 const apiKeysRoute = createRoute({
@@ -369,6 +486,12 @@ const splatRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  pricingRoute,
+  privacyRoute,
+  termsRoute,
+  devOutboxRoute,
+  devStripeCheckoutRoute,
+  devStripePortalRoute,
   signInRoute,
   signUpRoute,
   forgotPasswordRoute,
@@ -395,14 +518,25 @@ const routeTree = rootRoute.addChildren([
     scheduledRoute,
     trashRoute,
     activityRoute,
+    activityEmailRoute,
     composeRoute,
     notificationsRoute,
     contactsRoute,
+    contactDetailRoute,
+    audienceSegmentsRoute,
+    audienceTopicsRoute,
+    audiencePropertiesRoute,
     broadcastsRoute,
+    broadcastNewRoute,
+    broadcastDetailRoute,
     templatesRoute,
+    templateNewRoute,
+    templateDetailRoute,
     insightsRoute,
     alertsRoute,
+    incidentDetailRoute,
     domainsRoute,
+    domainDetailRoute,
     apiKeysRoute,
     settingsGeneralRoute,
     settingsConnectionsRoute,

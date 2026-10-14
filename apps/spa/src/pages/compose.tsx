@@ -68,7 +68,7 @@ export function ComposePage() {
   });
 
   const activeSenders = useMemo(
-    () => (senders.data ?? []).filter((s) => s.status === "active"),
+    () => (senders.data?.senders ?? []).filter((s) => s.status === "active"),
     [senders.data],
   );
   const defaultSenderId =
