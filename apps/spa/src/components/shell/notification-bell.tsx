@@ -55,6 +55,7 @@ export function NotificationBell({ orgSlug }: { orgSlug: string }) {
         type="button"
         aria-label={count ? `Notifications, ${count} unread` : "Notifications"}
         aria-expanded={open}
+        data-tour="notifications-bell"
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "relative grid size-9 place-items-center rounded-control border border-line bg-surface text-ink-secondary",

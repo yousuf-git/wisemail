@@ -48,9 +48,15 @@ export function shouldAutoStart(
 ): boolean {
   if (state.trigger === "manual") return false;
   if (state.status && !state.outdated) return false;
+  const target = `/${context.orgSlug}${state.autoRoute ? `/${state.autoRoute}` : ""}`;
   if (state.trigger === "auto_first_visit") {
-    const target = `/${context.orgSlug}${state.autoRoute ? `/${state.autoRoute}` : ""}`;
     return context.pathname === target && !context.hasConnection;
+  }
+  if (state.trigger === "auto_after_event") {
+    return context.pathname === target && context.hasConnection;
+  }
+  if (state.trigger === "auto_first_page_visit") {
+    return context.pathname === target;
   }
   return false;
 }

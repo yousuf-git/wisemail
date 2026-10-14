@@ -1,3 +1,6 @@
+import type { WiziMood } from "@/components/mascot/moods";
+import { EmptyState } from "@/components/app/empty-state";
+
 /** Shared loading / error / empty chrome for list pages (composition over boolean props). */
 
 export function ResourcePage({
@@ -32,10 +35,35 @@ export function ResourceError({ message }: { message: string }) {
   );
 }
 
-export function ResourceEmpty({ children }: { children: React.ReactNode }) {
+export function ResourceEmpty({
+  title,
+  children,
+  action,
+  mood = "idle",
+  mascot = true,
+}: {
+  /** When set, `children` is the supporting line under the title. */
+  title?: React.ReactNode;
+  children?: React.ReactNode;
+  action?: React.ReactNode;
+  mood?: WiziMood;
+  mascot?: boolean;
+}) {
+  // Back-compat: most call sites pass only children (the empty message).
+  if (title === undefined) {
+    return (
+      <EmptyState
+        title={children ?? "Nothing here yet"}
+        mood={mood}
+        action={action}
+        mascot={mascot}
+        mascotSize={112}
+      />
+    );
+  }
   return (
-    <p className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted">
+    <EmptyState title={title} mood={mood} action={action} mascot={mascot} mascotSize={112}>
       {children}
-    </p>
+    </EmptyState>
   );
 }

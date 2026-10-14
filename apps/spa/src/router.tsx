@@ -8,6 +8,8 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
+import { ErrorView } from "@/components/app/error-view";
+
 export type RouterContext = {
   queryClient: QueryClient;
 };
@@ -25,6 +27,7 @@ const PAGE_MODULES = {
   devOutbox: () => import("@/pages/dev-outbox"),
   devStripeCheckout: () => import("@/pages/dev-stripe-checkout"),
   devStripePortal: () => import("@/pages/dev-stripe-portal"),
+  devShellPreview: () => import("@/pages/dev-shell-preview"),
   signIn: () => import("@/pages/sign-in"),
   signUp: () => import("@/pages/sign-up"),
   forgotPassword: () => import("@/pages/forgot-password"),
@@ -57,6 +60,7 @@ const PAGE_MODULES = {
   domains: () => import("@/pages/domains"),
   domainDetail: () => import("@/pages/domain-detail"),
   apiKeys: () => import("@/pages/api-keys"),
+  settingsLayout: () => import("@/pages/settings-layout"),
   settingsGeneral: () => import("@/pages/settings-general"),
   settingsConnections: () => import("@/pages/settings-connections"),
   settingsConnection: () => import("@/pages/settings-connection"),
@@ -125,6 +129,15 @@ const devStripePortalRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.devStripePortal, "DevStripePortalPage"),
 });
 
+const devShellPreviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/shell-preview",
+  validateSearch: z
+    .object({ state: z.enum(["demo", "empty", "wizi"]).optional() })
+    .catch({}),
+  component: lazyRouteComponent(PAGE_MODULES.devShellPreview, "DevShellPreviewPage"),
+});
+
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sign-in",
@@ -180,6 +193,7 @@ const inviteRoute = createRoute({
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/onboarding",
+  validateSearch: z.object({ new: z.string().optional() }).catch({}),
   component: lazyRouteComponent(PAGE_MODULES.onboarding, "OnboardingPage"),
 });
 
@@ -406,75 +420,81 @@ const apiKeysRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.apiKeys, "ApiKeysPage"),
 });
 
-const settingsGeneralRoute = createRoute({
+const settingsLayoutRoute = createRoute({
   getParentRoute: () => orgRoute,
-  path: "/settings/general",
+  path: "/settings",
+  component: lazyRouteComponent(PAGE_MODULES.settingsLayout, "SettingsLayoutPage"),
+});
+
+const settingsGeneralRoute = createRoute({
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/general",
   component: lazyRouteComponent(PAGE_MODULES.settingsGeneral, "SettingsGeneralPage"),
 });
 
 const settingsConnectionsRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/connections",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/connections",
   component: lazyRouteComponent(PAGE_MODULES.settingsConnections, "SettingsConnectionsPage"),
 });
 
 const settingsConnectionRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/connections/$connectionId",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/connections/$connectionId",
   component: lazyRouteComponent(PAGE_MODULES.settingsConnection, "SettingsConnectionPage"),
 });
 
 const settingsSendersRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/senders",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/senders",
   component: lazyRouteComponent(PAGE_MODULES.settingsSenders, "SettingsSendersPage"),
 });
 
 const settingsMembersRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/members",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/members",
   component: lazyRouteComponent(PAGE_MODULES.settingsMembers, "SettingsMembersPage"),
 });
 
 const settingsProjectsRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/projects",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/projects",
   component: lazyRouteComponent(PAGE_MODULES.settingsProjects, "SettingsProjectsPage"),
 });
 
 const settingsNotificationsRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/notifications",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/notifications",
   component: lazyRouteComponent(PAGE_MODULES.settingsNotifications, "SettingsNotificationsPage"),
 });
 
 const settingsBillingRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/billing",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/billing",
   component: lazyRouteComponent(PAGE_MODULES.settingsBilling, "SettingsBillingPage"),
 });
 
 const settingsUsageRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/usage",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/usage",
   component: lazyRouteComponent(PAGE_MODULES.settingsUsage, "SettingsUsagePage"),
 });
 
 const settingsCleanupRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/cleanup",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/cleanup",
   component: lazyRouteComponent(PAGE_MODULES.settingsCleanup, "SettingsCleanupPage"),
 });
 
 const settingsAiRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/ai",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/ai",
   component: lazyRouteComponent(PAGE_MODULES.settingsAi, "SettingsAiPage"),
 });
 
 const settingsAuditRoute = createRoute({
-  getParentRoute: () => orgRoute,
-  path: "/settings/audit",
+  getParentRoute: () => settingsLayoutRoute,
+  path: "/audit",
   component: lazyRouteComponent(PAGE_MODULES.settingsAudit, "SettingsAuditPage"),
 });
 
@@ -492,6 +512,7 @@ const routeTree = rootRoute.addChildren([
   devOutboxRoute,
   devStripeCheckoutRoute,
   devStripePortalRoute,
+  devShellPreviewRoute,
   signInRoute,
   signUpRoute,
   forgotPasswordRoute,
@@ -538,18 +559,20 @@ const routeTree = rootRoute.addChildren([
     domainsRoute,
     domainDetailRoute,
     apiKeysRoute,
-    settingsGeneralRoute,
-    settingsConnectionsRoute,
-    settingsConnectionRoute,
-    settingsSendersRoute,
-    settingsMembersRoute,
-    settingsProjectsRoute,
-    settingsNotificationsRoute,
-    settingsBillingRoute,
-    settingsUsageRoute,
-    settingsCleanupRoute,
-    settingsAiRoute,
-    settingsAuditRoute,
+    settingsLayoutRoute.addChildren([
+      settingsGeneralRoute,
+      settingsConnectionsRoute,
+      settingsConnectionRoute,
+      settingsSendersRoute,
+      settingsMembersRoute,
+      settingsProjectsRoute,
+      settingsNotificationsRoute,
+      settingsBillingRoute,
+      settingsUsageRoute,
+      settingsCleanupRoute,
+      settingsAiRoute,
+      settingsAuditRoute,
+    ]),
     splatRoute,
   ]),
 ]);
@@ -559,6 +582,12 @@ export function createAppRouter(queryClient: QueryClient) {
     routeTree,
     context: { queryClient },
     defaultPreload: "intent",
+    defaultErrorComponent: ({ error, reset }) => (
+      <ErrorView
+        error={error instanceof Error ? error : new Error(String(error))}
+        retry={reset}
+      />
+    ),
   });
 }
 

@@ -62,11 +62,17 @@ export function AdminShell({
                   to={to}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-[0.84rem] font-medium text-ink-secondary hover:bg-canvas hover:text-ink",
+                    "group flex items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-[0.84rem] font-medium text-ink-secondary hover:bg-canvas hover:text-ink",
                     active && "bg-accent-soft font-semibold text-ink",
                   )}
                 >
-                  <Icon className={cn("size-[18px]", active && "text-accent-fill")} aria-hidden />
+                  <Icon
+                    className={cn(
+                      "size-[18px] transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none",
+                      active && "text-accent-fill",
+                    )}
+                    aria-hidden
+                  />
                   {label}
                 </Link>
               );

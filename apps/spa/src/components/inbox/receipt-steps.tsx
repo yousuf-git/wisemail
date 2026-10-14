@@ -33,6 +33,7 @@ export function ReceiptSteps({
     <ol
       aria-label="Delivery progress"
       data-testid="receipt-steps"
+      data-tour="receipt-chip"
       className={cn("flex flex-wrap items-center gap-1.5 text-xs", className)}
     >
       {steps.map((step, index) => (

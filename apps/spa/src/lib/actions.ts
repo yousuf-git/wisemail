@@ -132,6 +132,20 @@ export function markThreadUnread(orgSlug: string, threadId: string) {
   });
 }
 
+export function cancelScheduled(orgSlug: string, emailId: string) {
+  return callOrgAction<{ emailId: string; status: "canceled" }>("scheduled.cancel", orgSlug, {
+    emailId,
+  });
+}
+
+export function rescheduleScheduled(orgSlug: string, emailId: string, scheduledAt: Date) {
+  return callOrgAction<{ emailId: string; scheduledAt: string }>(
+    "scheduled.reschedule",
+    orgSlug,
+    { emailId, scheduledAt: scheduledAt.toISOString() },
+  );
+}
+
 export function addConnection(
   orgSlug: string,
   input: { name: string; apiKey: string; confirmExtraCost?: boolean },
@@ -414,6 +428,89 @@ export function createContact(
   },
 ) {
   return callOrgAction("audience.create", orgSlug, input);
+}
+
+export type ImportBatchRow = {
+  row: number;
+  value: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    properties?: Record<string, string | number>;
+  };
+};
+
+export type ImportBatchResult = {
+  processed: number;
+  rateLimited: boolean;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; email: string; message: string }[];
+};
+
+export type ContactImportStatus = {
+  id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  total: number;
+  processed: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; email: string; message: string }[];
+  errorCount: number;
+};
+
+export function importContactsBatch(
+  orgSlug: string,
+  input: {
+    connectionId: string;
+    rows: ImportBatchRow[];
+    segmentIds?: string[];
+    updateExisting?: boolean;
+  },
+) {
+  return callOrgAction<ImportBatchResult>("audience.batch", orgSlug, input);
+}
+
+export function createContactImport(
+  orgSlug: string,
+  input: {
+    connectionId: string;
+    segmentIds?: string[];
+    updateExisting?: boolean;
+    total: number;
+  },
+) {
+  return callOrgAction<{ importId: string }>("audience.startUpload", orgSlug, input);
+}
+
+export function appendImportRows(
+  orgSlug: string,
+  input: { importId: string; rows: ImportBatchRow[] },
+) {
+  return callOrgAction<{ received: number }>("audience.appendRows", orgSlug, input);
+}
+
+export function startContactImport(orgSlug: string, importId: string) {
+  return callOrgAction<ContactImportStatus>("audience.start", orgSlug, { importId });
+}
+
+export function getContactImport(orgSlug: string, importId: string) {
+  return callOrgAction<ContactImportStatus>("audience.status", orgSlug, { importId });
+}
+
+export function importFinished(
+  orgSlug: string,
+  input: {
+    connectionId: string;
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+  },
+) {
+  return callOrgAction<{ ok: true }>("audience.finished", orgSlug, input);
 }
 
 export function updateContact(
