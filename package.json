@@ -17,7 +17,7 @@
     "start": "pnpm --filter @wisemail/api start",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm --filter @wisemail/api test && pnpm --filter @wisemail/shared test",
+    "test": "pnpm --filter @wisemail/api test && pnpm --filter @wisemail/spa test && pnpm --filter @wisemail/shared test",
     "test:e2e:spa": "pnpm --filter @wisemail/spa test:e2e",
     "format": "prettier --write .",
     "db:dev": "pnpm --filter @wisemail/api db:dev",
