@@ -42,6 +42,18 @@ export type TourDefinition = {
 
 export type TourStatus = "started" | "completed" | "skipped";
 
+/** One step the SPA can render without importing server tour definitions. */
+export type TourStepClientDTO = {
+  id: string;
+  route: string;
+  selector?: string;
+  mobileSelector?: string;
+  title: string;
+  body: string;
+  mood: WiziMood;
+  side?: TourSide;
+};
+
 /** What the client knows about one tour for this member: progress and which steps apply. */
 export type TourStateDTO = {
   id: string;
@@ -51,6 +63,12 @@ export type TourStateDTO = {
   trigger: TourTrigger;
   /** Steps this member sees (role and plan filtered), by id, in order. */
   stepIds: string[];
+  /** Full step payloads for the SPA runner (same order as `stepIds`). */
+  steps: TourStepClientDTO[];
+  /** For `auto_first_visit`: path below the org where it may start. */
+  autoRoute?: string;
+  /** After the last step, land on Connect when the org has no connection. */
+  endsWithConnect?: boolean;
   status: TourStatus | null;
   /** Ever completed, even if replayed since. */
   completed: boolean;

@@ -67,13 +67,26 @@ export function toStateDTO(
     | null
     | undefined,
 ): TourStateDTO {
+  const steps = stepsFor(def, can).map((s) => ({
+    id: s.id,
+    route: s.route,
+    selector: s.selector,
+    mobileSelector: s.mobileSelector,
+    title: s.title,
+    body: s.body,
+    mood: s.mood,
+    side: s.side,
+  }));
   return {
     id: def.id,
     name: def.name,
     description: def.description,
     version: def.version,
     trigger: def.trigger,
-    stepIds: stepsFor(def, can).map((s) => s.id),
+    stepIds: steps.map((s) => s.id),
+    steps,
+    autoRoute: def.autoRoute,
+    endsWithConnect: def.endsWithConnect,
     status: progress?.status ?? null,
     completed: !!progress?.completedAt || progress?.status === "completed",
     lastStep: progress?.lastStep ?? 0,

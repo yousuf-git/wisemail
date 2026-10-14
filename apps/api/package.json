@@ -45,6 +45,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
     "@types/mailparser": "^3.4.6",
     "@types/node": "^24.19.0",
     "@types/react": "^19",

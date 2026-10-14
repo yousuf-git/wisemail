@@ -11,7 +11,7 @@ import {
   tourAvailable,
   TOURS,
 } from "@/lib/tours";
-import { buildTour } from "@/components/tour/tour-runner";
+import { buildTour } from "@/lib/tours/build-tour";
 
 const can = (role: string) => (p: Permission) => roleHasPermission(role, p);
 const welcome = getTour("welcome")!;

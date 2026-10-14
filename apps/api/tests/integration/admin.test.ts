@@ -37,7 +37,6 @@ let overview: typeof import("@/lib/services/admin/overview");
 let health: typeof import("@/lib/services/admin/health");
 let entitlements: typeof import("@/lib/billing/entitlements");
 let actionMod: typeof import("@/lib/actions/action");
-let banner: typeof import("@/components/admin/impersonation-banner");
 let connect: typeof import("@/lib/db/connect");
 let z: typeof import("zod");
 let mongoose: typeof import("mongoose").default;
@@ -57,7 +56,6 @@ beforeAll(async () => {
   health = await import("@/lib/services/admin/health");
   entitlements = await import("@/lib/billing/entitlements");
   actionMod = await import("@/lib/actions/action");
-  banner = await import("@/components/admin/impersonation-banner");
   z = await import("zod");
   mongoose = (await import("mongoose")).default;
   await connect.connectDb();
@@ -278,7 +276,7 @@ describe("ban", () => {
 });
 
 describe("impersonation", () => {
-  it("swaps the session, shows the banner, stops cleanly, and audits under each workspace", async () => {
+  it("swaps the session, stops cleanly, and audits under each workspace", async () => {
     const boss = await signUp("Ivy");
     await makeAdmin(boss);
     const owner = await signUp("Ollie");
@@ -319,15 +317,6 @@ describe("impersonation", () => {
     expect((session!.session as { impersonatedBy?: string }).impersonatedBy).toBe(boss.id);
     // The impersonated session is not an admin session, even though its owner's admin is the actor.
     expect(await guard.getPlatformAdmin()).toBeNull();
-
-    const el = await banner.ImpersonationBanner();
-    expect(el).not.toBeNull();
-    expect(JSON.stringify(el)).toContain("Viewing as");
-    expect(JSON.stringify(el)).toContain("Ollie");
-
-    // A normal session shows no banner.
-    as(owner);
-    expect(await banner.ImpersonationBanner()).toBeNull();
 
     // Stop restores the admin's own session.
     as(cookieHeader());

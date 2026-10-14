@@ -27,8 +27,8 @@ let stop: () => Promise<void>;
 let m: Mail;
 let insights: typeof import("@/lib/services/insights");
 let rollups: typeof import("@/lib/services/rollups");
-let overviewData: typeof import("@/components/app/overview-data");
-let overviewModel: typeof import("@/components/app/overview-model");
+let overviewData: typeof import("@/lib/services/overview-data");
+let overviewModel: typeof import("@/lib/services/overview-model");
 let route: typeof import("@/app/api/v1/insights/route");
 
 beforeAll(async () => {
@@ -36,8 +36,8 @@ beforeAll(async () => {
   m = await loadMail();
   insights = await import("@/lib/services/insights");
   rollups = await import("@/lib/services/rollups");
-  overviewData = await import("@/components/app/overview-data");
-  overviewModel = await import("@/components/app/overview-model");
+  overviewData = await import("@/lib/services/overview-data");
+  overviewModel = await import("@/lib/services/overview-model");
   route = await import("@/app/api/v1/insights/route");
 }, 120_000);
 

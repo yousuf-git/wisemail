@@ -26,6 +26,7 @@ import "@/app/(app)/[orgSlug]/settings/projects/actions";
 import "@/app/(app)/[orgSlug]/settings/senders/actions";
 import "@/app/(app)/[orgSlug]/templates/actions";
 import "@/app/onboarding/actions";
+import "@/app/(app)/impersonation-actions";
 import "@/app/(auth)/invite/[token]/actions";
 import "@/app/(admin)/admin/actions";
 

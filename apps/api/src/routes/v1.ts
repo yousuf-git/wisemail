@@ -11,6 +11,7 @@ import { GET as getAudit } from "@/app/api/v1/audit/route";
 import { GET as getAlertRules } from "@/app/api/v1/alert-rules/route";
 import { GET as getApiKeys } from "@/app/api/v1/api-keys/route";
 import { GET as getBroadcasts } from "@/app/api/v1/broadcasts/route";
+import { GET as getConnection } from "@/app/api/v1/connections/[connectionId]/route";
 import { GET as getConnections } from "@/app/api/v1/connections/route";
 import { GET as getContacts } from "@/app/api/v1/contacts/route";
 import { GET as getDomains } from "@/app/api/v1/domains/route";
@@ -20,14 +21,19 @@ import { GET as getMembers } from "@/app/api/v1/members/route";
 import { GET as getProjects } from "@/app/api/v1/projects/route";
 import { GET as getTemplates } from "@/app/api/v1/templates/route";
 import { GET as getTemplateOptions } from "@/app/api/v1/templates/options/route";
+import { GET as getTours } from "@/app/api/v1/tours/route";
 import { GET as getNotificationsUnread } from "@/app/api/v1/notifications/unread/route";
 import { GET as getNotifications } from "@/app/api/v1/notifications/route";
+import { GET as getOverview } from "@/app/api/v1/overview/route";
 import { GET as getSenders } from "@/app/api/v1/senders/route";
 import { GET as getSettingsBilling } from "@/app/api/v1/settings/billing/route";
+import { GET as getSettingsCleanup } from "@/app/api/v1/settings/cleanup/route";
 import { GET as getSettingsGeneral } from "@/app/api/v1/settings/general/route";
 import { GET as getSettingsNotifications } from "@/app/api/v1/settings/notifications/route";
+import { GET as getSettingsUsage } from "@/app/api/v1/settings/usage/route";
 import { GET as getThread } from "@/app/api/v1/threads/[threadId]/route";
 import { GET as getThreads } from "@/app/api/v1/threads/route";
+import { GET as getUsageSummary } from "@/app/api/v1/usage/summary/route";
 
 import { sendWebResponse, toWebRequest } from "../http.js";
 
@@ -90,6 +96,9 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
   app.get("/api/v1/connections", (req, reply) =>
     bridge(req, reply, getConnections as AnyRouteHandler),
   );
+  app.get<{ Params: { connectionId: string } }>("/api/v1/connections/:connectionId", (req, reply) =>
+    bridge(req, reply, getConnection as AnyRouteHandler, req.params),
+  );
   app.get("/api/v1/domains", (req, reply) => bridge(req, reply, getDomains as AnyRouteHandler));
   app.get("/api/v1/members", (req, reply) => bridge(req, reply, getMembers as AnyRouteHandler));
   app.get("/api/v1/api-keys", (req, reply) => bridge(req, reply, getApiKeys as AnyRouteHandler));
@@ -103,6 +112,17 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
   );
   app.get("/api/v1/settings/billing", (req, reply) =>
     bridge(req, reply, getSettingsBilling as AnyRouteHandler),
+  );
+  app.get("/api/v1/settings/usage", (req, reply) =>
+    bridge(req, reply, getSettingsUsage as AnyRouteHandler),
+  );
+  app.get("/api/v1/settings/cleanup", (req, reply) =>
+    bridge(req, reply, getSettingsCleanup as AnyRouteHandler),
+  );
+
+  app.get("/api/v1/overview", (req, reply) => bridge(req, reply, getOverview as AnyRouteHandler));
+  app.get("/api/v1/usage/summary", (req, reply) =>
+    bridge(req, reply, getUsageSummary as AnyRouteHandler),
   );
 
   app.get("/api/v1/audit", (req, reply) => bridge(req, reply, getAudit as AnyRouteHandler));
@@ -118,4 +138,6 @@ export const v1Routes: FastifyPluginAsync = async (app) => {
   app.post("/api/v1/ai/explain", (req, reply) =>
     bridge(req, reply, postAiExplain as AnyRouteHandler),
   );
+
+  app.get("/api/v1/tours", (req, reply) => bridge(req, reply, getTours as AnyRouteHandler));
 };

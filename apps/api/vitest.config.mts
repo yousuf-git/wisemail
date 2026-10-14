@@ -13,12 +13,28 @@ const shared = {
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
-    alias: {
-      "server-only": fileURLToPath(new URL("./src/stubs/server-only.ts", import.meta.url)),
-      "next/navigation": fileURLToPath(new URL("./src/stubs/next-navigation.ts", import.meta.url)),
-      "next/headers": fileURLToPath(new URL("./src/stubs/next-headers.ts", import.meta.url)),
-      "next/server": fileURLToPath(new URL("./src/stubs/next-server.ts", import.meta.url)),
-    },
+    alias: [
+      {
+        find: /^@\/(.*)$/,
+        replacement: `${fileURLToPath(new URL("./", import.meta.url))}$1`,
+      },
+      {
+        find: "server-only",
+        replacement: fileURLToPath(new URL("./src/stubs/server-only.ts", import.meta.url)),
+      },
+      {
+        find: "next/navigation",
+        replacement: fileURLToPath(new URL("./src/stubs/next-navigation.ts", import.meta.url)),
+      },
+      {
+        find: "next/headers",
+        replacement: fileURLToPath(new URL("./src/stubs/next-headers.ts", import.meta.url)),
+      },
+      {
+        find: "next/server",
+        replacement: fileURLToPath(new URL("./src/stubs/next-server.ts", import.meta.url)),
+      },
+    ],
   },
   test: {
     ...shared,
