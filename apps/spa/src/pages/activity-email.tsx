@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
 import { EmailDetail } from "@/components/activity/email-detail";
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import {
   ResourceError,
   ResourcePage,
@@ -29,6 +30,12 @@ export function ActivityEmailPage() {
 
   return (
     <ResourcePage title="Email" description="Delivery timeline for one message.">
+      {timeline.data ? (
+        <BreadcrumbLabel
+          segment={emailId}
+          label={timeline.data.email.subject || "(no subject)"}
+        />
+      ) : null}
       {timeline.isPending ? (
         <ResourcePending />
       ) : notFound ? (

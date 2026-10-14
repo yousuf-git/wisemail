@@ -75,6 +75,8 @@ export function OverviewPage() {
   const overview = useQuery({
     queryKey: ["overview", orgSlug],
     queryFn: () => getOverview(orgSlug),
+    // Live SSE invalidates this; poll as a quiet fallback when the stream is down.
+    refetchInterval: 60_000,
   });
 
   const firstName = (session.data?.user?.name ?? "there").split(" ")[0] || "there";
@@ -84,7 +86,11 @@ export function OverviewPage() {
   return (
     <section className="grid gap-6">
       <header className="flex flex-wrap items-start gap-4">
-        <Wizi mood="idle" size={64} title="Wizi" />
+        <Wizi
+          mood={hasConnection ? "happy" : "idle"}
+          size={64}
+          title="Wizi"
+        />
         <div className="grid min-w-0 flex-1 gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Hi, {firstName}</h1>
           <p className="text-sm text-ink-muted">
@@ -155,6 +161,14 @@ export function OverviewPage() {
 
       {hasConnection ? (
         <div className="flex flex-wrap gap-3">
+          <Link
+            to="/$orgSlug/settings/connections"
+            params={{ orgSlug }}
+            data-tour="checklist"
+            className="inline-flex h-9 items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas-sunken"
+          >
+            Setup checklist
+          </Link>
           <Link
             to="/$orgSlug/inbox"
             params={{ orgSlug }}

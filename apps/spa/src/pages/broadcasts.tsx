@@ -62,6 +62,7 @@ export function BroadcastsPage() {
           <Link
             to="/$orgSlug/broadcasts/new"
             params={{ orgSlug }}
+            data-tour="broadcasts-new"
             className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent-fill px-3 text-xs font-semibold text-accent-ink"
           >
             <Plus className="size-3.5" aria-hidden /> New broadcast
@@ -74,22 +75,29 @@ export function BroadcastsPage() {
       ) : data.isError ? (
         <ResourceError message="Could not load broadcasts." />
       ) : (data.data?.connections.length ?? 0) === 0 ? (
-        <ResourceEmpty>
-          Connect a Resend account first.{" "}
-          <Link
-            to="/$orgSlug/settings/connections"
-            params={{ orgSlug }}
-            className="font-semibold text-accent-fill hover:underline"
-          >
-            Open Connections
-          </Link>
-        </ResourceEmpty>
+        <div data-tour="broadcasts-list">
+          <ResourceEmpty>
+            Connect a Resend account first.{" "}
+            <Link
+              to="/$orgSlug/settings/connections"
+              params={{ orgSlug }}
+              className="font-semibold text-accent-fill hover:underline"
+            >
+              Open Connections
+            </Link>
+          </ResourceEmpty>
+        </div>
       ) : rows.length === 0 ? (
-        <ResourceEmpty>
-          {status ? "No broadcasts with that status." : "No broadcasts yet."}
-        </ResourceEmpty>
+        <div data-tour="broadcasts-list">
+          <ResourceEmpty>
+            {status ? "No broadcasts with that status." : "No broadcasts yet."}
+          </ResourceEmpty>
+        </div>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+        <ul
+          data-tour="broadcasts-list"
+          className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface"
+        >
           {rows.map((row) => {
             const when =
               row.status === "scheduled" && row.scheduledAt

@@ -269,12 +269,18 @@ export function ActivityPage() {
       ) : list.isError ? (
         <ResourceError message="Could not load activity." />
       ) : items.length === 0 ? (
-        <ResourceEmpty>
-          {active ? "Nothing matches these filters." : "No activity yet."}
-        </ResourceEmpty>
+        <div data-tour="activity-list">
+          <ResourceEmpty>
+            {active ? "Nothing matches these filters." : "No activity yet."}
+          </ResourceEmpty>
+        </div>
       ) : (
         <>
-          <ul className="grid gap-0.5 rounded-xl bg-surface p-1 shadow-md" aria-label="Activity">
+          <ul
+            data-tour="activity-list"
+            className="grid gap-0.5 rounded-xl bg-surface p-1 shadow-md"
+            aria-label="Activity"
+          >
             {items.map((row) => (
               <Row key={row.id} orgSlug={orgSlug} row={row} />
             ))}

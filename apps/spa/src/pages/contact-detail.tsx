@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { AudienceNav } from "@/components/audience/audience-nav";
 import {
   ResourceError,
@@ -107,6 +108,7 @@ export function ContactDetailPage() {
       }
       description={data ? `${data.email} · ${data.connectionName}` : "`GET /api/v1/contacts/:id`"}
     >
+      {data ? <BreadcrumbLabel segment={contactId} label={data.email} /> : null}
       <AudienceNav orgSlug={orgSlug} />
       <Link
         to="/$orgSlug/audience/contacts"

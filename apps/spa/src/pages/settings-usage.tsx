@@ -39,7 +39,10 @@ export function SettingsUsagePage() {
         <ResourceError message="Could not load usage." />
       ) : (
         <div className="grid max-w-2xl gap-4">
-          <section className="grid gap-3 rounded-xl border border-line bg-surface p-5 shadow-sm">
+          <section
+            data-tour="usage-meter"
+            className="grid gap-3 rounded-xl border border-line bg-surface p-5 shadow-sm"
+          >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-base font-semibold">Tracked emails</h2>
               <span className="text-sm text-ink-muted">{usage.data.plan.label}</span>
@@ -90,6 +93,7 @@ export function SettingsUsagePage() {
             <Link
               to="/$orgSlug/settings/billing"
               params={{ orgSlug }}
+              data-tour="usage-plan"
               className="text-sm font-medium text-accent-fill hover:underline"
             >
               Manage plan

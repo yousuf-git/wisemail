@@ -5,10 +5,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AudienceNav } from "@/components/audience/audience-nav";
+import { ImportDialog } from "@/components/audience/import-dialog";
 import {
   ResourceEmpty,
   ResourceError,
@@ -48,6 +49,7 @@ export function ContactsPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debouncedQ = useDebounced(filters.q, 250);
   const applied = { ...filters, q: debouncedQ };
@@ -187,13 +189,22 @@ export function ContactsPage() {
           <option value="unsubscribed">Unsubscribed</option>
         </select>
         {writable.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent-fill px-3 text-xs font-semibold text-accent-ink"
-          >
-            <Plus className="size-3.5" aria-hidden /> Add contact
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setImporting(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-xs font-semibold hover:bg-canvas-sunken"
+            >
+              <Upload className="size-3.5" aria-hidden /> Import CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent-fill px-3 text-xs font-semibold text-accent-ink"
+            >
+              <Plus className="size-3.5" aria-hidden /> Add contact
+            </button>
+          </>
         ) : null}
       </div>
 
@@ -215,15 +226,40 @@ export function ContactsPage() {
         />
       ) : null}
 
+      {options.data && importing ? (
+        <ImportDialog
+          orgSlug={orgSlug}
+          options={options.data}
+          open={importing}
+          onOpenChange={setImporting}
+          onDone={() => {
+            void queryClient.invalidateQueries({ queryKey: ["contacts", orgSlug] });
+          }}
+        />
+      ) : null}
+
       {list.isPending ? (
         <ResourcePending />
       ) : list.isError ? (
         <ResourceError message="Could not load contacts." />
       ) : rows.length === 0 ? (
-        <ResourceEmpty>
+        <ResourceEmpty
+          mood="idle"
+          action={
+            writable.length > 0 && !Object.values(applied).some(Boolean) ? (
+              <button
+                type="button"
+                onClick={() => setImporting(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent-fill px-3 text-xs font-semibold text-accent-ink"
+              >
+                <Upload className="size-3.5" aria-hidden /> Import a CSV
+              </button>
+            ) : undefined
+          }
+        >
           {Object.values(applied).some(Boolean)
             ? "No contacts match these filters."
-            : "No contacts synced yet."}
+            : "Contacts appear once Resend has synced them. You can also import a CSV or add one."}
         </ResourceEmpty>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-surface">

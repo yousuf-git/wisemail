@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { Checklist } from "@/components/connections/checklist";
 import {
   CONNECTION_STATUS,
@@ -95,6 +96,7 @@ export function SettingsConnectionPage() {
 
   return (
     <div className="grid gap-4">
+      <BreadcrumbLabel segment={connectionId} label={connection.name} />
       <Link
         to="/$orgSlug/settings/connections"
         params={{ orgSlug }}

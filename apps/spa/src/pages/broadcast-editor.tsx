@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { PreviewFrame } from "@/components/composer/preview-frame";
 import {
   ResourceError,
@@ -519,6 +520,9 @@ export function BroadcastDetailPage() {
       title={broadcast.data?.name || "Broadcast"}
       description={broadcast.data?.subject || "`GET /api/v1/broadcasts/:id`"}
     >
+      {broadcast.data ? (
+        <BreadcrumbLabel segment={broadcastId} label={broadcast.data.name} />
+      ) : null}
       <Link
         to="/$orgSlug/broadcasts"
         params={{ orgSlug }}

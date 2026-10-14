@@ -10,6 +10,7 @@ import { ListChecks, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ThreadRow } from "@/components/inbox/thread-row";
+import { ResourceEmpty } from "@/components/resource-page";
 import { trashItems } from "@/lib/actions";
 import { getAiStatus, listThreads, type MailListRow } from "@/lib/api";
 
@@ -117,7 +118,16 @@ export function InboxPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Inbox</h1>
-          <p className="text-sm text-ink-muted">Replies and conversations from your connected domains.</p>
+          <p className="text-sm text-ink-muted" data-tour="inbox-reply">
+            Replies and conversations from your connected domains. Open a thread to reply or draft
+            with AI.
+          </p>
+          <p
+            data-tour="receipt-chip"
+            className="mt-1 text-xs font-medium text-ink-muted"
+          >
+            Sent mail shows receipts: sent → delivered → opened
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -214,12 +224,16 @@ export function InboxPage() {
           Could not load inbox. Sign in and confirm the API is up.
         </p>
       ) : rows.length === 0 ? (
-        <p
-          data-tour="inbox-list"
-          className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted"
-        >
-          {emptyCopy}
-        </p>
+        <div data-tour="inbox-list">
+          <ResourceEmpty
+            mood={searching || unreadOnly || category ? "idle" : "sleep"}
+            title={emptyCopy}
+          >
+            {searching || unreadOnly || category
+              ? "Try clearing filters or searching something else."
+              : "Replies from your domains will land here."}
+          </ResourceEmpty>
+        </div>
       ) : (
         <div data-tour="inbox-list" className="overflow-hidden rounded-lg border border-line bg-surface">
           <ul>

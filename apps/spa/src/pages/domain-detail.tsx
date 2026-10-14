@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { DnsRecords } from "@/components/domains/dns-records";
 import {
   CHECK_LABELS,
@@ -159,6 +160,7 @@ export function DomainDetailPage() {
           : "`GET /api/v1/domains/:id`"
       }
     >
+      {domain ? <BreadcrumbLabel segment={domainId} label={domain.name} /> : null}
       <Link
         to="/$orgSlug/domains"
         params={{ orgSlug }}

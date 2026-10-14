@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { lazy, Suspense, useMemo, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { PreviewFrame } from "@/components/composer/preview-frame";
 import {
   ResourceError,
@@ -480,6 +481,9 @@ export function TemplateDetailPage() {
       title={template.data?.name || "Template"}
       description={template.data?.subject || "`GET /api/v1/templates/:id`"}
     >
+      {template.data ? (
+        <BreadcrumbLabel segment={templateId} label={template.data.name} />
+      ) : null}
       <Link
         to="/$orgSlug/templates"
         params={{ orgSlug }}

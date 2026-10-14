@@ -3,9 +3,11 @@ import { useParams } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { ScheduledView } from "@/components/inbox/scheduled-view";
 import { ThreadRow } from "@/components/inbox/thread-row";
+import { ResourceEmpty } from "@/components/resource-page";
 import { restoreItems } from "@/lib/actions";
-import { listThreads, type MailFolder, type MailListRow } from "@/lib/api";
+import { listThreads, type MailListRow } from "@/lib/api";
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -22,7 +24,7 @@ function rowKey(row: MailListRow) {
 
 export function ScheduledPage() {
   const { orgSlug } = useParams({ from: "/$orgSlug/scheduled" });
-  return <MailFolderList orgSlug={orgSlug} folder="scheduled" title="Scheduled" />;
+  return <ScheduledView orgSlug={orgSlug} />;
 }
 
 export function TrashPage() {
@@ -35,10 +37,8 @@ export function SentPage() {
   return <MailFolderList orgSlug={orgSlug} folder="sent" title="Sent" />;
 }
 
-const EMPTY: Record<MailFolder, string> = {
-  inbox: "Inbox zero",
+const EMPTY: Record<"sent" | "trash", string> = {
   sent: "Nothing sent yet",
-  scheduled: "Nothing scheduled",
   trash: "Trash is empty",
 };
 
@@ -48,7 +48,7 @@ function MailFolderList({
   title,
 }: {
   orgSlug: string;
-  folder: "scheduled" | "sent" | "trash";
+  folder: "sent" | "trash";
   title: string;
 }) {
   const queryClient = useQueryClient();
@@ -135,9 +135,7 @@ function MailFolderList({
           Could not load {title.toLowerCase()}.
         </p>
       ) : rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted">
-          {emptyLabel}
-        </p>
+        <ResourceEmpty mood={folder === "trash" ? "idle" : "happy"}>{emptyLabel}</ResourceEmpty>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           <ul>

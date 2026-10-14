@@ -441,6 +441,7 @@ export function ComposePage() {
             className="flex flex-wrap gap-1 rounded-control border border-line p-0.5"
             role="group"
             aria-label="Editor mode"
+            data-tour="compose-modes"
           >
             {(
               [
@@ -472,7 +473,12 @@ export function ComposePage() {
           </div>
           <div className="flex flex-wrap items-center gap-1">
             {previewVisible ? (
-              <div className="flex items-center gap-0.5" role="group" aria-label="Preview options">
+              <div
+                className="flex items-center gap-0.5"
+                role="group"
+                aria-label="Preview options"
+                data-tour="compose-preview"
+              >
                 <button
                   type="button"
                   aria-label="Desktop width"
@@ -517,6 +523,7 @@ export function ComposePage() {
                 type="button"
                 onClick={() => setShowPreview((v) => !v)}
                 aria-pressed={showPreview}
+                data-tour="compose-preview"
                 className="inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-xs font-medium text-ink-secondary hover:bg-canvas-sunken"
               >
                 {showPreview ? (
@@ -659,7 +666,7 @@ export function ComposePage() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3" data-tour="compose-schedule">
           <SchedulePicker
             value={scheduledAt}
             onChange={setScheduledAt}

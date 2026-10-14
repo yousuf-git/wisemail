@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "@tanstack/react-router";
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
+import { BreadcrumbProvider } from "@/components/app/breadcrumb-label";
 import { AppShell } from "@/components/shell/app-shell";
 import { TourProvider } from "@/components/tour/tour-provider";
 import { useOrgStream } from "@/hooks/use-org-stream";
@@ -55,13 +56,15 @@ export function OrgLayoutPage() {
     <>
       <ImpersonationBanner />
       <TourProvider orgSlug={org.slug} bootstrap={bootstrap}>
-        <AppShell
-          org={org}
-          orgs={orgs}
-          user={{ name: user.name, email: user.email, image: user.image }}
-        >
-          <Outlet />
-        </AppShell>
+        <BreadcrumbProvider>
+          <AppShell
+            org={org}
+            orgs={orgs}
+            user={{ name: user.name, email: user.email, image: user.image }}
+          >
+            <Outlet />
+          </AppShell>
+        </BreadcrumbProvider>
       </TourProvider>
     </>
   );

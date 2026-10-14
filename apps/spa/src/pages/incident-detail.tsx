@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Lock, RefreshCw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { AI_CREDIT_COST } from "@wisemail/shared";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { Wizi } from "@/components/mascot/wizi";
 import {
   ResourceError,
@@ -202,6 +203,7 @@ export function IncidentDetailPage() {
 
   return (
     <ResourcePage title={incident.title} description={incident.summary}>
+      <BreadcrumbLabel segment={incidentId} label={incident.title} />
       <div className="grid gap-4">
         <Link
           to="/$orgSlug/alerts"

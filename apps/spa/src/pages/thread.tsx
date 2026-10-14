@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BreadcrumbLabel } from "@/components/app/breadcrumb-label";
 import { MessageCard } from "@/components/inbox/message-card";
 import { TriageSummary } from "@/components/inbox/triage-chip";
 import {
@@ -186,6 +187,9 @@ export function ThreadPage() {
           : "`GET /api/v1/threads/:id`"
       }
     >
+      {thread.data ? (
+        <BreadcrumbLabel segment={threadId} label={thread.data.subject || "(no subject)"} />
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/$orgSlug/inbox"

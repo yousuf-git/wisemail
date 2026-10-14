@@ -186,6 +186,7 @@ function Kpis({ data }: { data: InsightsDTO }) {
     <ul
       className="grid grid-cols-2 gap-3 min-[760px]:grid-cols-3 min-[1100px]:grid-cols-6"
       data-testid="insight-kpis"
+      data-tour="insights-kpis"
     >
       {items.map((kpi) => (
         <li key={kpi.key} className="min-w-0" data-kpi={kpi.key}>
@@ -276,7 +277,12 @@ export function InsightsPage() {
         </ResourceEmpty>
       ) : (
         <div className="grid gap-3.5">
-          <div role="search" aria-label="Insight filters" className="flex flex-wrap items-center gap-2">
+          <div
+            role="search"
+            aria-label="Insight filters"
+            data-tour="insights-filters"
+            className="flex flex-wrap items-center gap-2"
+          >
             <div
               role="group"
               aria-label="Date range"
@@ -347,11 +353,16 @@ export function InsightsPage() {
           ) : insights.isError ? (
             <ResourceError message="Could not load insights." />
           ) : !data?.hasData ? (
-            <ResourceEmpty>
-              {filtered
-                ? "No email matches these filters. Try a wider range or clear filters."
-                : `No email in the ${rangeLabel} yet.`}
-            </ResourceEmpty>
+            <div data-tour="insights-kpis">
+              <ResourceEmpty>
+                {filtered
+                  ? "No email matches these filters. Try a wider range or clear filters."
+                  : `No email in the ${rangeLabel} yet.`}
+              </ResourceEmpty>
+              <p className="mt-2 text-xs text-ink-muted" data-tour="insights-open-note">
+                Open rates are estimates — privacy features can inflate them.
+              </p>
+            </div>
           ) : (
             <>
               <Kpis data={data} />
@@ -396,7 +407,9 @@ export function InsightsPage() {
                   ]}
                 >
                   <SeriesChart points={data.series} series={engagementSeries} unit="percent" />
-                  <p className="text-xs text-ink-muted">{OPEN_ESTIMATE_NOTE}</p>
+                  <p className="text-xs text-ink-muted" data-tour="insights-open-note">
+                    {OPEN_ESTIMATE_NOTE}
+                  </p>
                 </ChartCard>
               </div>
 
