@@ -28,8 +28,22 @@ describe("tour definitions", () => {
     }
   });
 
-  it("the welcome tour spans overview, connections, inbox and compose", () => {
+  it("lists the launch tours from TRD §2.11", () => {
+    expect(TOURS.map((t) => t.id)).toEqual([
+      "welcome",
+      "first-look",
+      "inbox",
+      "composer",
+      "insights",
+      "alerts",
+      "broadcasts",
+      "usage-billing",
+    ]);
+  });
+
+  it("the welcome tour spans overview, help, connections, inbox and compose", () => {
     expect(welcome.steps.map((s) => s.route)).toEqual([
+      "",
       "",
       "",
       "",
@@ -37,19 +51,21 @@ describe("tour definitions", () => {
       "inbox",
       "compose",
     ]);
+    expect(welcome.steps.map((s) => s.id)).toContain("help");
   });
 });
 
 describe("audience and plan filtering", () => {
   it("leaves out steps for pages the role cannot use", () => {
     const owner = stepsFor(welcome, can("owner")).map((s) => s.id);
-    expect(owner).toEqual(["hello", "nav", "connect", "connections", "inbox", "compose"]);
+    expect(owner).toEqual(["hello", "nav", "connect", "help", "connections", "inbox", "compose"]);
     const support = stepsFor(welcome, can("support")).map((s) => s.id);
     expect(support).not.toContain("connect");
     expect(support).not.toContain("connections");
     expect(support).toContain("inbox");
+    expect(support).toContain("help");
     const viewer = stepsFor(welcome, can("viewer")).map((s) => s.id);
-    expect(viewer).toEqual(["hello", "nav", "inbox"]);
+    expect(viewer).toEqual(["hello", "nav", "help", "inbox"]);
   });
 
   it("does not offer a tour with fewer than two steps", () => {
@@ -65,10 +81,31 @@ describe("audience and plan filtering", () => {
 describe("auto start", () => {
   const ctx = { pathname: "/acme", orgSlug: "acme", hasConnection: false };
 
-  it("starts on the overview of an org without a connection, once", () => {
+  it("starts welcome on the overview of an org without a connection, once", () => {
     expect(shouldAutoStart(welcome, null, ctx)).toBe(true);
     expect(shouldAutoStart(welcome, null, { ...ctx, pathname: "/acme/inbox" })).toBe(false);
     expect(shouldAutoStart(welcome, null, { ...ctx, hasConnection: true })).toBe(false);
+  });
+
+  it("starts first-look on overview once a connection exists", () => {
+    const firstLook = getTour("first-look")!;
+    expect(shouldAutoStart(firstLook, null, { ...ctx, hasConnection: true })).toBe(true);
+    expect(shouldAutoStart(firstLook, null, ctx)).toBe(false);
+    expect(
+      shouldAutoStart(firstLook, null, {
+        ...ctx,
+        pathname: "/acme/inbox",
+        hasConnection: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("starts feature tours on their first page visit", () => {
+    const inbox = getTour("inbox")!;
+    expect(
+      shouldAutoStart(inbox, null, { pathname: "/acme/inbox", orgSlug: "acme", hasConnection: true }),
+    ).toBe(true);
+    expect(shouldAutoStart(inbox, null, ctx)).toBe(false);
   });
 
   it("never again after it was started, completed or skipped", () => {
@@ -128,32 +165,36 @@ describe("buildTour (per member, per viewport)", () => {
   });
 
   it("chains routes with nextRoute and prevRoute and carries the Wizi mood", () => {
-    const tour = buildTour("acme", state, has("nav", "connect-card"))!;
-    expect(tour.steps).toHaveLength(6);
+    const tour = buildTour("acme", state, has("nav", "connect-card", "help"))!;
+    expect(tour.steps).toHaveLength(7);
     const at = (i: number) => tour.steps[i]!;
-    expect(at(2).nextRoute).toBe("/acme/settings/connections");
-    expect(at(3).prevRoute).toBe("/acme");
-    expect(at(3).nextRoute).toBe("/acme/inbox");
-    expect(at(4).nextRoute).toBe("/acme/compose");
+    expect(at(3).id).toBe("help");
+    expect(at(3).nextRoute).toBe("/acme/settings/connections");
+    expect(at(4).prevRoute).toBe("/acme");
+    expect(at(4).nextRoute).toBe("/acme/inbox");
+    expect(at(5).nextRoute).toBe("/acme/compose");
     expect(at(0).nextRoute).toBeUndefined();
-    expect(at(4).icon).toBe("wow");
-    expect(at(5).icon).toBe("happy");
+    expect(at(5).icon).toBe("wow");
+    expect(at(6).icon).toBe("happy");
   });
 
   it("targets the menu button instead of the sidebar on small screens", () => {
-    const tour = buildTour("acme", state, { ...has("nav", "connect-card"), desktop: false })!;
+    const tour = buildTour("acme", state, {
+      ...has("nav", "connect-card", "help"),
+      desktop: false,
+    })!;
     expect(tour.steps[1]!.selector).toBe('[data-tour="nav-button"]');
   });
 
   it("drops a step on the current page whose target is missing (e.g. already connected)", () => {
-    const tour = buildTour("acme", state, has("nav"))!;
+    const tour = buildTour("acme", state, has("nav", "help"))!;
     expect(tour.steps.map((s) => s.title)).not.toContain("Start with a Resend account");
-    expect(tour.steps).toHaveLength(5);
+    expect(tour.steps).toHaveLength(6);
   });
 
   it("returns nothing when fewer than two steps remain", () => {
     const viewer = toStateDTO(welcome, can("viewer"), null);
-    expect(buildTour("acme", { ...viewer, stepIds: ["hello"] }, has())).toBeNull();
-    expect(buildTour("acme", { ...state, id: "nope" }, has())).toBeNull();
+    expect(buildTour("acme", { ...viewer, stepIds: ["hello"], steps: [] }, has())).toBeNull();
+    expect(buildTour("acme", { ...state, id: "nope", steps: [] }, has())).toBeNull();
   });
 });

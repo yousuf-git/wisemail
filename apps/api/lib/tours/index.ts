@@ -1,11 +1,27 @@
 import type { Permission } from "@/lib/auth/permissions";
 import type { TourDefinition, TourStateDTO, TourStatus, TourStepDef } from "./types";
+import { alertsTour } from "./alerts";
+import { broadcastsTour } from "./broadcasts";
+import { composerTour } from "./composer";
+import { firstLookTour } from "./first-look";
+import { inboxTour } from "./inbox";
+import { insightsTour } from "./insights";
+import { usageBillingTour } from "./usage-billing";
 import { welcomeTour } from "./welcome";
 
 export * from "./types";
 
 /** Every tour, in the order the Help menu lists them. */
-export const TOURS: readonly TourDefinition[] = [welcomeTour];
+export const TOURS: readonly TourDefinition[] = [
+  welcomeTour,
+  firstLookTour,
+  inboxTour,
+  composerTour,
+  insightsTour,
+  alertsTour,
+  broadcastsTour,
+  usageBillingTour,
+];
 
 export const getTour = (id: string): TourDefinition | undefined => TOURS.find((t) => t.id === id);
 
@@ -47,9 +63,16 @@ export function shouldAutoStart(
 ): boolean {
   if (def.trigger === "manual") return false;
   if (progress && !isNewerMajor(def.version, progress.version)) return false;
+  const target = `/${context.orgSlug}${def.autoRoute ? `/${def.autoRoute}` : ""}`;
   if (def.trigger === "auto_first_visit") {
-    const target = `/${context.orgSlug}${def.autoRoute ? `/${def.autoRoute}` : ""}`;
     return context.pathname === target && !context.hasConnection;
+  }
+  if (def.trigger === "auto_after_event") {
+    // first-look: first connection exists (proxy for initial sync finished).
+    return context.pathname === target && context.hasConnection;
+  }
+  if (def.trigger === "auto_first_page_visit") {
+    return context.pathname === target;
   }
   return false;
 }

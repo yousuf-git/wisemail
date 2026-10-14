@@ -42,6 +42,15 @@ export const welcomeTour: TourDefinition = {
       requires: "connection:create",
     },
     {
+      id: "help",
+      route: "",
+      selector: '[data-tour="help"]',
+      side: "bottom",
+      title: "Replay any tour from Help",
+      body: "The question mark opens tours for this workspace. Skip anytime; you can replay from here later.",
+      mood: "idle",
+    },
+    {
       id: "connections",
       route: "settings/connections",
       selector: '[data-tour="connections-add"]',

@@ -3,6 +3,7 @@ import type { TourStateDTO, TourStepDef } from "./types";
 
 /** NextStepjs-shaped tour step (kept free of the UI runner). */
 export type BuiltTourStep = {
+  id: string;
   icon: string;
   title: string;
   content: string;
@@ -47,6 +48,7 @@ export function buildTour(
       const prev = kept[i - 1];
       const next = kept[i + 1];
       return {
+        id: s.id,
         icon: s.mood,
         title: s.title,
         content: s.body,
