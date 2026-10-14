@@ -14,6 +14,8 @@ const SETTINGS_EXTRA: NavItem[] = [
     alsoActiveFor: ["settings/notifications"],
   },
   { label: "Billing", path: "settings/billing", alsoActiveFor: ["settings/billing"] },
+  { label: "Usage", path: "settings/usage", alsoActiveFor: ["settings/usage"] },
+  { label: "Cleanup", path: "settings/cleanup", alsoActiveFor: ["settings/cleanup"] },
   { label: "AI", path: "settings/ai", alsoActiveFor: ["settings/ai"] },
   { label: "Audit log", path: "settings/audit", alsoActiveFor: ["settings/audit"] },
 ];
@@ -38,6 +40,8 @@ type LinkTarget =
   | { to: "/$orgSlug/settings/projects"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/notifications"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/billing"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/usage"; params: { orgSlug: string } }
+  | { to: "/$orgSlug/settings/cleanup"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/ai"; params: { orgSlug: string } }
   | { to: "/$orgSlug/settings/audit"; params: { orgSlug: string } }
   | { to: "/$orgSlug/$"; params: { orgSlug: string; _splat: string } };
@@ -63,6 +67,8 @@ function itemTo(orgSlug: string, item: NavItem): LinkTarget {
     "settings/projects": "/$orgSlug/settings/projects",
     "settings/notifications": "/$orgSlug/settings/notifications",
     "settings/billing": "/$orgSlug/settings/billing",
+    "settings/usage": "/$orgSlug/settings/usage",
+    "settings/cleanup": "/$orgSlug/settings/cleanup",
     "settings/ai": "/$orgSlug/settings/ai",
     "settings/audit": "/$orgSlug/settings/audit",
   };

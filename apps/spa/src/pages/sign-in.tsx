@@ -90,9 +90,16 @@ export function SignInPage() {
         </button>
       </form>
       <p className="text-center text-sm text-ink-muted">
-        SPA shell · API via{" "}
-        <Link to="/" className="font-medium text-accent-fill hover:underline">
-          home
+        <Link to="/forgot-password" className="font-medium text-accent-fill hover:underline">
+          Forgot password?
+        </Link>
+        {" · "}
+        <Link
+          to="/sign-up"
+          search={next ? { next } : undefined}
+          className="font-medium text-accent-fill hover:underline"
+        >
+          Create account
         </Link>
       </p>
     </div>

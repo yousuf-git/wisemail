@@ -326,7 +326,10 @@ export function ComposePage() {
     return (
       <section className="grid max-w-lg gap-3">
         <h1 className="text-xl font-semibold tracking-tight">Compose</h1>
-        <p className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-sm text-ink-muted">
+        <p
+          data-tour="compose-sender"
+          className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-sm text-ink-muted"
+        >
           No active senders yet. Add one under Settings → Senders (or sync a connection).
         </p>
         <Link
@@ -362,7 +365,7 @@ export function ComposePage() {
             {error}
           </p>
         ) : null}
-        <label className="grid gap-1.5 text-sm font-medium">
+        <label className="grid gap-1.5 text-sm font-medium" data-tour="compose-sender">
           From
           <select
             className="h-10 rounded-control border border-line-strong bg-canvas px-3"

@@ -8,12 +8,34 @@ import { apiUrl } from "@/lib/api-base";
  * Keep paths literal for static analysis (`bundle-analyzable-paths`).
  */
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(apiUrl(path), {
     credentials: "include",
     headers: { accept: "application/json" },
   });
-  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  if (!res.ok) {
+    let code: string | undefined;
+    let message = `${path} ${res.status}`;
+    try {
+      const body = (await res.json()) as { error?: string; message?: string };
+      if (typeof body.error === "string") code = body.error;
+      if (typeof body.message === "string") message = body.message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(message, res.status, code);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -212,18 +234,88 @@ export async function listContacts(orgSlug: string, limit = 50) {
   return getJson<ContactPage>(`/api/v1/contacts?${q}`);
 }
 
+export type ChecklistItem = {
+  key: string;
+  status: "ok" | "warn" | "fail";
+  checkedAt: string;
+  title: string;
+  technical: string | null;
+  detail: string;
+  fix: { kind: string; label: string } | null;
+  domains?: string[];
+};
+
+export type SyncStatus = {
+  runId: string;
+  state: "running" | "completed" | "failed";
+  trigger: string;
+  startedAt: string;
+  finishedAt: string | null;
+  stage: { key: string; label: string } | null;
+  error: string | null;
+  progress: { key: string; label: string; status: string; count: number }[];
+};
+
 export type ConnectionRow = {
   id: string;
   name: string;
   status: string;
   statusReason: string | null;
   apiKeyLast4: string | null;
+  webhookRegistered: boolean;
+  lastEventAt: string | null;
   lastSyncAt: string | null;
+  checklist: ChecklistItem[] | null;
+  sync: SyncStatus | null;
+  createdAt: string;
+};
+
+export type ConnectionQuota = {
+  used: number;
+  limit: number;
+  planLabel: string;
+  nextTierLabel: string | null;
+  extraUnitUsd?: number | null;
+};
+
+export type ConnectionPermissions = {
+  create: boolean;
+  update: boolean;
+  delete: boolean;
+  domainUpdate: boolean;
+};
+
+export type ConnectionsPage = {
+  connections: ConnectionRow[];
+  quota: ConnectionQuota;
+  can: ConnectionPermissions;
 };
 
 export async function listConnections(orgSlug: string) {
   const q = new URLSearchParams({ orgSlug });
-  return getJson<ConnectionRow[]>(`/api/v1/connections?${q}`);
+  return getJson<ConnectionsPage>(`/api/v1/connections?${q}`);
+}
+
+export type ConnectionDetail = ConnectionRow & {
+  checklist: ChecklistItem[];
+  counts: Record<string, number>;
+  domains: {
+    id: string;
+    name: string;
+    status: string;
+    openTracking: boolean;
+    clickTracking: boolean;
+    receiving: boolean;
+    records: { record: string; type: string; name: string; value: string; status: string }[];
+  }[];
+};
+
+export async function getConnection(orgSlug: string, connectionId: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<{
+    connection: ConnectionDetail;
+    can: { update: boolean; domainUpdate: boolean };
+  }>(`/api/v1/connections/${encodeURIComponent(connectionId)}?${q}`);
 }
 
 export type DomainRow = {
@@ -528,4 +620,102 @@ export type AuditPage = { items: AuditRow[]; nextCursor: string | null };
 export async function listAuditLog(orgSlug: string, limit = 50) {
   const q = new URLSearchParams({ orgSlug, limit: String(limit) });
   return getJson<AuditPage>(`/api/v1/audit?${q}`);
+}
+
+export type { TourBootstrapDTO } from "@/lib/tours/types";
+
+export async function getTourBootstrap(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<import("@/lib/tours/types").TourBootstrapDTO>(`/api/v1/tours?${q}`);
+}
+
+export type OverviewKpi = {
+  key: string;
+  label: string;
+  value: number;
+  unit: "count" | "percent";
+  delta: { value: number; goodWhen: "up" | "down"; suffix?: string } | null;
+  series: number[];
+};
+
+export type OverviewDTO = {
+  hasConnection: boolean;
+  hasData: boolean;
+  periodLabel: string;
+  kpis: OverviewKpi[];
+  summary: string;
+};
+
+export async function getOverview(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<OverviewDTO>(`/api/v1/overview?${q}`);
+}
+
+export type UsageSummary = {
+  plan?: string;
+  connections?: { id: string; health: "healthy" | "attention" | "down" }[];
+  connectionLimit?: number;
+  used?: { transactional: number; broadcast: number; inbound: number };
+  allowance?: number | null;
+  aiCredits?: number | null;
+  overageCostUsd?: number | null;
+  banner?: {
+    kind: "over_allowance" | "trial" | "payment";
+    message: string;
+    action: { label: string; href: string };
+  } | null;
+};
+
+export async function getUsageSummary(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<UsageSummary>(`/api/v1/usage/summary?${q}`);
+}
+
+export type UsageOverview = {
+  plan: { id: string; label: string };
+  period: { start: string; end: string; daysElapsed: number; daysTotal: number };
+  tracked: { transactional: number; broadcast: number; inbound: number; total: number };
+  allowance: number;
+  projection: { monthEnd: number; over: number; overageCostUsd: number | null };
+  overage: {
+    emails: number;
+    costUsd: number | null;
+    graceEndsAt: string | null;
+    graceEnded: boolean;
+  };
+  ai: {
+    enabled: boolean;
+    allowance: number;
+    used: number;
+    packs: number;
+  };
+  resources: { key: string; label: string; used: number; limit: number | null }[];
+};
+
+export async function getSettingsUsage(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<UsageOverview>(`/api/v1/settings/usage?${q}`);
+}
+
+export type CleanupRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  kind: "rule" | "block_sender";
+  action: "archive" | "trash" | "delete";
+  match: {
+    direction?: "inbound" | "outbound";
+    fromAddress?: string;
+    fromDomain?: string;
+    subjectContains?: string;
+    olderThanDays?: number;
+  };
+  lastRunAt: string | null;
+  lastRunCount: number;
+  createdAt: string;
+};
+
+export async function listCleanupRules(orgSlug: string) {
+  const q = new URLSearchParams({ orgSlug });
+  return getJson<{ rules: CleanupRule[]; canDelete: boolean }>(`/api/v1/settings/cleanup?${q}`);
 }

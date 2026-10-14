@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { callUserAction } from "@/lib/api";
 import { authClient } from "@/lib/auth/client";
 
@@ -42,7 +43,7 @@ export function OnboardingPage() {
       }
       await orgs.refetch();
       await navigate({
-        to: "/$orgSlug/inbox",
+        to: "/$orgSlug",
         params: { orgSlug: result.data.slug },
       });
     },
@@ -62,6 +63,8 @@ export function OnboardingPage() {
   const firstName = session.data.user.name.split(" ")[0] || "there";
 
   return (
+    <>
+    <ImpersonationBanner />
     <section className="mx-auto grid min-h-dvh max-w-md content-center gap-4 px-4 py-10">
       <div>
         <p className="text-sm font-semibold tracking-tight text-ink-muted">Wisemail</p>
@@ -121,5 +124,6 @@ export function OnboardingPage() {
         Platform admin
       </Link>
     </section>
+    </>
   );
 }

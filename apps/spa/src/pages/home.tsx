@@ -21,7 +21,7 @@ export function HomePage() {
   if (session.data?.user) {
     const first = orgs.data?.[0];
     if (first?.slug) {
-      return <Navigate to="/$orgSlug/inbox" params={{ orgSlug: first.slug }} />;
+      return <Navigate to="/$orgSlug" params={{ orgSlug: first.slug }} />;
     }
     return <Navigate to="/onboarding" />;
   }
@@ -38,6 +38,12 @@ export function HomePage() {
           className="inline-flex h-9 items-center rounded-control bg-accent-fill px-4 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover"
         >
           Sign in
+        </Link>
+        <Link
+          to="/sign-up"
+          className="inline-flex h-9 items-center rounded-control border border-line px-4 text-sm font-medium hover:bg-canvas-sunken"
+        >
+          Create account
         </Link>
       </div>
       <p className="mt-6 text-sm text-ink-muted">

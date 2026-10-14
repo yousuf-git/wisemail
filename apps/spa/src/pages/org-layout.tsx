@@ -1,7 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "@tanstack/react-router";
 
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { AppShell } from "@/components/shell/app-shell";
+import { TourProvider } from "@/components/tour/tour-provider";
 import { useOrgStream } from "@/hooks/use-org-stream";
+import { ApiError, getTourBootstrap } from "@/lib/api";
 import { authClient } from "@/lib/auth/client";
 
 export function OrgLayoutPage() {
@@ -10,6 +14,13 @@ export function OrgLayoutPage() {
   const orgsQuery = authClient.useListOrganizations();
 
   useOrgStream(orgSlug, session.data?.user?.id);
+
+  const tours = useQuery({
+    queryKey: ["tours", orgSlug],
+    queryFn: () => getTourBootstrap(orgSlug),
+    enabled: !!session.data?.user,
+    retry: false,
+  });
 
   if (session.isPending || orgsQuery.isPending) {
     return (
@@ -23,6 +34,10 @@ export function OrgLayoutPage() {
     return <Navigate to="/sign-in" search={{ next: `/${orgSlug}/inbox` }} />;
   }
 
+  if (tours.isError && tours.error instanceof ApiError && tours.error.code === "workspace_suspended") {
+    return <Navigate to="/suspended/$orgSlug" params={{ orgSlug }} />;
+  }
+
   const orgs = (orgsQuery.data ?? []).map((o) => ({
     id: o.id,
     name: o.name,
@@ -34,13 +49,20 @@ export function OrgLayoutPage() {
   }
 
   const user = session.data.user;
+  const bootstrap = tours.data ?? { tours: [], hasConnection: false };
+
   return (
-    <AppShell
-      org={org}
-      orgs={orgs}
-      user={{ name: user.name, email: user.email, image: user.image }}
-    >
-      <Outlet />
-    </AppShell>
+    <>
+      <ImpersonationBanner />
+      <TourProvider orgSlug={org.slug} bootstrap={bootstrap}>
+        <AppShell
+          org={org}
+          orgs={orgs}
+          user={{ name: user.name, email: user.email, image: user.image }}
+        >
+          <Outlet />
+        </AppShell>
+      </TourProvider>
+    </>
   );
 }

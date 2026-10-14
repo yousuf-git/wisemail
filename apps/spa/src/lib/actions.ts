@@ -149,6 +149,35 @@ export function retryConnection(orgSlug: string, connectionId: string) {
   return callOrgAction("settings.connections.retry", orgSlug, { connectionId });
 }
 
+export function renameConnection(orgSlug: string, connectionId: string, name: string) {
+  return callOrgAction("settings.connections.rename", orgSlug, { connectionId, name });
+}
+
+export function removeConnection(
+  orgSlug: string,
+  connectionId: string,
+  confirmName: string,
+  opts?: { deleteSyncedData?: boolean; confirmDelete?: string },
+) {
+  return callOrgAction("settings.connections.remove", orgSlug, {
+    connectionId,
+    confirmName,
+    ...opts,
+  });
+}
+
+export function reregisterWebhook(orgSlug: string, connectionId: string) {
+  return callOrgAction("settings.connections.webhook", orgSlug, { connectionId });
+}
+
+export function enableConnectionTracking(
+  orgSlug: string,
+  connectionId: string,
+  kind: "open" | "click",
+) {
+  return callOrgAction("settings.connections.tracking", orgSlug, { connectionId, kind });
+}
+
 export function inviteMember(
   orgSlug: string,
   input: { email: string; role: string; projectIds?: string[] },
@@ -208,4 +237,50 @@ export function openBillingPortal(orgSlug: string) {
 
 export function startBillingTrial(orgSlug: string) {
   return callOrgAction<{ started: true }>("settings.billing.trial", orgSlug, {});
+}
+
+export function recordTourEvent(
+  orgSlug: string,
+  input: {
+    tourId: string;
+    event: "start" | "step" | "complete" | "skip";
+    step?: number;
+    trigger?: "auto" | "manual";
+  },
+) {
+  return callOrgAction("tour.record", orgSlug, input);
+}
+
+export function setCleanupRuleEnabled(orgSlug: string, id: string, enabled: boolean) {
+  return callOrgAction("settings.cleanup.toggle", orgSlug, { id, enabled });
+}
+
+export function removeCleanupRule(orgSlug: string, id: string) {
+  return callOrgAction("settings.cleanup.remove", orgSlug, { id });
+}
+
+export function createCleanupRule(
+  orgSlug: string,
+  input: {
+    name: string;
+    kind: "rule" | "block_sender";
+    action: "archive" | "trash" | "delete";
+    enabled?: boolean;
+    match?: {
+      fromAddress?: string;
+      fromDomain?: string;
+      subjectContains?: string;
+      olderThanDays?: number;
+      direction?: "inbound" | "outbound";
+    };
+  },
+) {
+  return callOrgAction("settings.cleanup.create", orgSlug, {
+    name: input.name,
+    kind: input.kind,
+    action: input.action,
+    enabled: input.enabled ?? true,
+    scope: { connectionIds: [], projectIds: [], mailboxAddresses: [] },
+    match: input.match ?? {},
+  });
 }

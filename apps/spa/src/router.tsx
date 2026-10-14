@@ -4,7 +4,6 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
-  redirect,
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -21,7 +20,13 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const PAGE_MODULES = {
   home: () => import("@/pages/home"),
   signIn: () => import("@/pages/sign-in"),
+  signUp: () => import("@/pages/sign-up"),
+  forgotPassword: () => import("@/pages/forgot-password"),
+  resetPassword: () => import("@/pages/reset-password"),
+  verifyEmail: () => import("@/pages/verify-email"),
+  suspended: () => import("@/pages/suspended"),
   orgLayout: () => import("@/pages/org-layout"),
+  overview: () => import("@/pages/overview"),
   inbox: () => import("@/pages/inbox"),
   thread: () => import("@/pages/thread"),
   sent: () => import("@/pages/mail-folder"),
@@ -39,11 +44,14 @@ const PAGE_MODULES = {
   apiKeys: () => import("@/pages/api-keys"),
   settingsGeneral: () => import("@/pages/settings-general"),
   settingsConnections: () => import("@/pages/settings-connections"),
+  settingsConnection: () => import("@/pages/settings-connection"),
   settingsSenders: () => import("@/pages/settings-senders"),
   settingsMembers: () => import("@/pages/settings-members"),
   settingsProjects: () => import("@/pages/settings-projects"),
   settingsNotifications: () => import("@/pages/settings-notifications"),
   settingsBilling: () => import("@/pages/settings-billing"),
+  settingsUsage: () => import("@/pages/settings-usage"),
+  settingsCleanup: () => import("@/pages/settings-cleanup"),
   settingsAi: () => import("@/pages/settings-ai"),
   settingsAudit: () => import("@/pages/settings-audit"),
   adminLayout: () => import("@/pages/admin-layout"),
@@ -71,6 +79,45 @@ const signInRoute = createRoute({
   path: "/sign-in",
   validateSearch: z.object({ next: z.string().optional() }),
   component: lazyRouteComponent(PAGE_MODULES.signIn, "SignInPage"),
+});
+
+const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sign-up",
+  validateSearch: z.object({ next: z.string().optional() }),
+  component: lazyRouteComponent(PAGE_MODULES.signUp, "SignUpPage"),
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: lazyRouteComponent(PAGE_MODULES.forgotPassword, "ForgotPasswordPage"),
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  validateSearch: z.object({
+    token: z.string().optional(),
+    email: z.string().optional(),
+  }),
+  component: lazyRouteComponent(PAGE_MODULES.resetPassword, "ResetPasswordPage"),
+});
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/verify-email",
+  validateSearch: z.object({
+    email: z.string().optional(),
+    next: z.string().optional(),
+  }),
+  component: lazyRouteComponent(PAGE_MODULES.verifyEmail, "VerifyEmailPage"),
+});
+
+const suspendedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/suspended/$orgSlug",
+  component: lazyRouteComponent(PAGE_MODULES.suspended, "SuspendedPage"),
 });
 
 const inviteRoute = createRoute({
@@ -149,12 +196,7 @@ const orgRoute = createRoute({
 const orgIndexRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/",
-  beforeLoad: ({ params }) => {
-    throw redirect({
-      to: "/$orgSlug/inbox",
-      params: { orgSlug: params.orgSlug },
-    });
-  },
+  component: lazyRouteComponent(PAGE_MODULES.overview, "OverviewPage"),
 });
 
 const inboxRoute = createRoute({
@@ -259,6 +301,12 @@ const settingsConnectionsRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.settingsConnections, "SettingsConnectionsPage"),
 });
 
+const settingsConnectionRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/connections/$connectionId",
+  component: lazyRouteComponent(PAGE_MODULES.settingsConnection, "SettingsConnectionPage"),
+});
+
 const settingsSendersRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/settings/senders",
@@ -289,6 +337,18 @@ const settingsBillingRoute = createRoute({
   component: lazyRouteComponent(PAGE_MODULES.settingsBilling, "SettingsBillingPage"),
 });
 
+const settingsUsageRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/usage",
+  component: lazyRouteComponent(PAGE_MODULES.settingsUsage, "SettingsUsagePage"),
+});
+
+const settingsCleanupRoute = createRoute({
+  getParentRoute: () => orgRoute,
+  path: "/settings/cleanup",
+  component: lazyRouteComponent(PAGE_MODULES.settingsCleanup, "SettingsCleanupPage"),
+});
+
 const settingsAiRoute = createRoute({
   getParentRoute: () => orgRoute,
   path: "/settings/ai",
@@ -310,6 +370,11 @@ const splatRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
+  signUpRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  verifyEmailRoute,
+  suspendedRoute,
   inviteRoute,
   onboardingRoute,
   adminRoute.addChildren([
@@ -341,11 +406,14 @@ const routeTree = rootRoute.addChildren([
     apiKeysRoute,
     settingsGeneralRoute,
     settingsConnectionsRoute,
+    settingsConnectionRoute,
     settingsSendersRoute,
     settingsMembersRoute,
     settingsProjectsRoute,
     settingsNotificationsRoute,
     settingsBillingRoute,
+    settingsUsageRoute,
+    settingsCleanupRoute,
     settingsAiRoute,
     settingsAuditRoute,
     splatRoute,

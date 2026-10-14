@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getAdminMe } from "@/lib/admin-api";
 import { authClient } from "@/lib/auth/client";
@@ -32,8 +33,11 @@ export function AdminLayoutPage() {
   }
 
   return (
-    <AdminShell admin={me.data}>
-      <Outlet />
-    </AdminShell>
+    <>
+      <ImpersonationBanner />
+      <AdminShell admin={me.data}>
+        <Outlet />
+      </AdminShell>
+    </>
   );
 }

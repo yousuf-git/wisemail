@@ -47,11 +47,17 @@ export function InboxPage() {
           Could not load inbox. Sign in and confirm the API is up.
         </p>
       ) : threads.data.items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted">
+        <p
+          data-tour="inbox-list"
+          className="rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted"
+        >
           No messages yet.
         </p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+        <ul
+          data-tour="inbox-list"
+          className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface"
+        >
           {threads.data.items.map((row) => {
             const who = row.peopleLabels?.[0] ?? row.people[0] ?? "Unknown";
             const threadId = row.kind === "thread" ? row.id : row.threadId;
