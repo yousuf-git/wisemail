@@ -1,19 +1,56 @@
-import { listInvitations, listMembers } from "@/lib/services/members";
-import { orgRoute, errorResponse } from "../_lib/org-api";
+import {
+  getMemberQuota,
+  listInvitations,
+  listMembers,
+} from "@/lib/services/members";
+import { listProjects } from "@/lib/services/projects";
+import { orgRoute } from "../_lib/org-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** `GET /api/v1/members?orgSlug=` → members + pending invitations (managers only). */
+/** `GET /api/v1/members?orgSlug=` → members, invites, quota, projects, actor role. */
 export function GET(request: Request) {
   return orgRoute(request, async ({ ctx }) => {
-    if (!ctx.can("member:update")) {
-      return errorResponse(403, "forbidden", "You don't have permission to manage members.");
+    const can = {
+      read: ctx.can("member:update") && ctx.can("invitation:create"),
+      invite: ctx.can("invitation:create"),
+      update: ctx.can("member:update"),
+      delete: ctx.can("member:delete"),
+    };
+    if (!can.read) {
+      return {
+        members: [],
+        invitations: [],
+        quota: {
+          used: 0,
+          limit: null,
+          planLabel: "",
+          nextTierLabel: null,
+          scopesAllowed: false,
+        },
+        projects: [],
+        actorRole: ctx.role,
+        can,
+      };
     }
-    const [members, invitations] = await Promise.all([
+
+    const [members, invitations, quota, projects] = await Promise.all([
       listMembers(ctx),
       listInvitations(ctx),
+      getMemberQuota(ctx),
+      ctx.can("project:read")
+        ? listProjects(ctx)
+        : Promise.resolve([] as Awaited<ReturnType<typeof listProjects>>),
     ]);
-    return { members, invitations };
+
+    return {
+      members,
+      invitations,
+      quota,
+      projects: projects.map(({ id, name, color }) => ({ id, name, color })),
+      actorRole: ctx.role,
+      can,
+    };
   });
 }

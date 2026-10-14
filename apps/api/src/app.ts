@@ -56,6 +56,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const { streamRoutes } = await import("./routes/stream.js");
   const { fileRoutes } = await import("./routes/files.js");
   const { devStorageRoutes } = await import("./routes/dev-storage.js");
+  const { devPagesRoutes } = await import("./routes/dev-pages.js");
   const { inngestRoutes } = await import("./routes/inngest.js");
   const { actionRoutes } = await import("./routes/actions.js");
   const { catalogRoutes } = await import("./routes/catalog.js");
@@ -74,6 +75,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(streamRoutes);
   await app.register(fileRoutes);
   await app.register(devStorageRoutes);
+  await app.register(devPagesRoutes);
   await app.register(inngestRoutes);
   await app.register(catalogRoutes);
   await app.register(actionRoutes);
