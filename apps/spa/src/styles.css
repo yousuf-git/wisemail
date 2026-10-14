@@ -345,3 +345,102 @@
   #root { min-height: 100dvh; }
   a { color: inherit; text-decoration: none; }
 }
+
+/* Live atmosphere: CSS transforms only (GPU), paused off-screen via data-active. */
+@layer utilities {
+  .atmosphere-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 180px 180px;
+    pointer-events: none;
+  }
+
+  .atmosphere-drift {
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: transform;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  .atmosphere-drift--a {
+    animation-name: atmosphere-drift-a;
+    animation-duration: 36s;
+  }
+  .atmosphere-drift--b {
+    animation-name: atmosphere-drift-b;
+    animation-duration: 42s;
+  }
+  .atmosphere-drift--blue {
+    animation-name: atmosphere-drift-blue;
+    animation-duration: 30s;
+  }
+  .atmosphere-drift--amber {
+    animation-name: atmosphere-drift-amber;
+    animation-duration: 34s;
+  }
+  .atmosphere-drift--orbs {
+    animation-name: atmosphere-drift-orbs;
+    animation-duration: 28s;
+  }
+
+  .atmosphere-waves[data-active="false"] .atmosphere-drift {
+    animation-play-state: paused;
+  }
+
+  @keyframes atmosphere-drift-a {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(28px, -18px);
+    }
+  }
+  @keyframes atmosphere-drift-b {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(-22px, 14px);
+    }
+  }
+  @keyframes atmosphere-drift-blue {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(40px, -12px);
+    }
+  }
+  @keyframes atmosphere-drift-amber {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(-36px, 16px);
+    }
+  }
+  @keyframes atmosphere-drift-orbs {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(10px, -8px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atmosphere-drift {
+      animation: none !important;
+    }
+    .atmosphere-grain {
+      opacity: 0.2;
+    }
+  }
+}
+

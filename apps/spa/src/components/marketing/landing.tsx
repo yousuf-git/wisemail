@@ -1,64 +1,12 @@
-import { Link } from "@tanstack/react-router";
 import { BellRing, Eye, KeyRound, LineChart, Sparkles, Webhook } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { Compare } from "./compare";
 import { faqItems } from "./faq-items";
-import { Logomark } from "./logo";
+import { Hero } from "./hero";
 import { PricingPlans } from "./pricing-plans";
 import { Container, SectionHeading, Tone } from "./section";
-
-function Hero() {
-  return (
-    <Tone
-      tone="light"
-      as="section"
-      className="relative flex min-h-[100dvh] flex-col overflow-x-clip pt-6 pb-10 sm:pt-8 sm:pb-14"
-    >
-      <img
-        src="/marketing/hero-atmosphere.jpg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 size-full object-cover object-[center_20%] opacity-90"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-canvas/55 via-canvas/25 to-canvas"
-      />
-      <Container className="relative flex flex-1 flex-col justify-between gap-16 pt-8 sm:gap-20 sm:pt-10 lg:gap-24">
-        <div className="grid max-w-5xl gap-10 sm:gap-12">
-          <p className="inline-flex items-center gap-3 font-display text-2xl font-bold tracking-[-0.04em] text-ink sm:text-3xl">
-            <Logomark className="size-9 sm:size-10" />
-            Wisemail
-          </p>
-          <div className="grid gap-8">
-            <h1 className="max-w-[12ch] font-display text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.88] font-bold tracking-[-0.055em] text-balance">
-              See who
-              <span className="block">opens.</span>
-            </h1>
-            <p className="max-w-[32ch] text-lg leading-8 text-pretty text-ink-secondary sm:text-xl sm:leading-9">
-              Marketing that talks back — opens, clicks and alerts on your own Resend account.
-            </p>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Link
-                to="/sign-up"
-                className="inline-flex h-12 items-center rounded-full bg-accent-fill px-7 text-base font-semibold text-accent-ink hover:bg-accent-fill-hover"
-              >
-                Start free
-              </Link>
-              <a
-                href="/#how"
-                className="text-sm font-medium text-ink-muted underline-offset-[6px] hover:text-ink hover:underline"
-              >
-                See how it works
-              </a>
-            </div>
-          </div>
-        </div>
-      </Container>
-    </Tone>
-  );
-}
 
 function HowItWorks() {
   const steps = [
@@ -229,15 +177,28 @@ function Faq() {
                   onClick={() => setOpen(isOpen ? null : i)}
                 >
                   <span className="text-sm font-semibold sm:text-base">{item.q}</span>
-                  <span className="text-ink-muted tabular-nums" aria-hidden>
-                    {isOpen ? "−" : "+"}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "text-ink-muted tabular-nums transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+                      isOpen && "rotate-45",
+                    )}
+                  >
+                    +
                   </span>
                 </button>
-                {isOpen ? (
-                  <p className="border-t border-line px-5 py-4 text-sm leading-6 text-ink-secondary">
-                    {item.a}
-                  </p>
-                ) : null}
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                  )}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <p className="border-t border-line px-5 py-4 text-sm leading-6 text-ink-secondary">
+                      {item.a}
+                    </p>
+                  </div>
+                </div>
               </li>
             );
           })}
@@ -253,27 +214,34 @@ export function LandingPage() {
       <Hero />
       <HowItWorks />
       <Features />
-      <Tone
-        tone="light"
-        as="section"
-        id="pricing"
-        className="relative scroll-mt-28 overflow-hidden rounded-t-[2rem] py-24 sm:py-32"
-      >
-        <img
-          src="/marketing/pricing-grain.jpg"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 size-full object-cover opacity-30 mix-blend-multiply"
-        />
-        <Container className="relative grid gap-12">
-          <SectionHeading
-            eyebrow="Pricing"
-            title="Start free. Upgrade when you need to."
-            description="One plan covers transactional and marketing on your Resend account."
+      {/* Compare sticks; Pricing slides over it. */}
+      <div className="relative">
+        <div className="sticky top-0 z-0">
+          <Compare />
+        </div>
+
+        <Tone
+          tone="light"
+          as="section"
+          id="pricing"
+          className="relative z-10 scroll-mt-28 overflow-hidden rounded-t-[2rem] py-24 shadow-[0_-24px_64px_-28px_rgba(0,0,0,0.35)] sm:py-32"
+        >
+          <img
+            src="/marketing/pricing-grain.jpg"
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 size-full object-cover opacity-30 mix-blend-multiply"
           />
-          <PricingPlans />
-        </Container>
-      </Tone>
+          <Container className="relative grid gap-12">
+            <SectionHeading
+              eyebrow="Pricing"
+              title="Start free. Upgrade when you need to."
+              description="One plan covers transactional and marketing on your Resend account."
+            />
+            <PricingPlans />
+          </Container>
+        </Tone>
+      </div>
       <Faq />
     </>
   );

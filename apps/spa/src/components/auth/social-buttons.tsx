@@ -51,15 +51,15 @@ function providersFromCatalog(data: unknown): SocialProvider[] {
   return out;
 }
 
-export function SocialButtons({
+function SocialButtonsList({
+  providers,
   next,
   disabled,
 }: {
+  providers: SocialProvider[];
   next?: string;
   disabled?: boolean;
 }) {
-  const catalog = useQuery({ queryKey: ["catalog"], queryFn: getCatalog });
-  const providers = providersFromCatalog(catalog.data);
   const [pending, setPending] = useState<SocialProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (providers.length === 0) return null;
@@ -67,7 +67,7 @@ export function SocialButtons({
   async function go(provider: SocialProvider) {
     setError(null);
     setPending(provider);
-    const callbackURL = safeNext(next, "/");
+    const callbackURL = safeNext(next, "/onboarding");
     const { error: failure } = await authClient.signIn.social({
       provider,
       callbackURL,
@@ -103,4 +103,34 @@ export function SocialButtons({
       </div>
     </div>
   );
+}
+
+function SocialButtonsFromCatalog({ next, disabled }: { next?: string; disabled?: boolean }) {
+  const catalog = useQuery({ queryKey: ["catalog"], queryFn: getCatalog });
+  return (
+    <SocialButtonsList
+      providers={providersFromCatalog(catalog.data)}
+      next={next}
+      disabled={disabled}
+    />
+  );
+}
+
+/**
+ * Continue with Google / GitHub. When `providers` is omitted, catalog flags decide;
+ * pass an explicit list in tests.
+ */
+export function SocialButtons({
+  providers,
+  next,
+  disabled,
+}: {
+  providers?: SocialProvider[];
+  next?: string;
+  disabled?: boolean;
+}) {
+  if (providers !== undefined) {
+    return <SocialButtonsList providers={providers} next={next} disabled={disabled} />;
+  }
+  return <SocialButtonsFromCatalog next={next} disabled={disabled} />;
 }

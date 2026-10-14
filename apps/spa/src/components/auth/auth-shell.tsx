@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
+import { AtmosphereWaves } from "@/components/marketing/atmosphere-waves";
 import { Logo } from "@/components/marketing/logo";
 import { Wizi, type WiziMood } from "@/components/mascot/wizi";
 
@@ -18,12 +19,7 @@ export function AuthShell({
 }) {
   return (
     <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-canvas">
-      <img
-        src="/marketing/auth-panel-atmosphere.jpg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 size-full object-cover opacity-55 dark:opacity-30"
-      />
+      <AtmosphereWaves variant="auth" className="opacity-90 dark:opacity-55" />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-canvas/80 via-canvas/55 to-canvas"
@@ -32,7 +28,7 @@ export function AuthShell({
         aria-hidden
         className="pointer-events-none absolute top-[18%] left-1/2 hidden w-[min(92vw,56rem)] -translate-x-1/2 text-center font-display text-[clamp(3rem,12vw,8rem)] leading-none font-extrabold tracking-[-0.06em] text-ink/[0.04] select-none lg:block"
       >
-        See who opens.
+        Ops desk for Resend.
       </p>
 
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8">
