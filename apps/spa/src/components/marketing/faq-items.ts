@@ -8,7 +8,7 @@ import {
 export const faqItems = [
   {
     q: "Do I still need Resend?",
-    a: "Yes. Wisemail connects to your Resend account — you keep sending and paying Resend. We add inbox, history, insights and alerts on top.",
+    a: "Yes. Wisemail connects to your Resend account. You keep sending through Resend and paying them. We add inbox, history, insights and alerts on top.",
   },
   {
     q: "What does Wisemail need from my Resend account?",
@@ -16,7 +16,7 @@ export const faqItems = [
   },
   {
     q: "Is my API key safe?",
-    a: "Encrypted at rest with AES-256-GCM and a per-record data key. Decrypted only on the server to talk to Resend — never sent to your browser. You only see the last four characters.",
+    a: "Encrypted at rest with AES-256-GCM and a per-record data key. Decrypted only on the server to talk to Resend, and never sent to your browser. You only see the last four characters.",
   },
   {
     q: "What counts as a tracked email?",
@@ -32,11 +32,11 @@ export const faqItems = [
   },
   {
     q: "Can I delete emails?",
-    a: "Yes — Trash for 30 days with undo, then permanent delete for Owners and Admins. Resend keeps its own copy until its retention ends.",
+    a: "Yes. Trash keeps them for 30 days with undo, then permanent delete for Owners and Admins. Resend keeps its own copy until its retention ends.",
   },
   {
     q: "What happens if I disconnect or cancel?",
-    a: "Disconnect removes our webhook and encrypted key, and — after confirm — synced data. Cancel runs to period end, then Free.",
+    a: "Disconnect removes our webhook and encrypted key and, once you confirm, the synced data. Cancel runs to period end, then Free.",
   },
   {
     q: "Does AI read my email?",

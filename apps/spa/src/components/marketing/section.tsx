@@ -1,3 +1,5 @@
+import * as m from "motion/react-m";
+
 import { cn } from "@/lib/utils";
 
 export function Tone({
@@ -28,7 +30,7 @@ export function Container({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("mx-auto w-full max-w-[1180px] px-5 sm:px-8", className)}>{children}</div>
+    <div className={cn("mx-auto w-full max-w-[1200px] px-5 sm:px-8", className)}>{children}</div>
   );
 }
 
@@ -64,14 +66,41 @@ export function SectionHeading({
       )}
     >
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <Tag className="font-display text-[2rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-5xl">
+      <Tag className="font-display text-[2.125rem] leading-[1.04] font-extrabold tracking-[-0.045em] text-balance sm:text-5xl lg:text-[3.5rem]">
         {title}
       </Tag>
       {description ? (
-        <p className="max-w-[42ch] text-base leading-7 text-pretty text-ink-secondary sm:text-lg sm:leading-8">
+        <p className="max-w-[46ch] text-base leading-7 text-pretty text-ink-secondary sm:text-lg sm:leading-8">
           {description}
         </p>
       ) : null}
     </div>
+  );
+}
+
+export const easeOut = [0.16, 1, 0.3, 1] as const;
+
+/** Fade-and-rise once when scrolled into view. Reduced motion drops the rise (MotionConfig). */
+export function Reveal({
+  children,
+  className,
+  delay = 0,
+  y = 24,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+  y?: number;
+}) {
+  return (
+    <m.div
+      className={className}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.8, delay, ease: easeOut }}
+    >
+      {children}
+    </m.div>
   );
 }

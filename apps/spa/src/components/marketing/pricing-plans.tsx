@@ -1,7 +1,7 @@
 import { PLAN_CATALOG, PLAN_ORDER, CREDIT_PACK_CREDITS, CREDIT_PACK_PRICE_USD } from "@wisemail/shared";
 import { Link } from "@tanstack/react-router";
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { usd } from "./format";
@@ -18,6 +18,15 @@ const HIGHLIGHT = "pro";
 
 export function PricingPlans() {
   const [interval, setInterval] = useState<Interval>("month");
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // On phones the plans are a swipe row: open it on Pro, with Free to the left.
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const card = row?.querySelector<HTMLElement>(`[data-plan="${HIGHLIGHT}"]`);
+    if (!row || !card || row.scrollWidth <= row.clientWidth) return;
+    row.scrollLeft = card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2;
+  }, []);
   const pct = maxAnnualSavingPct();
 
   return (
@@ -47,7 +56,8 @@ export function PricingPlans() {
         </span>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-[1.75rem] border border-line/70 bg-line shadow-sm md:grid-cols-2 lg:grid-cols-4">
+      {/* Phones swipe through the plans; md and up show them as one joined table. */}
+      <div ref={rowRef} className="relative -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-3 [scrollbar-width:none] sm:-mx-8 sm:px-8 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-px md:overflow-hidden md:rounded-[1.75rem] md:border md:border-line/70 md:bg-line md:px-0 md:pb-0 md:shadow-sm lg:grid-cols-4">
         {PLAN_ORDER.map((id) => {
           const plan = PLAN_CATALOG[id];
           const price = priceFor(id, interval);
@@ -55,9 +65,10 @@ export function PricingPlans() {
           return (
             <section
               key={id}
+              data-plan={id}
               aria-labelledby={`plan-${id}`}
               className={cn(
-                "relative grid content-start gap-5 p-6 sm:p-7",
+                "relative grid w-[84%] max-w-[22rem] shrink-0 snap-center content-start gap-5 rounded-[1.5rem] border border-line/70 p-6 shadow-sm sm:p-7 md:w-auto md:max-w-none md:rounded-none md:border-0 md:shadow-none",
                 highlighted ? "bg-accent-soft" : "bg-surface",
               )}
             >

@@ -1,5 +1,5 @@
 
-import { useAnimation, useReducedMotion } from "motion/react";
+import { useAnimation, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 
 type AnimationControls = ReturnType<typeof useAnimation>;
 import * as m from "motion/react-m";
@@ -30,6 +30,10 @@ export type WiziProps = {
   greet?: boolean;
   /** Wave and blush on hover or tap. Default true. */
   interactive?: boolean;
+  /** Eyes follow the pointer anywhere on the page (marketing hero). */
+  followPointer?: boolean;
+  /** `sit`: perched on a ledge, legs dangling and swinging. */
+  pose?: "stand" | "sit";
 };
 
 const fill = (token: string) => ({ fill: `var(--${token})` });
@@ -159,6 +163,8 @@ export function Wizi({
   title,
   greet = false,
   interactive = true,
+  followPointer = false,
+  pose = "stand",
 }: WiziProps) {
   const reduced = useReducedMotion() ?? false;
   const ref = useRef<SVGSVGElement>(null);
@@ -166,7 +172,13 @@ export function Wizi({
   const live = visible && !reduced;
   const arm = useAnimation();
   const eyes = useAnimation();
+  const legLeft = useAnimation();
+  const legRight = useAnimation();
   const [blush, setBlush] = useState(false);
+  const lookX = useMotionValue(0);
+  const lookY = useMotionValue(0);
+  const eyeX = useSpring(lookX, { stiffness: 160, damping: 18 });
+  const eyeY = useSpring(lookY, { stiffness: 160, damping: 18 });
   const open = mood === "wow";
 
   // Wave once per session when asked to greet.
@@ -200,6 +212,52 @@ export function Wizi({
     return () => clearTimeout(timer);
   }, [live, mood, eyes]);
 
+  // Sitting: kick the legs for a few swings, rest a while, then kick again.
+  useEffect(() => {
+    if (pose !== "sit" || !live) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const kick = async () => {
+      const swings = 2 + Math.floor(Math.random() * 2);
+      const left = [0, ...Array.from({ length: swings }, () => [14, -20]).flat(), 0];
+      const right = left.map((v) => -v * 0.9);
+      const transition = { duration: swings * 1.3, ease: "easeInOut" as const };
+      try {
+        await Promise.all([
+          legLeft.start({ rotate: left, transition }),
+          legRight.start({ rotate: right, transition }),
+        ]);
+      } catch {
+        return;
+      }
+      if (!cancelled) timer = setTimeout(kick, 2500 + Math.random() * 2500);
+    };
+    timer = setTimeout(kick, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      legLeft.stop();
+      legRight.stop();
+    };
+  }, [pose, live, legLeft, legRight]);
+
+  // Pupils lean toward the pointer, a few viewBox units at most.
+  useEffect(() => {
+    if (!followPointer || reduced) return;
+    const onMove = (e: PointerEvent) => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height * 0.64);
+      const d = Math.hypot(dx, dy) || 1;
+      const reach = Math.min(1, d / 360);
+      lookX.set((dx / d) * reach * 6);
+      lookY.set((dy / d) * reach * 4);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [followPointer, reduced, lookX, lookY]);
+
   const wave = () => {
     if (!interactive || reduced) return;
     setBlush(true);
@@ -232,17 +290,36 @@ export function Wizi({
       onClick={wave}
     >
       {!decorative && <title>{title}</title>}
-      <ellipse cx="100" cy="186" rx="52" ry="7" style={fill("ground")} />
-      <g strokeWidth="5" strokeLinecap="round" style={stroke("wizi-limb")}>
-        <path d="M80 150 V172" />
-        <path d="M120 150 V172" />
-      </g>
-      <g style={fill("accent")}>
-        <rect x="68" y="170" width="22" height="10" rx="5" />
-        <rect x="110" y="170" width="22" height="10" rx="5" />
-      </g>
+      {pose === "sit" ? (
+        [
+          { hip: 82, controls: legLeft },
+          { hip: 118, controls: legRight },
+        ].map(({ hip, controls }) => (
+          <m.g key={hip} style={around(hip, 148)} animate={controls}>
+            <path
+              d={`M${hip} 148 V186`}
+              strokeWidth="5"
+              strokeLinecap="round"
+              style={stroke("wizi-limb")}
+            />
+            <rect x={hip - 11} y="184" width="22" height="10" rx="5" style={fill("accent")} />
+          </m.g>
+        ))
+      ) : (
+        <>
+          <ellipse cx="100" cy="186" rx="52" ry="7" style={fill("ground")} />
+          <g strokeWidth="5" strokeLinecap="round" style={stroke("wizi-limb")}>
+            <path d="M80 150 V172" />
+            <path d="M120 150 V172" />
+          </g>
+          <g style={fill("accent")}>
+            <rect x="68" y="170" width="22" height="10" rx="5" />
+            <rect x="110" y="170" width="22" height="10" rx="5" />
+          </g>
+        </>
+      )}
       <m.g
-        animate={live ? { y: [0, 1.5, 0] } : { y: 0 }}
+        animate={live && pose === "stand" ? { y: [0, 1.5, 0] } : { y: 0 }}
         transition={{ duration: 4, repeat: live ? Infinity : 0, ease: "easeInOut" }}
       >
         {open && (
@@ -322,8 +399,10 @@ export function Wizi({
           />
         </m.g>
         <RightArm mood={mood} />
-        <m.g animate={eyes}>
-          <Eyes mood={mood} />
+        <m.g style={{ x: eyeX, y: eyeY }}>
+          <m.g animate={eyes}>
+            <Eyes mood={mood} />
+          </m.g>
         </m.g>
         {[66, 134].map((cx) => (
           <m.ellipse

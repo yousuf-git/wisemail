@@ -1,6 +1,7 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
+import { scrollToSection } from "./smooth-scroll";
 
 export function Logomark({ className }: { className?: string }) {
   return (
@@ -18,10 +19,14 @@ export function Logomark({ className }: { className?: string }) {
 }
 
 export function Logo({ className }: { className?: string }) {
+  const { pathname } = useLocation();
   return (
     <Link
       to="/"
       aria-label="Wisemail home"
+      onClick={(e) => {
+        if (pathname === "/" && scrollToSection("top")) e.preventDefault();
+      }}
       className={cn(
         "inline-flex items-center gap-2 rounded-md font-display text-lg font-bold tracking-[-0.03em] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         className,
