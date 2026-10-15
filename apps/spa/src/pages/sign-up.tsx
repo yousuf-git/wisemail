@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AuthShell, FormAlert } from "@/components/auth/auth-shell";
+import { AuthShell, FormAlert, authInputClass, authSubmitClass } from "@/components/auth/auth-shell";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { authClient } from "@/lib/auth/client";
@@ -74,13 +74,13 @@ export function SignUpPage() {
         <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <FormAlert>{formError}</FormAlert>
           <Field label="Your name" error={form.formState.errors.name?.message}>
-            <input autoComplete="name" className={inputClass} {...form.register("name")} />
+            <input autoComplete="name" className={authInputClass} {...form.register("name")} />
           </Field>
           <Field label="Email" error={form.formState.errors.email?.message}>
             <input
               type="email"
               autoComplete="email"
-              className={inputClass}
+              className={authInputClass}
               {...form.register("email")}
             />
           </Field>
@@ -95,7 +95,7 @@ export function SignUpPage() {
           <button
             type="submit"
             disabled={form.formState.isSubmitting}
-            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+            className={authSubmitClass}
           >
             {form.formState.isSubmitting ? "Creating…" : "Create account"}
           </button>
@@ -105,8 +105,6 @@ export function SignUpPage() {
   );
 }
 
-const inputClass =
-  "h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent";
 
 function Field({
   label,

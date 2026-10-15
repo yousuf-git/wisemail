@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AuthShell, FormAlert } from "@/components/auth/auth-shell";
+import { AuthShell, FormAlert, authInputClass, authSubmitClass } from "@/components/auth/auth-shell";
 import { authClient } from "@/lib/auth/client";
 
 const schema = z.object({ email: z.email("That email doesn't look right.") });
@@ -52,7 +52,7 @@ export function ForgotPasswordPage() {
           <input
             type="email"
             autoComplete="email"
-            className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
+            className={authInputClass}
             {...form.register("email")}
           />
           {form.formState.errors.email ? (
@@ -62,7 +62,7 @@ export function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+          className={authSubmitClass}
         >
           {form.formState.isSubmitting ? "Sending…" : "Send reset email"}
         </button>

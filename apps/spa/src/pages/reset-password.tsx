@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AuthShell, FormAlert, FormNotice } from "@/components/auth/auth-shell";
+import { AuthShell, FormAlert, FormNotice, authSubmitClass } from "@/components/auth/auth-shell";
 import { OtpInput } from "@/components/auth/otp-input";
 import { PasswordInput } from "@/components/auth/password-input";
 import { authClient } from "@/lib/auth/client";
@@ -89,7 +89,7 @@ export function ResetPasswordPage() {
         <button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+          className={authSubmitClass}
         >
           {form.formState.isSubmitting ? "Saving…" : "Save new password"}
         </button>
@@ -210,7 +210,7 @@ function ResetCodeForm({ email }: { email: string }) {
           <button
             type="submit"
             disabled={form.formState.isSubmitting}
-            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+            className={authSubmitClass}
           >
             {form.formState.isSubmitting ? "Saving…" : "Save new password"}
           </button>

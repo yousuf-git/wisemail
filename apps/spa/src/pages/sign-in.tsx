@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AuthShell, FormAlert } from "@/components/auth/auth-shell";
+import { AuthShell, FormAlert, authInputClass, authSubmitClass } from "@/components/auth/auth-shell";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { authClient } from "@/lib/auth/client";
@@ -45,8 +45,8 @@ export function SignInPage() {
 
   return (
     <AuthShell
-      title="Sign in"
-      description="Use your workspace email and password."
+      title="Welcome back"
+      description="Sign in with your workspace email and password."
       mood="idle"
       footer={
         <>
@@ -73,7 +73,7 @@ export function SignInPage() {
             <input
               type="email"
               autoComplete="email"
-              className="h-10 rounded-control border border-line-strong bg-canvas px-3 outline-none focus:ring-2 focus:ring-accent"
+              className={authInputClass}
               {...form.register("email")}
             />
             {form.formState.errors.email ? (
@@ -90,7 +90,7 @@ export function SignInPage() {
           <button
             type="submit"
             disabled={form.formState.isSubmitting}
-            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+            className={authSubmitClass}
           >
             {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
           </button>

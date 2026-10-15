@@ -3,7 +3,7 @@ import { MailCheck } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 
-import { AuthShell, FormAlert, FormNotice } from "@/components/auth/auth-shell";
+import { AuthShell, FormAlert, FormNotice, authSubmitClass } from "@/components/auth/auth-shell";
 import { OtpInput } from "@/components/auth/otp-input";
 import { authClient } from "@/lib/auth/client";
 import { safeNext } from "@/lib/auth/safe-next";
@@ -125,7 +125,7 @@ export function VerifyEmailPage() {
           <button
             type="submit"
             disabled={checking || code.length !== OTP_LENGTH}
-            className="h-11 rounded-full bg-accent-fill text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover disabled:opacity-60"
+            className={authSubmitClass}
           >
             {checking ? "Checking…" : "Confirm"}
           </button>

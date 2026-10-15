@@ -1,6 +1,7 @@
 import { Eye, EyeOff, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
+import { authInputClass } from "@/components/auth/auth-shell";
 import { passwordStrength } from "@/lib/auth/password-strength";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +35,8 @@ export function PasswordInput({
           autoCapitalize="none"
           spellCheck={false}
           className={cn(
-            "h-10 w-full rounded-control border border-line-strong bg-canvas px-3 pr-10 outline-none focus:ring-2 focus:ring-accent",
+            authInputClass,
+            "pr-12",
             className,
           )}
           onKeyDown={(e) => {
@@ -55,7 +57,7 @@ export function PasswordInput({
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Hide password" : "Show password"}
           aria-pressed={visible}
-          className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-md text-ink-muted outline-none hover:text-ink focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="absolute inset-y-0 right-0 grid w-12 place-items-center rounded-r-xl text-ink-muted outline-none hover:text-ink focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           {visible ? (
             <EyeOff className="size-4" aria-hidden />
